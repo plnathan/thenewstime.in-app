@@ -17,9 +17,9 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
 
@@ -34,43 +34,44 @@ export default defineConfig([
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
     },
   },
-])
+]);
 ```
 
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js
 // eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+import reactX from "eslint-plugin-react-x";
+import reactDom from "eslint-plugin-react-dom";
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
       // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
+      reactX.configs["recommended-typescript"],
       // Enable lint rules for React DOM
       reactDom.configs.recommended,
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
     },
   },
-])
+]);
 ```
+
 // --------------------
 
 Install Prettier
@@ -86,30 +87,56 @@ and keep one shared config:
 
 project-root/.prettierrc
 {
-  "semi": true,
-  "singleQuote": false,
-  "trailingComma": "none"
+"semi": true,
+"singleQuote": false,
+"trailingComma": "none"
 }
 
 add format scripts in front-end/package.json
 
 {
-  "scripts": {
-    "format": "prettier --write ."
-  }
+"scripts": {
+"format": "prettier --write ."
+}
 
-  npm run format
+npm run format
 
-  // ----------------------------------
+// ----------------------------------
 
-  Frontend (React + Vite + TypeScript) — install ESLint
+Frontend (React + Vite + TypeScript) — install ESLint
 
-  npm install -D eslint @eslint/js typescript-eslint eslint-plugin-react-hooks eslint-plugin-react-refresh globals
+npm install -D eslint @eslint/js typescript-eslint eslint-plugin-react-hooks eslint-plugin-react-refresh globals
 
-  Run frontend lint
+Run frontend lint
 
-  npm run lint
+npm run lint
 
-  Auto-fix:
+Auto-fix:
 
-  npm run lint:fix
+npm run lint:fix
+
+// -----------------------------------
+
+Axios & other library
+---------------------
+
+npm install axios react-router-dom
+npm install @tanstack/react-query
+npm install react-hook-form
+npm install zod
+npm install clsx
+
+Axios → API communication.
+React Router → Routing.
+TanStack Query → Caching, pagination, refetching, loading/error states.
+React Hook Form → Admin forms.
+Zod → Same validation library as your backend, allowing shared validation logic.
+clsx → Cleaner conditional CSS class handling.
+
+npm install -D @types/react @types/react-dom
+
+To clean npm cache:
+
+---
+
+npm cache clean --force

@@ -11,26 +11,27 @@ export default [
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.json"
+        //project: "./tsconfig.json"
+        project: "./tsconfig.app.json",
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
-        ...globals.browser
-      }
+        ...globals.browser,
+      },
     },
     plugins: {
       "react-hooks": reactHooks,
-      "react-refresh": reactRefresh
+      "react-refresh": reactRefresh,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": [
         "warn",
-        { allowConstantExport: true }
-      ]
-    }
+        { allowConstantExport: true },
+      ],
+    },
   },
   {
-    ignores: ["dist/**", "node_modules/**"]
-  }
+    ignores: ["dist/**", "node_modules/**"],
+  },
 ];
-

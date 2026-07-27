@@ -1,13 +1,13 @@
-import './App.css'
-import FindLocation from './FindLocation'
+import "./App.css";
+
+import AppRoutes from "./routes/AppRoutes";
 
 function App() {
-
   return (
     <>
-      <FindLocation />
+      <AppRoutes />
     </>
-  )
+  );
 }
 
-export default App
+export default App;
