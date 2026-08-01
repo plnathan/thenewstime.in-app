@@ -117,8 +117,7 @@ npm run lint:fix
 
 // -----------------------------------
 
-Axios & other library
----------------------
+## Axios & other library
 
 npm install axios react-router-dom
 npm install @tanstack/react-query
@@ -140,3 +139,35 @@ To clean npm cache:
 ---
 
 npm cache clean --force
+
+---
+
+npm install tailwindcss @tailwindcss/vite
+
+---
+
+npm install lucide-react
+
+## UI - Install libraries
+
+npm install react-icons
+npm install clsx
+npm install tailwind-merge
+npm install framer-motion
+npm install date-fns
+
+## Utility for merging Tailwind CSS class names
+
+npm install clsx tailwind-merge
+
+## Shared date formatting helper.
+
+npm install date-fns
+
+## This automatically reads the alias from your TypeScript configuration.
+
+npm install -D vite-tsconfig-paths
+
+## class-variance-authority (CVA)
+
+npm install class-variance-authority

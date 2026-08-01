@@ -1,0 +1,61 @@
+/**
+ * -----------------------------------------------------------------------------
+ * Project    : thenewstime.in
+ * Package    : UI Framework
+ * File       : animations.css
+ * Description: Shared animations
+ * Version    : 1.0.0
+ * -----------------------------------------------------------------------------
+ */
+
+@layer utilities {
+  @keyframes tnt-fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes tnt-slide-up {
+    from {
+      opacity: 0;
+
+      transform: translateY(1rem);
+    }
+
+    to {
+      opacity: 1;
+
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes tnt-pulse {
+    0% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: tnt-fade-in 0.25s ease;
+  }
+
+  .animate-slide-up {
+    animation: tnt-slide-up 0.35s ease;
+  }
+
+  .animate-pulse-soft {
+    animation: tnt-pulse 2s infinite;
+  }
+}

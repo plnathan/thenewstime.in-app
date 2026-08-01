@@ -1,0 +1,75 @@
+/**
+ * -----------------------------------------------------------------------------
+ * Project    : thenewstime.in
+ * Package    : UI Framework
+ * File       : variables.css
+ * Description: Global Design Tokens
+ * Version    : 1.0.0
+ * -----------------------------------------------------------------------------
+ */
+
+@layer theme {
+  :root {
+    /* ==========================================================================
+     COLORS
+     ========================================================================== */
+
+    --tnt-color-primary: #0f8a4b;
+    --tnt-color-primary-dark: #0b6d3a;
+    --tnt-color-primary-light: #eaf7f0;
+
+    --tnt-color-breaking: #d62828;
+    --tnt-color-accent: #f4b400;
+
+    --tnt-color-text: #111827;
+    --tnt-color-text-secondary: #4b5563;
+    --tnt-color-text-muted: #6b7280;
+
+    --tnt-color-background: #ffffff;
+    --tnt-color-surface: #ffffff;
+    --tnt-color-surface-alt: #f9fafb;
+
+    --tnt-color-border: #e5e7eb;
+    --tnt-color-border-light: #f3f4f6;
+
+    /* ==========================================================================
+     SPACING
+     ========================================================================== */
+
+    --tnt-space-xs: 0.25rem;
+    --tnt-space-sm: 0.5rem;
+    --tnt-space-md: 1rem;
+    --tnt-space-lg: 1.5rem;
+    --tnt-space-xl: 2rem;
+    --tnt-space-2xl: 3rem;
+    --tnt-space-3xl: 4rem;
+
+    /* ==========================================================================
+     RADIUS
+     ========================================================================== */
+
+    --tnt-radius-sm: 0.25rem;
+    --tnt-radius-md: 0.5rem;
+    --tnt-radius-lg: 0.75rem;
+    --tnt-radius-xl: 1rem;
+    --tnt-radius-full: 624.95rem;
+
+    /* ==========================================================================
+     SHADOWS
+     ========================================================================== */
+
+    --tnt-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+    --tnt-shadow-md: 0 4px 8px rgb(0 0 0 / 0.08);
+    --tnt-shadow-lg: 0 10px 25px rgb(0 0 0 / 0.1);
+
+    /* ==========================================================================
+     LAYOUT
+     ========================================================================== */
+
+    --tnt-container-width: 80rem;
+
+    --tnt-header-height: 4.5rem;
+
+    --tnt-transition: 180ms ease;
+  }
+}

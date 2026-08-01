@@ -1,0 +1,60 @@
+/**
+ * -----------------------------------------------------------------------------
+ * Project    : thenewstime.in
+ * Package    : UI Framework
+ * File       : utilities.css
+ * Description: Shared utility classes
+ * Version    : 1.0.0
+ * -----------------------------------------------------------------------------
+ */
+
+@layer utilities {
+  .tnt-container {
+    width: min(100% - 2rem, 80rem);
+    margin-inline: auto;
+  }
+
+  .tnt-section {
+    padding-block: 2rem;
+  }
+
+  .tnt-divider {
+    border-bottom: 1px solid rgb(229 231 235);
+  }
+
+  .tnt-card {
+    background: white;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.75rem;
+  }
+
+  /* .tnt-shadow-sm {
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  } */
+
+  .tnt-shadow-md {
+    box-shadow: 0 4px 8px rgb(0 0 0 / 0.08);
+  }
+
+  .tnt-shadow-lg {
+    box-shadow: 0 10px 25px rgb(0 0 0 / 0.1);
+  }
+
+  /* .tnt-transition {
+    transition: all 180ms ease;
+  } */
+
+  .tnt-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .tnt-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

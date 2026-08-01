@@ -1,0 +1,67 @@
+/**
+ * -----------------------------------------------------------------------------
+ * Project    : thenewstime.in
+ * Package    : UI Framework
+ * File       : typography.css
+ * Description: Default typography
+ * Version    : 1.0.0
+ * -----------------------------------------------------------------------------
+ */
+
+@layer base {
+  html {
+    font-family: Inter, "Noto Sans Tamil", system-ui, sans-serif;
+
+    font-size: 1rem;
+  }
+
+  h1 {
+    font-size: 2.25rem;
+
+    line-height: 1.2;
+
+    font-weight: 700;
+
+    margin: 0;
+  }
+
+  h2 {
+    font-size: 1.75rem;
+
+    line-height: 1.25;
+
+    font-weight: 700;
+
+    margin: 0;
+  }
+
+  h3 {
+    font-size: 1.375rem;
+
+    line-height: 1.3;
+
+    font-weight: 700;
+
+    margin: 0;
+  }
+
+  h4 {
+    font-size: 1.125rem;
+
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+
+    line-height: 1.8;
+  }
+
+  small {
+    color: var(--tnt-color-text-muted);
+  }
+
+  strong {
+    font-weight: 700;
+  }
+}

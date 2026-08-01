@@ -1,0 +1,37 @@
+/**
+ * -----------------------------------------------------------------------------
+ * Project    : thenewstime.in
+ * Package    : UI Framework
+ * File       : scrollbar.css
+ * Description: Global scrollbar styling
+ * Version    : 1.0.0
+ * -----------------------------------------------------------------------------
+ */
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+
+    scrollbar-color: #0f8a4b #f3f4f6;
+  }
+
+  *::-webkit-scrollbar {
+    width: 0.625rem;
+
+    height: 0.625rem;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #f3f4f6;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #0f8a4b;
+
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #0b6d3a;
+  }
+}

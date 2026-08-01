@@ -12,7 +12,7 @@ export default [
     languageOptions: {
       parserOptions: {
         //project: "./tsconfig.json"
-        project: "./tsconfig.app.json",
+        project: ['./tsconfig.app.json', './tsconfig.node.json'],
         tsconfigRootDir: import.meta.dirname,
       },
       globals: {

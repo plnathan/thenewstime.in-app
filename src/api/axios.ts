@@ -1,11 +1,24 @@
 import axios from "axios";
 
-const api = axios.create({
-  baseURL: "http://localhost:5000/api/v1",
-  timeout: 10000,
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000,
 });
 
-export default api;
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      console.error("API Error:", error.response.data);
+    } else {
+      console.error("Network Error:", error.message);
+    }
+
+    return Promise.reject(error);
+  },
+);
+
+export default apiClient;
