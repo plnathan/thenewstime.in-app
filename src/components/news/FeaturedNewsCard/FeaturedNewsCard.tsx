@@ -25,7 +25,7 @@ export default function FeaturedNewsCard({
       className="group overflow-hidden"
       onClick={() => onClick?.(news)}
     >
-      <div className="relative aspect-[16/9] w-full">
+      <div className="relative w-full aspect-[5/4] sm:aspect-[16/10] lg:aspect-[16/9]">
         <img
           src={news.thumbnailUrl}
           alt={news.title}
@@ -41,37 +41,21 @@ export default function FeaturedNewsCard({
 
         {/* Overlay */}
 
-        <div
-          className="
-            absolute
-            inset-0
-            bg-gradient-to-t
-            from-black/80
-            via-black/40
-            to-transparent
-          "
-        />
-
-        <div
-          className="
-            absolute
-            bottom-0
-            left-0
-            right-0
-            p-6
-            text-white
-          "
-        >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 lg:p-6 text-white">
           {news.breaking && <Badge variant="danger">Breaking News</Badge>}
 
-          <Typography variant="heroTitle" className="mt-4 text-white">
+          <Typography
+            variant="heroTitle"
+            className="mt-3 line-clamp-2 text-white"
+          >
             {news.title}
           </Typography>
 
           {news.summary && (
             <Typography
               variant="summary"
-              className="mt-3 text-gray-200 line-clamp-2"
+              className="mt-3 hidden md:block text-gray-200 line-clamp-2"
             >
               {news.summary}
             </Typography>

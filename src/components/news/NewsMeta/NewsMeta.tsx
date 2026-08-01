@@ -39,7 +39,7 @@ export default function NewsMeta({
     <div
       className={cn(
         "flex flex-wrap items-center gap-4 text-gray-500",
-        compact ? "text-xs" : "text-sm",
+        compact ? "text-[11px]" : "text-xs sm:text-sm",
         className,
       )}
       {...props}

@@ -171,3 +171,27 @@ npm install -D vite-tsconfig-paths
 ## class-variance-authority (CVA)
 
 npm install class-variance-authority
+
+## Header Foundation
+
+src/
+│
+├── components/
+│ └── layout/
+│ ├── Header/
+│ │ ├── Header.tsx
+│ │ ├── Header.types.ts
+│ │ ├── Header.module.css
+│ │ ├── index.ts
+│ │
+│ ├── TopBar/
+│ │ ├── TopBar.tsx
+│ │ ├── index.ts
+│ │
+│ ├── Logo/
+│ │ ├── Logo.tsx
+│ │ ├── index.ts
+│ │
+│ └── HeaderActions/
+│ ├── HeaderActions.tsx
+│ └── index.ts

@@ -14,7 +14,7 @@ import { cn } from "@/lib";
 import type { TypographyProps, TypographyElement } from "./Typography.types";
 
 const VARIANT_CLASSES = {
-  heroTitle: "text-3xl font-bold leading-tight tracking-tight md:text-4xl",
+  heroTitle: `font-bold tracking-tight text-[1.375rem] leading-snug sm:text-[1.75rem] lg:text-[2.25rem]`,
 
   headline: "text-4xl md:text-5xl font-extrabold tracking-tight leading-tight",
 
