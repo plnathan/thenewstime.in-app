@@ -10,12 +10,16 @@ export default function Navigation({ className }: NavigationProps) {
     <nav className={cn("border-b", "border-gray-200", "bg-white", className)}>
       <div
         className="
-          flex
-          overflow-x-auto
-          scrollbar-hide
-
-          lg:justify-center
-        "
+            mx-auto
+            flex
+            h-12
+            max-w-7xl
+            items-center
+            justify-start
+            overflow-x-auto
+            whitespace-nowrap
+            scrollbar-hide
+            lg:justify-center"
       >
         {navigationItems.map((item) => (
           <NavigationItem key={item.id} item={item} />

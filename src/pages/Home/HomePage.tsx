@@ -1,13 +1,14 @@
-import FeaturedNewsCard from "@/components/news/FeaturedNewsCard";
 import NewsCard from "@/components/news/NewsCard";
-import SidebarNewsCard from "@/components/news/SidebarNewsCard";
 
 import AppContainer from "@/components/container/AppContainer";
 import MainContent from "@/components/container/MainContent";
 
+import Hero from "@/components/home/Hero/Hero";
 import HomeGrid from "@/components/home/HomeGrid";
 import Section from "@/components/home/Section";
 import Sidebar from "@/components/home/Sidebar";
+
+// import HeroSection from "@/components/home/sections/HeroSection";
 
 import MainLayout from "@/layouts/MainLayout";
 
@@ -17,30 +18,32 @@ export default function HomePage() {
   return (
     <MainLayout>
       <AppContainer>
-        <div className="py-8">
-          <FeaturedNewsCard news={featuredNews} />
 
-          <div className="mt-10">
-            <HomeGrid
-              sidebar={
-                <Sidebar>
-                  <Section title="Trending">
-                    {latestNews.slice(0, 5).map((news) => (
-                      <SidebarNewsCard key={news.id} news={news} />
-                    ))}
-                  </Section>
-                </Sidebar>
-              }
-            >
-              <MainContent>
-                <Section title="Latest News" actionLabel="View All">
-                  {latestNews.map((news) => (
-                    <NewsCard key={news.id} news={news} />
+        <Hero featured={featuredNews} sidebar={latestNews} />
+
+        <div className="mt-10">
+          <HomeGrid
+            sidebar={
+              <Sidebar>
+                <Section title="பிரபலமானவை">
+                  {latestNews.slice(4, 8).map((news) => (
+                    <NewsCard key={news.id} news={news} compact />
                   ))}
                 </Section>
-              </MainContent>
-            </HomeGrid>
-          </div>
+              </Sidebar>
+            }
+          >
+            <MainContent>
+              <Section
+                title="சமீபத்திய செய்திகள்"
+                actionLabel="அனைத்தையும் பார்க்க"
+              >
+                {latestNews.map((news) => (
+                  <NewsCard key={news.id} news={news} />
+                ))}
+              </Section>
+            </MainContent>
+          </HomeGrid>
         </div>
       </AppContainer>
     </MainLayout>

@@ -1,0 +1,23 @@
+.breaking-track {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+
+    animation: breaking-scroll 35s linear infinite;
+}
+
+.breaking-wrapper:hover .breaking-track {
+    animation-play-state: paused;
+}
+
+@keyframes breaking-scroll {
+
+    from {
+        transform: translateX(0%);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+
+}

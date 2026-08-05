@@ -8,3 +8,4 @@
 
 export * from "./common";
 export * from "./news";
+export * from "./news.types";

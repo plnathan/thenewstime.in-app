@@ -6,10 +6,17 @@
  * File        : NewsCard.types.ts
  * -----------------------------------------------------------------------------
  */
-import type { NewsItem } from "@/types/news.types";
+import type { NewsView } from "@/types/news.types";
 
 export interface NewsCardProps {
-  news: NewsItem;
-  image?: string;
+  news: NewsView;
+  //image?: string;
+  /**
+   * Compact layout used in:
+   * - Hero sidebar
+   * - Trending news
+   * - Related news
+   */
+  compact?: boolean;
   onClick?: () => void;
 }

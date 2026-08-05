@@ -6,10 +6,10 @@
  * -----------------------------------------------------------------------------
  */
 
-import type { NewsItem } from "@/types/news.types";
+import type { NewsView } from "@/types/news.types";
 
 export interface FeaturedNewsCardProps {
-  news: NewsItem;
+  news: NewsView;
 
-  onClick?: (news: NewsItem) => void;
+  onClick?: (news: NewsView) => void;
 }

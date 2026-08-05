@@ -1,14 +1,9 @@
-import MenuButton from "../MenuButton";
-import TopBar from "../TopBar";
+import { Menu, Search } from "lucide-react";
 
-import HeaderLogo from "./HeaderLogo";
-import HeaderActions from "./HeaderActions";
-
+import Logo from "./Logo";
 import Navigation from "../Navigation";
 
-import type { HeaderProps } from "./Header.types";
-
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header() {
   return (
     <header
       className="
@@ -17,28 +12,94 @@ export default function Header({ onMenuClick }: HeaderProps) {
         z-50
         bg-white
         border-b
-        border-gray-200
       "
     >
-      <TopBar />
+      {/* Top Header */}
 
       <div
         className="
+          mx-auto
           flex
-          h-16
+          h-20
+          max-w-7xl
           items-center
           justify-between
           px-4
-          lg:h-20
-          lg:px-8
+          lg:px-6
         "
       >
-        <MenuButton onClick={onMenuClick} />
+        {/* Left */}
 
-        <HeaderLogo />
+        <button
+          className="
+            rounded
+            p-2
+            hover:bg-gray-100
+          "
+        >
+          <Menu size={24} />
+        </button>
 
-        <HeaderActions />
+        {/* Center */}
+
+        <Logo />
+
+        {/* Right */}
+
+        <div
+          className="
+            flex
+            items-center
+            gap-6
+            text-sm
+          "
+        >
+          <span
+            className="
+              hidden
+              lg:block
+              text-gray-600
+            "
+          >
+            {new Date().toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+
+          <button
+            className="
+              hidden
+              lg:block
+              hover:text-green-700
+            "
+          >
+            E-Paper
+          </button>
+
+          <button
+            className="
+              hidden
+              md:block
+              hover:text-green-700
+            "
+          >
+            தமிழ்
+          </button>
+
+          <button
+            className="
+              rounded-full
+              p-2
+              hover:bg-gray-100
+            "
+          >
+            <Search size={22} />
+          </button>
+        </div>
       </div>
+
       <Navigation />
     </header>
   );

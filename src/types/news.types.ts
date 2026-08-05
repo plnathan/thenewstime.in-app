@@ -13,7 +13,7 @@ export interface News {
   publishedAt: string | null;
 }
 
-export interface NewsItem {
+export interface NewsView {
   id: number;
   slug: string;
 
