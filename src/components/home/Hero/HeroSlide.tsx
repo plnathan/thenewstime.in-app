@@ -87,7 +87,7 @@ export default function HeroSlide({ news }: Props) {
           className="
             max-w-[240px]
 
-            sm:max-w-[320px]
+            sm:max-w-[350px]
 
             md:max-w-[480px]
 
