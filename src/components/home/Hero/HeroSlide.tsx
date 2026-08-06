@@ -64,8 +64,8 @@ export default function HeroSlide({ news }: Props) {
           left-12
           right-8
 
-          sm:bottom-15
-          sm:left-20
+          sm:bottom-25
+          sm:left-25
           sm:right-10
 
           md:bottom-12
