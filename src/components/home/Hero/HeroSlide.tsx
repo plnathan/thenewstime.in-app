@@ -64,8 +64,8 @@ export default function HeroSlide({ news }: Props) {
           left-12
           right-8
 
-          sm:bottom-10
-          sm:left-12
+          sm:bottom-15
+          sm:left-20
           sm:right-10
 
           md:bottom-12
@@ -87,7 +87,7 @@ export default function HeroSlide({ news }: Props) {
           className="
             max-w-[240px]
 
-            sm:max-w-[300px]
+            sm:max-w-[320px]
 
             md:max-w-[480px]
 
