@@ -17,29 +17,28 @@ export default function HeroNavigation({
         className="
           absolute
 
-          left-2
-          sm:left-3
+          left-3
+          sm:left-4
           md:left-5
           lg:left-6
 
-          top-[45%]
+          top-1/2
           -translate-y-1/2
 
           z-40
 
           flex
-
-          h-9
-          w-9
-
-          sm:h-10
-          sm:w-10
-
-          md:h-11
-          md:w-11
-
           items-center
           justify-center
+
+          h-10
+          w-10
+
+          sm:h-11
+          sm:w-11
+
+          md:h-12
+          md:w-12
 
           rounded-full
 
@@ -50,11 +49,12 @@ export default function HeroNavigation({
           backdrop-blur-sm
 
           transition-all
+          duration-200
 
           hover:bg-black/60
         "
       >
-        <ChevronLeft size={20} />
+        <ChevronLeft className="h-5 w-5" />
       </button>
 
       <button
@@ -63,29 +63,28 @@ export default function HeroNavigation({
         className="
           absolute
 
-          right-2
-          sm:right-3
+          right-3
+          sm:right-4
           md:right-5
           lg:right-6
 
-          top-[45%]
+          top-1/2
           -translate-y-1/2
 
           z-40
 
           flex
-
-          h-9
-          w-9
-
-          sm:h-10
-          sm:w-10
-
-          md:h-11
-          md:w-11
-
           items-center
           justify-center
+
+          h-10
+          w-10
+
+          sm:h-11
+          sm:w-11
+
+          md:h-12
+          md:w-12
 
           rounded-full
 
@@ -96,11 +95,12 @@ export default function HeroNavigation({
           backdrop-blur-sm
 
           transition-all
+          duration-200
 
           hover:bg-black/60
         "
       >
-        <ChevronRight size={20} />
+        <ChevronRight className="h-5 w-5" />
       </button>
     </>
   );

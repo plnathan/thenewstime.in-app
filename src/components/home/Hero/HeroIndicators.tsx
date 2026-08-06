@@ -13,32 +13,35 @@ export default function HeroIndicators({
     <div
       className="
         absolute
-        left-1/2
-        bottom-25
 
+        left-1/2
         -translate-x-1/2
 
-        z-[100]
+        bottom-5
+        sm:bottom-6
+        md:bottom-7
+
+        z-40
 
         flex
         items-center
-        gap-3
+        gap-2
       "
     >
       {Array.from({ length: total }).map((_, index) => (
         <button
           key={index}
           type="button"
+          aria-label={`Go to slide ${index + 1}`}
           onClick={() => onSelect(index)}
-          aria-label={`Slide ${index + 1}`}
           className={`
             rounded-full
             transition-all
             duration-300
 
             ${active === index
-              ? "h-3 w-8 bg-white"
-              : "h-3 w-3 bg-white/50 hover:bg-white"
+              ? "h-2.5 w-8 bg-white"
+              : "h-2.5 w-2.5 bg-white/50 hover:bg-white/80"
             }
           `}
         />

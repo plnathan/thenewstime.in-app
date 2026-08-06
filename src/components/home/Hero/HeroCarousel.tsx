@@ -12,7 +12,9 @@ interface HeroCarouselProps {
 
 const AUTO_PLAY_INTERVAL = 5000;
 
-export default function HeroCarousel({ items }: HeroCarouselProps) {
+export default function HeroCarousel({
+  items,
+}: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -22,7 +24,9 @@ export default function HeroCarousel({ items }: HeroCarouselProps) {
   const total = items.length;
 
   function previous() {
-    setActiveIndex((current) => (current === 0 ? total - 1 : current - 1));
+    setActiveIndex((current) =>
+      current === 0 ? total - 1 : current - 1
+    );
   }
 
   function next() {
@@ -32,7 +36,10 @@ export default function HeroCarousel({ items }: HeroCarouselProps) {
   useEffect(() => {
     if (paused || total <= 1) return;
 
-    const timer = window.setInterval(next, AUTO_PLAY_INTERVAL);
+    const timer = window.setInterval(
+      next,
+      AUTO_PLAY_INTERVAL
+    );
 
     return () => clearInterval(timer);
   }, [paused, total]);
@@ -46,41 +53,56 @@ export default function HeroCarousel({ items }: HeroCarouselProps) {
 
     window.addEventListener("keydown", onKeyDown);
 
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () =>
+      window.removeEventListener("keydown", onKeyDown);
   }, [total]);
 
-  function handleTouchStart(event: React.TouchEvent) {
-    touchStart.current = event.targetTouches[0].clientX;
+  function handleTouchStart(
+    event: React.TouchEvent
+  ) {
+    touchStart.current =
+      event.targetTouches[0].clientX;
   }
 
-  function handleTouchMove(event: React.TouchEvent) {
-    touchEnd.current = event.targetTouches[0].clientX;
+  function handleTouchMove(
+    event: React.TouchEvent
+  ) {
+    touchEnd.current =
+      event.targetTouches[0].clientX;
   }
 
   function handleTouchEnd() {
-    const distance = touchStart.current - touchEnd.current;
+    const distance =
+      touchStart.current - touchEnd.current;
 
     if (distance > 70) next();
 
     if (distance < -70) previous();
   }
 
-  if (total === 0) return null;
-  console.log("Featured Count:", total);
+  if (!total) return null;
+
   return (
     <section
-      className="relative overflow-hidden rounded-xl"
+      className="
+        relative
+        overflow-hidden
+        rounded-xl
+      "
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <HeroSlide key={items[activeIndex].id} news={items[activeIndex]} />
+      <HeroSlide news={items[activeIndex]} />
 
       {total > 1 && (
         <>
-          <HeroNavigation onPrevious={previous} onNext={next} />
+          <HeroNavigation
+            onPrevious={previous}
+            onNext={next}
+          />
 
           <HeroIndicators
             total={total}

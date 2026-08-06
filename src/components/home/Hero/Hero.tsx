@@ -1,6 +1,6 @@
+import BreakingTicker from "./BreakingTicker";
 import HeroCarousel from "./HeroCarousel";
 import HeroSidebar from "./HeroSidebar";
-import BreakingTicker from "./BreakingTicker";
 
 import type { NewsView } from "@/types";
 
@@ -9,20 +9,23 @@ interface Props {
   sidebar: NewsView[];
 }
 
-export default function Hero({ featured, sidebar }: Props) {
+export default function Hero({
+  featured,
+  sidebar,
+}: Props) {
   return (
     <>
-      <BreakingTicker
-        news={featured}
-      />
+      <BreakingTicker news={featured} />
 
       <section
         className="
           mt-4
+
           grid
           gap-6
 
-          xl:grid-cols-[2fr_360px]
+          xl:grid-cols-[minmax(0,2fr)_360px]
+          xl:items-start
         "
       >
         <HeroCarousel items={featured} />

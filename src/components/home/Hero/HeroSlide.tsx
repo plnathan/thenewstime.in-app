@@ -15,15 +15,15 @@ export default function HeroSlide({ news }: Props) {
         overflow-hidden
         rounded-xl
         bg-black
-        animate-in
-        fade-in
-        duration-500
       "
     >
       {/* Image */}
 
       <img
-        src={news.thumbnailUrl ?? "https://placehold.co/1200x700?text=News"}
+        src={
+          news.thumbnailUrl ??
+          "https://placehold.co/1200x700?text=News"
+        }
         alt={news.title}
         className="
           h-[340px]
@@ -31,25 +31,23 @@ export default function HeroSlide({ news }: Props) {
           object-cover
 
           sm:h-[360px]
-
-          md:h-[380px]
-
-          lg:h-[420px]
-
-          xl:h-[440px]
+          md:h-[400px]
+          lg:h-[430px]
+          xl:h-[450px]
         "
       />
 
-      {/* Overlay */}
+      {/* Dark Overlay */}
 
       <div
         className="
           absolute
           inset-0
           z-10
+
           bg-gradient-to-t
-          from-black/85
-          via-black/30
+          from-black/90
+          via-black/35
           to-transparent
         "
       />
@@ -59,80 +57,88 @@ export default function HeroSlide({ news }: Props) {
       <div
         className="
           absolute
+          z-20
 
           bottom-8
 
-          left-5
-          right-5
-
-          z-20
+          left-12
+          right-8
 
           sm:bottom-10
-          sm:left-8
-          sm:right-8
+          sm:left-12
+          sm:right-10
 
-          md:bottom-16
+          md:bottom-12
           md:left-16
           md:right-16
 
+          lg:bottom-14
           lg:left-20
           lg:right-20
 
-          xl:left-24
-          xl:right-24
+          xl:bottom-16
+          xl:left-20
+          xl:right-20
         "
       >
-        <HeroBadge />
+        {/* Limit text width */}
 
-        <h1
+        <div
           className="
-            mt-3
+            max-w-[240px]
 
-            max-w-[640px]
+            sm:max-w-[300px]
 
-            font-bold
+            md:max-w-[480px]
 
-            tracking-tight
+            lg:max-w-[580px]
 
-            leading-[1.12]
-
-            text-white
-
-            text-[1.55rem]
-
-            sm:text-[1.75rem]
-
-            md:text-[2rem]
-
-            lg:text-[2.25rem]
-
-            xl:text-[2.5rem]
+            xl:max-w-[660px]
           "
         >
-          {news.title}
-        </h1>
+          <HeroBadge />
 
-        <p
-          className="
-            mt-4
+          <h1
+            className="
+              mt-2
 
-            hidden
+              text-white
 
-            max-w-[580px]
+              font-bold
+              tracking-tight
+              leading-[1.08]
 
-            text-base
+              text-[1.18rem]
 
-            leading-7
+              sm:text-[1.45rem]
 
-            text-white/90
+              md:text-[2rem]
 
-            lg:block
-          "
-        >
-          {news.summary}
-        </p>
+              lg:text-[2.18rem]
 
-        <div className="mt-4">
+              xl:text-[2.28rem]
+            "
+          >
+            {news.title}
+          </h1>
+
+          <p
+            className="
+              mt-4
+
+              hidden
+
+              text-base
+              leading-7
+
+              text-white/90
+
+              lg:block
+            "
+          >
+            {news.summary}
+          </p>
+
           <HeroMeta
             publishedAt={news.publishedAt}
             views={news.views}
