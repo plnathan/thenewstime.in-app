@@ -14,11 +14,11 @@ export default function HeroNavigation({
       <button
         onClick={onPrevious}
         aria-label="Previous"
-
         className="
           absolute
 
-          left-4
+          left-2
+          sm:left-3
           md:left-5
           lg:left-6
 
@@ -28,8 +28,15 @@ export default function HeroNavigation({
           z-40
 
           flex
-          h-11
-          w-11
+
+          h-9
+          w-9
+
+          sm:h-10
+          sm:w-10
+
+          md:h-11
+          md:w-11
 
           items-center
           justify-center
@@ -47,17 +54,17 @@ export default function HeroNavigation({
           hover:bg-black/60
         "
       >
-        <ChevronLeft size={22} />
+        <ChevronLeft size={20} />
       </button>
 
       <button
         onClick={onNext}
         aria-label="Next"
-
         className="
           absolute
 
-          right-4
+          right-2
+          sm:right-3
           md:right-5
           lg:right-6
 
@@ -67,8 +74,15 @@ export default function HeroNavigation({
           z-40
 
           flex
-          h-11
-          w-11
+
+          h-9
+          w-9
+
+          sm:h-10
+          sm:w-10
+
+          md:h-11
+          md:w-11
 
           items-center
           justify-center
@@ -86,7 +100,7 @@ export default function HeroNavigation({
           hover:bg-black/60
         "
       >
-        <ChevronRight size={22} />
+        <ChevronRight size={20} />
       </button>
     </>
   );

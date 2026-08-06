@@ -16,7 +16,6 @@ export default function BreakingControls({
         shrink-0
 
         border-l
-
         border-neutral-200
 
         bg-white
@@ -24,24 +23,68 @@ export default function BreakingControls({
         >
             <button
                 onClick={onPrevious}
+                aria-label="Previous Breaking News"
                 className="
-          p-3
+          flex
+          items-center
+          justify-center
+
+          h-10
+          w-10
+
+          sm:h-11
+          sm:w-11
+
+          md:h-12
+          md:w-12
+
+          transition-colors
 
           hover:bg-neutral-100
         "
             >
-                <ChevronLeft size={18} />
+                <ChevronLeft
+                    className="
+            h-4
+            w-4
+
+            sm:h-5
+            sm:w-5
+          "
+                />
             </button>
 
             <button
                 onClick={onNext}
+                aria-label="Next Breaking News"
                 className="
-          p-3
+          flex
+          items-center
+          justify-center
+
+          h-10
+          w-10
+
+          sm:h-11
+          sm:w-11
+
+          md:h-12
+          md:w-12
+
+          transition-colors
 
           hover:bg-neutral-100
         "
             >
-                <ChevronRight size={18} />
+                <ChevronRight
+                    className="
+            h-4
+            w-4
+
+            sm:h-5
+            sm:w-5
+          "
+                />
             </button>
         </div>
     );

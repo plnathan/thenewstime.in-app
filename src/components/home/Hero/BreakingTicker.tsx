@@ -9,9 +9,7 @@ interface Props {
     news: NewsView[];
 }
 
-export default function BreakingTicker({
-    news,
-}: Props) {
+export default function BreakingTicker({ news }: Props) {
     const items = news.filter((x) => x.breaking);
 
     if (!items.length) {
@@ -31,7 +29,6 @@ export default function BreakingTicker({
         rounded-md
 
         border
-
         border-neutral-300
 
         bg-white
@@ -42,21 +39,27 @@ export default function BreakingTicker({
             <div
                 className="
           flex
-          h-12
           shrink-0
+
           items-center
+
+          h-10
+          sm:h-11
+          md:h-12
 
           bg-red-600
 
-          px-6
+          px-3
+          sm:px-4
+          md:px-6
         "
             >
                 <span
                     className="
-            text-sm
-            font-bold
+            text-xs
+            sm:text-sm
 
-            uppercase
+            font-bold
 
             tracking-wide
 

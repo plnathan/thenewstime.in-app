@@ -26,11 +26,15 @@ export default function HeroSlide({ news }: Props) {
         src={news.thumbnailUrl ?? "https://placehold.co/1200x700?text=News"}
         alt={news.title}
         className="
-          h-[240px]
+          h-[340px]
           w-full
           object-cover
 
+          sm:h-[360px]
+
           md:h-[380px]
+
+          lg:h-[420px]
 
           xl:h-[440px]
         "
@@ -55,13 +59,19 @@ export default function HeroSlide({ news }: Props) {
       <div
         className="
           absolute
-          bottom-16
 
-          left-12
-          right-12
+          bottom-8
+
+          left-5
+          right-5
 
           z-20
 
+          sm:bottom-10
+          sm:left-8
+          sm:right-8
+
+          md:bottom-16
           md:left-16
           md:right-16
 
@@ -78,9 +88,7 @@ export default function HeroSlide({ news }: Props) {
           className="
             mt-3
 
-            max-w-[620px]
-
-            text-white
+            max-w-[640px]
 
             font-bold
 
@@ -88,7 +96,11 @@ export default function HeroSlide({ news }: Props) {
 
             leading-[1.12]
 
-            text-[1.75rem]
+            text-white
+
+            text-[1.55rem]
+
+            sm:text-[1.75rem]
 
             md:text-[2rem]
 
@@ -120,7 +132,7 @@ export default function HeroSlide({ news }: Props) {
           {news.summary}
         </p>
 
-        <div className="mt-5">
+        <div className="mt-4">
           <HeroMeta
             publishedAt={news.publishedAt}
             views={news.views}
