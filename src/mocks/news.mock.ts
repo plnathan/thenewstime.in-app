@@ -20,7 +20,7 @@ export const featuredNews: NewsView[] = [
 
     audioAvailable: true,
 
-    category: "Politics",
+    categoryName: "Politics",
 
     featured: true,
 
@@ -46,7 +46,7 @@ export const featuredNews: NewsView[] = [
 
     audioAvailable: true,
 
-    category: "Politics",
+    categoryName: "Politics",
 
     featured: true,
 
@@ -71,7 +71,7 @@ export const featuredNews: NewsView[] = [
 
     audioAvailable: true,
 
-    category: "Politics",
+    categoryName: "Politics",
 
     featured: true,
 
@@ -97,7 +97,7 @@ export const featuredNews: NewsView[] = [
 
     audioAvailable: true,
 
-    category: "Politics",
+    categoryName: "Politics",
 
     featured: true,
 
@@ -123,7 +123,7 @@ export const featuredNews: NewsView[] = [
 
     audioAvailable: true,
 
-    category: "Politics",
+    categoryName: "Politics",
 
     featured: true,
 
@@ -147,7 +147,7 @@ export const featuredNews: NewsView[] = [
 
     audioAvailable: true,
 
-    category: "Politics",
+    categoryName: "Politics",
 
     featured: true,
 

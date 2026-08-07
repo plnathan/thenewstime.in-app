@@ -12,7 +12,7 @@ export const featuredNews: NewsView[] = [
     views: 2456,
     comments: 12,
     audioAvailable: false,
-    category: "தமிழ்நாடு",
+    categoryName: "தமிழ்நாடு",
     featured: true,
     breaking: true,
   },

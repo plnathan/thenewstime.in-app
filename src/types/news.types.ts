@@ -7,6 +7,7 @@ export interface News {
   content: string;
   newsScope: string;
   categoryId: number;
+  categoryName: string;
   stateId: number | null;
   districtId: number | null;
   status: string;
@@ -30,7 +31,7 @@ export interface NewsView {
 
   audioAvailable: boolean;
 
-  category?: string;
+  categoryName?: string;
 
   breaking?: boolean;
 

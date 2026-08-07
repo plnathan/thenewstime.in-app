@@ -52,7 +52,7 @@ export default function HeroSlide({ news }: HeroSlideProps) {
           lg:p-8
         "
       >
-        {news.category && (
+        {news.categoryName && (
           <span
             className="
               inline-block
@@ -67,7 +67,7 @@ export default function HeroSlide({ news }: HeroSlideProps) {
               text-white
             "
           >
-            {news.category}
+            {news.categoryName}
           </span>
         )}
 

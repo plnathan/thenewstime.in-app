@@ -18,7 +18,7 @@ export default function HeroNavigation({
           absolute
 
           left-3
-          sm:left-1
+          sm:left-3
           md:left-5
           lg:left-6
 

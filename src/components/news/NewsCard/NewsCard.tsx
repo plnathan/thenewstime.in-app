@@ -6,11 +6,11 @@
  * -----------------------------------------------------------------------------
  */
 
-import { Eye, MessageSquare, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 
 import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
-import { formatDate } from "@/utils";
+import NewsMeta from "@/components/news/NewsMeta/NewsMeta";
 
 import type { NewsCardProps } from "./NewsCard.types";
 
@@ -22,82 +22,116 @@ export default function NewsCard({
   const {
     title,
     summary,
+    thumbnailUrl,
     publishedAt,
-    audioAvailable,
     views,
     comments,
-    thumbnailUrl,
+    audioAvailable,
   } = news;
+
   return (
     <Surface
       hoverable
       clickable
       onClick={onClick}
-      className={compact ? "p-3" : "p-5"}
+      className={`
+        group
+        overflow-hidden
+        transition-all
+        duration-300
+        ${compact ? "p-3" : "p-4 md:p-5"}
+      `}
     >
-      <div className="flex gap-3 sm:gap-4">
-        <div className="flex-1">
-          <Typography variant="articleTitle" className="line-clamp-2">
+      <div className="flex items-start gap-4">
+        {/* Thumbnail */}
+
+        {thumbnailUrl && (
+          <div
+            className={`
+              overflow-hidden
+              rounded-lg
+              shrink-0
+
+              ${compact
+                ? "h-20 w-28"
+                : "h-24 w-32 sm:h-28 sm:w-40 md:h-32 md:w-48"
+              }
+            `}
+          >
+            <img
+              src={thumbnailUrl}
+              alt={title}
+              loading="lazy"
+              className="
+                h-full
+                w-full
+                object-cover
+
+                transition-transform
+                duration-500
+
+                group-hover:scale-105
+              "
+            />
+          </div>
+        )}
+
+        {/* Content */}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Typography
+            variant="body"
+            className={`
+              font-bold
+              leading-snug
+              text-gray-900
+
+              transition-colors
+
+              group-hover:text-green-700
+
+              ${compact
+                ? "line-clamp-2 text-sm"
+                : "line-clamp-2 text-base sm:text-lg"
+              }
+            `}
+          >
             {title}
           </Typography>
 
           {!compact && summary && (
-            <Typography variant="summary" className="mt-2 line-clamp-2">
+            <Typography
+              variant="summary"
+              className="
+                mt-2
+                line-clamp-2
+                text-sm
+                text-gray-600
+              "
+            >
               {summary}
             </Typography>
           )}
 
-          <div
-            className={
-              compact
-                ? "mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500"
-                : "mt-2 sm:mt-4 flex flex-wrap items-center gap-5 text-sm text-gray-500"
-            }
-          >
-            <span>{formatDate(publishedAt)}</span>
-
-            {audioAvailable && <Volume2 size={16} />}
-
-            {!compact && (
-              <>
-                <span className="flex items-center gap-1">
-                  <Eye size={15} />
-                  {views.toLocaleString()}
-                </span>
-
-                <span className="flex items-center gap-1">
-                  <MessageSquare size={15} />
-                  {comments}
-                </span>
-              </>
-            )}
+          <div className="mt-3">
+            <NewsMeta
+              publishedAt={publishedAt}
+              views={views}
+              comments={comments}
+              audioAvailable={audioAvailable}
+              compact={compact}
+            />
           </div>
-        </div>
 
-        {thumbnailUrl && (
-          <img
-            src={thumbnailUrl}
-            alt={title}
-            className={
-              compact
-                ? `
-        h-20
-        w-28
-        rounded
-        object-cover
-        flex-shrink-0
-      `
-                : `
-        hidden
-        h-28
-        w-40
-        rounded
-        object-cover
-        md:block
-      `
-            }
-          />
-        )}
+          {audioAvailable && compact && (
+            <div className="mt-2">
+              <Volume2
+                size={15}
+                className="text-green-600"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </Surface>
   );

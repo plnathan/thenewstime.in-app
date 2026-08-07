@@ -5,8 +5,6 @@
  * Component   : SectionTitle
  * File        : SectionTitle.tsx
  * Description : Newspaper section title.
- * Author      : TheNewsTime Team
- * Version     : 1.0.0
  * -----------------------------------------------------------------------------
  */
 
@@ -15,7 +13,6 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib";
 
 import Typography from "../Typography";
-//import IconButton from "../IconButton";
 
 import type { SectionTitleProps } from "./SectionTitle.types";
 
@@ -29,39 +26,115 @@ export default function SectionTitle({
   ...props
 }: SectionTitleProps) {
   return (
-    <div className={cn("border-b border-gray-200 pb-3", className)} {...props}>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-6 w-1 rounded bg-green-600" />
+    <div
+      className={cn(
+        `
+          flex
+          items-end
+          justify-between
+          gap-4
 
-          {icon}
+          border-b
+          border-neutral-200
 
-          <div>
-            <Typography variant="sectionTitle">{title}</Typography>
+          pb-3
 
-            {subtitle && (
-              <Typography variant="caption" className="mt-1">
-                {subtitle}
-              </Typography>
-            )}
-          </div>
-        </div>
+          flex-wrap
+        `,
+        className
+      )}
+      {...props}
+    >
+      {/* Left */}
 
-        {actionLabel && (
-          <button
-            type="button"
-            onClick={onActionClick}
-            className="group inline-flex items-center gap-1 text-sm font-medium text-green-700 hover:text-green-800"
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Green Accent */}
+
+        <span
+          className="
+            h-8
+            w-1
+
+            rounded-full
+
+            bg-green-600
+
+            shrink-0
+          "
+        />
+
+        {icon}
+
+        <div className="min-w-0">
+          <Typography
+            variant="sectionTitle"
+            className="
+              leading-none
+
+              text-2xl
+              font-extrabold
+
+              text-neutral-900
+
+              md:text-3xl
+            "
           >
-            {actionLabel}
+            {title}
+          </Typography>
 
-            <ChevronRight
-              size={16}
-              className="transition-transform group-hover:translate-x-1"
-            />
-          </button>
-        )}
+          {subtitle && (
+            <Typography
+              variant="caption"
+              className="
+                mt-1
+
+                text-neutral-500
+              "
+            >
+              {subtitle}
+            </Typography>
+          )}
+        </div>
       </div>
+
+      {/* Right */}
+
+      {actionLabel && (
+        <button
+          type="button"
+          onClick={onActionClick}
+          className="
+            group
+
+            inline-flex
+            items-center
+            gap-1
+
+            whitespace-nowrap
+
+            text-sm
+            font-semibold
+
+            text-green-700
+
+            transition-colors
+
+            hover:text-green-800
+          "
+        >
+          {actionLabel}
+
+          <ChevronRight
+            size={16}
+            className="
+              transition-transform
+              duration-200
+
+              group-hover:translate-x-1
+            "
+          />
+        </button>
+      )}
     </div>
   );
 }

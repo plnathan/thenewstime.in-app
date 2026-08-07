@@ -9,3 +9,4 @@
 
 export * from "./readingTime";
 export * from "./slug";
+export * from "./news.mapper";
