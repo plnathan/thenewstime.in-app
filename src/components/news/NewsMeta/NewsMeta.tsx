@@ -1,150 +1,101 @@
-/**
- * -----------------------------------------------------------------------------
- * Project     : thenewstime.in
- * Package     : News Components
- * Component   : NewsMeta
- * File        : NewsMeta.tsx
- * Description : Reusable metadata row.
- * -----------------------------------------------------------------------------
- */
-
 import {
-  BookOpen,
   Clock3,
   Eye,
   MessageSquare,
-  Radio,
   Volume2,
 } from "lucide-react";
 
-import { cn } from "@/lib";
+import Typography from "@/components/ui/Typography";
 
-import type { NewsMetaProps } from "./NewsMeta.types";
+import { formatRelativeTime } from "@/utils/date/formatRelativeTime";
 
-/**
- * Returns relative time.
- */
-function formatRelativeTime(date: string): string {
-  const published = new Date(date).getTime();
-  const now = Date.now();
-
-  const seconds = Math.floor((now - published) / 1000);
-
-  if (seconds < 60) {
-    return "Just now";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-
-  if (minutes < 60) {
-    return `${minutes} min ago`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-
-  if (hours < 24) {
-    return `${hours} hour${hours > 1 ? "s" : ""} ago`;
-  }
-
-  const days = Math.floor(hours / 24);
-
-  if (days < 30) {
-    return `${days} day${days > 1 ? "s" : ""} ago`;
-  }
-
-  const months = Math.floor(days / 30);
-
-  if (months < 12) {
-    return `${months} month${months > 1 ? "s" : ""} ago`;
-  }
-
-  const years = Math.floor(months / 12);
-
-  return `${years} year${years > 1 ? "s" : ""} ago`;
+interface NewsMetaProps {
+  publishedAt?: string | Date | null;
+  views?: number;
+  comments?: number;
+  audioAvailable?: boolean;
+  compact?: boolean;
+  className?: string;
 }
 
 export default function NewsMeta({
   publishedAt,
-  views,
-  comments,
-  readingTime,
+  views = 0,
+  comments = 0,
   audioAvailable = false,
-  live = false,
   compact = false,
-  className,
-  ...props
+  className = "",
 }: NewsMetaProps) {
+  const relativeTime = formatRelativeTime(publishedAt);
+
   return (
     <div
-      className={cn(
-        `
-          flex
-          flex-wrap
-          items-center
-
-          gap-x-4
-          gap-y-2
-
-          text-gray-500
-
-          ${compact ? "text-[11px]" : "text-xs sm:text-sm"}
-        `,
+      className={[
+        "flex flex-wrap items-center gap-x-4 gap-y-2",
+        compact ? "text-xs" : "text-sm",
         className,
-      )}
-      {...props}
+      ].join(" ")}
     >
-      {/* Published */}
+      {relativeTime && (
+        <span className="inline-flex items-center gap-1.5">
+          <Clock3
+            className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+            aria-hidden="true"
+          />
 
-      <span className="inline-flex items-center gap-1">
-        <Clock3 size={compact ? 12 : 14} />
+          <Typography
+            as="span"
+            variant="caption"
+          >
+            {relativeTime}
+          </Typography>
+        </span>
+      )}
 
-        {formatRelativeTime(publishedAt)}
+      <span className="inline-flex items-center gap-1.5">
+        <Eye
+          className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+          aria-hidden="true"
+        />
+
+        <Typography
+          as="span"
+          variant="caption"
+        >
+          {views}
+        </Typography>
       </span>
 
-      {/* Reading Time */}
+      <span className="inline-flex items-center gap-1.5">
+        <MessageSquare
+          className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+          aria-hidden="true"
+        />
 
-      {readingTime !== undefined && (
-        <span className="inline-flex items-center gap-1">
-          <BookOpen size={compact ? 12 : 14} />
-          {readingTime} min
-        </span>
-      )}
-
-      {/* Audio */}
+        <Typography
+          as="span"
+          variant="caption"
+        >
+          {comments}
+        </Typography>
+      </span>
 
       {audioAvailable && (
-        <span className="inline-flex items-center gap-1">
-          <Volume2 size={compact ? 12 : 14} />
-          Audio
-        </span>
-      )}
+        <span
+          className="inline-flex items-center gap-1.5"
+          title="Audio available"
+        >
+          <Volume2
+            className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+            aria-hidden="true"
+          />
 
-      {/* Live */}
-
-      {live && (
-        <span className="inline-flex items-center gap-1 font-semibold text-red-600">
-          <Radio size={compact ? 12 : 14} />
-          LIVE
-        </span>
-      )}
-
-      {/* Views */}
-
-      {views !== undefined && (
-        <span className="inline-flex items-center gap-1">
-          <Eye size={compact ? 12 : 14} />
-
-          {Intl.NumberFormat("en-IN").format(views)}
-        </span>
-      )}
-
-      {/* Comments */}
-
-      {comments !== undefined && (
-        <span className="inline-flex items-center gap-1">
-          <MessageSquare size={compact ? 12 : 14} />
-
-          {comments}
+          <Typography
+            as="span"
+            variant="caption"
+          >
+            Audio
+          </Typography>
         </span>
       )}
     </div>

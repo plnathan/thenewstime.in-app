@@ -28,23 +28,16 @@ export default function HomeNewsSection({
     layout = "list",
 }: Props) {
     return (
-        <Section
-            title={title}
-            actionLabel={actionLabel}
-            onActionClick={onActionClick}
-        >
-            {news.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 py-10 text-center">
-                    <p className="text-base font-medium text-gray-500">
-                        📰 செய்திகள் இல்லை.
-                    </p>
-
-                    <p className="mt-2 text-sm text-gray-400">
-                        இந்த பிரிவில் தற்போது எந்த செய்தியும் இல்லை.
+        <Section title={title}>
+            {!news.length ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-8 text-center">
+                    <p className="text-sm text-gray-500">
+                        இந்தப் பிரிவில் தற்போது செய்திகள் இல்லை.
                     </p>
                 </div>
             ) : (
                 <>
+                    {/* List layout */}
                     {layout === "list" && (
                         <div className="space-y-5">
                             {news.map((item) => (
@@ -56,6 +49,7 @@ export default function HomeNewsSection({
                         </div>
                     )}
 
+                    {/* Featured layout */}
                     {layout === "featured" && (
                         <div className="space-y-5">
                             <FeaturedNewsCard news={news[0]} />
@@ -71,6 +65,7 @@ export default function HomeNewsSection({
                         </div>
                     )}
 
+                    {/* Grid layout */}
                     {layout === "grid" && (
                         <div className="grid gap-5 md:grid-cols-2">
                             {news.map((item) => (
@@ -82,6 +77,7 @@ export default function HomeNewsSection({
                         </div>
                     )}
 
+                    {/* Compact layout */}
                     {layout === "compact" && (
                         <div className="space-y-3">
                             {news.map((item) => (
@@ -90,6 +86,26 @@ export default function HomeNewsSection({
                                     news={item}
                                 />
                             ))}
+                        </div>
+                    )}
+
+                    {/* Section action */}
+                    {actionLabel && (
+                        <div className="mt-6 flex justify-end border-t border-gray-200 pt-4">
+                            <button
+                                type="button"
+                                onClick={onActionClick}
+                                className="inline-flex items-center gap-1.5 text-base font-semibold text-green-700 transition hover:text-green-800"
+                            >
+                                <span>{actionLabel}</span>
+
+                                <span
+                                    aria-hidden="true"
+                                    className="text-xl leading-none"
+                                >
+                                    ›
+                                </span>
+                            </button>
                         </div>
                     )}
                 </>
