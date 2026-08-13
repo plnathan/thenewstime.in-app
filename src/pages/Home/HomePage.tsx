@@ -22,49 +22,124 @@ export default function HomePage() {
   } = useNews();
 
   /*
+   * --------------------------------------------------
    * Hero News
+   * --------------------------------------------------
    */
   const featuredNews = news.slice(0, 5);
 
   /*
+   * --------------------------------------------------
    * Latest News
+   * --------------------------------------------------
    */
   const latestNews = news;
 
   /*
-   * Sidebar (Popular)
+   * --------------------------------------------------
+   * Sidebar
+   *
+   * This is currently using the latest articles.
+   *
+   * Later we can replace this with a dedicated
+   * "popular news" API query based on views.
+   * --------------------------------------------------
    */
   const popularNews = latestNews.slice(0, 4);
 
   /*
-   * Sections
+   * --------------------------------------------------
+   * District level News
+   *
+   * District is geographical information.
+   *
+   * Therefore we must NOT use:
+   *
+   * This includes only district-level in Tamil Nadu news
+   * because district records are linked to Tamil Nadu.
+   * --------------------------------------------------
    */
-
-  const tamilNaduNews = news.filter(
-  (item) => item.categoryName === "தமிழ்நாடு",
-);
-
-const indiaNews = news.filter(
-  (item) => item.categoryName === "இந்தியா",
-);
-
-const worldNews = news.filter(
-  (item) => item.categoryName === "உலகம்",
-);
-
-const sportsNews = news.filter(
-  (item) => item.categoryName === "விளையாட்டு",
-);
+  const districtNews = news.filter(
+    (item) => item.newsScope === "DISTRICT",
+  );
 
   /*
+   * --------------------------------------------------
+   * Tamil Nadu News
+   *
+   * Tamil Nadu is geographical information.
+   *
+   * Therefore we must NOT use:
+   *
+   * item.categoryName === "தமிழ்நாடு"
+   *
+   * Instead we use the state's URL name.
+   *
+   * This also includes district-level Tamil Nadu news
+   * because district records are linked to Tamil Nadu.
+   * --------------------------------------------------
+   */
+  const tamilNaduNews = news.filter(
+    (item) =>
+      item.stateUrlName === "tamil-nadu",
+  );
+
+  /*
+   * --------------------------------------------------
+   * India News
+   *
+   * India-level news is identified by newsScope.
+   * --------------------------------------------------
+   */
+  const indiaNews = news.filter(
+    (item) =>
+      item.newsScope === "INDIA",
+  );
+
+  /*
+   * --------------------------------------------------
+   * World News
+   *
+   * World-level news is identified by newsScope.
+   * --------------------------------------------------
+   */
+  const worldNews = news.filter(
+    (item) =>
+      item.newsScope === "WORLD",
+  );
+
+  /*
+   * --------------------------------------------------
+   * Sports News
+   *
+   * Your current category master data does NOT contain
+   * "sports".
+   *
+   * We keep this filter ready for when the category is
+   * added to the master table.
+   *
+   * Once the "sports" category exists, this section
+   * will automatically start displaying articles.
+   * --------------------------------------------------
+   */
+  // const sportsNews = news.filter(
+  //   (item) =>
+  //     item.categoryUrlName === "sports",
+  // );
+
+  /*
+   * --------------------------------------------------
    * Loading
+   * --------------------------------------------------
    */
   if (loading) {
     return (
       <MainLayout>
         <AppContainer>
-          <div className="py-20 text-center text-lg">
-            Loading news...
+          <div className="flex min-h-[300px] items-center justify-center">
+            <p className="text-sm text-gray-500">
+              Loading news...
+            </p>
           </div>
         </AppContainer>
       </MainLayout>
@@ -72,16 +147,21 @@ const sportsNews = news.filter(
   }
 
   /*
+   * --------------------------------------------------
    * Error
+   * --------------------------------------------------
    */
   if (error) {
     return (
       <MainLayout>
         <AppContainer>
-          <div className="py-20 text-center">
-            <p className="text-red-600">{error}</p>
+          <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
+            <p className="text-sm text-red-600">
+              {error}
+            </p>
 
             <button
+              type="button"
               className="mt-4 rounded bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
               onClick={() => void refresh()}
             >
@@ -93,19 +173,21 @@ const sportsNews = news.filter(
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * Page
+   * --------------------------------------------------
+   */
   return (
     <MainLayout>
       <AppContainer>
 
         {/* Hero */}
-
         <Hero
           featured={featuredNews}
-          sidebar={latestNews}
         />
 
         {/* Main */}
-
         <div className="mt-10">
           <HomeGrid
             sidebar={
@@ -159,11 +241,21 @@ const sportsNews = news.filter(
               />
 
               <HomeNewsSection
-                title="விளையாட்டு"
-                news={sportsNews}
+                title="மாவட்ட செய்திகள்"
+                news={districtNews}
                 actionLabel="மேலும்"
                 layout="compact"
               />
+
+              {/* Sports */}
+              {/* {sportsNews.length > 0 && (
+                <HomeNewsSection
+                  title="விளையாட்டு"
+                  news={sportsNews}
+                  actionLabel="மேலும்"
+                  layout="compact"
+                />
+              )} */}
 
             </MainContent>
           </HomeGrid>

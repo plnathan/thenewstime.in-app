@@ -1,45 +1,45 @@
-Folder structure:
-----------------
+## Folder structure:
+
 src
 │
 ├── api
-│     axios.ts
+│ axios.ts
 │
 ├── assets
 │
 ├── components
-│     common
-│         Button.tsx
-│         Loader.tsx
-│         Pagination.tsx
-│         EmptyState.tsx
+│ common
+│ Button.tsx
+│ Loader.tsx
+│ Pagination.tsx
+│ EmptyState.tsx
 │
 ├── features
 │
-│     news
-│         api
-│             news.api.ts
+│ news
+│ api
+│ news.api.ts
 │
-│         components
-│             NewsCard.tsx
-│             NewsGrid.tsx
-│             NewsFilters.tsx
+│ components
+│ NewsCard.tsx
+│ NewsGrid.tsx
+│ NewsFilters.tsx
 │
-│         hooks
-│             useNews.ts
+│ hooks
+│ useNews.ts
 │
-│         pages
-│             HomePage.tsx
-│             NewsDetailPage.tsx
+│ pages
+│ HomePage.tsx
+│ NewsDetailPage.tsx
 │
-│         types
-│             news.types.ts
+│ types
+│ news.types.ts
 │
 ├── layouts
-│      MainLayout.tsx
+│ MainLayout.tsx
 │
 ├── routes
-│      AppRoutes.tsx
+│ AppRoutes.tsx
 │
 ├── utils
 │
@@ -77,3 +77,83 @@ Since this is production, I'd use:
 ✔ Environment Variables
 
 ✔ Reusable Components
+
+## News Details architecture
+
+src/
+├── api/
+│ └── news.api.ts
+│
+├── components/
+│ └── news/
+│ ├── NewsDetail/
+│ │ ├── NewsDetail.tsx
+│ │ ├── NewsDetail.types.ts
+│ │ └── index.ts
+│ │
+│ ├── NewsDetailHeader/
+│ │ ├── NewsDetailHeader.tsx
+│ │ └── NewsDetailHeader.types.ts
+│ │
+│ ├── NewsContent/
+│ │ ├── NewsContent.tsx
+│ │ └── NewsContent.types.ts
+│ │
+│ └── RelatedNews/
+│ ├── RelatedNews.tsx
+│ └── RelatedNews.types.ts
+│
+├── pages/
+│ └── NewsDetailPage/
+│ └── NewsDetailPage.tsx
+│
+└── hooks/
+└── useNewsDetail.ts
+
+PostgreSQL
+↓
+news.repository.ts
+↓
+mapNews()
+↓
+news.service.ts
+↓
+NewsResponseDto
+↓
+Axios
+↓
+useNews()
+↓
+News / NewsView
+↓
+HomePage
+
+## Data Flow
+
+PostgreSQL
+↓
+news.repository.ts
+↓
+mapNews()
+↓
+News
+↓
+news.service.ts
+↓
+news.controller.ts
+↓
+toNewsResponseDto()
+↓
+REST API
+↓
+news.api.ts
+↓
+useNews()
+↓
+toNewsView()
+↓
+NewsView
+↓
+HomePage
+↓
+Hero / News Sections / News Cards

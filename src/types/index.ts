@@ -8,4 +8,13 @@
 
 export * from "./common";
 export * from "./news";
-export * from "./news.types";
+export type {
+  News,
+  NewsCategory,
+  NewsCountry,
+  NewsDistrict,
+  NewsState,
+  NewsScope,
+  NewsStatus,
+  NewsView,
+} from "./news.types";

@@ -60,7 +60,7 @@ export default function SidebarNewsItem({ news }: Props) {
           <span className="flex items-center gap-1">
             <Eye size={13} />
 
-            {news.views.toLocaleString()}
+            {(news.views ?? 0).toLocaleString()}
           </span>
         </div>
       </div>
