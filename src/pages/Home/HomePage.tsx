@@ -49,7 +49,7 @@ export default function HomePage() {
 
   /*
    * --------------------------------------------------
-   * District level News
+   * District level News to display in the "District News" section.
    *
    * District is geographical information.
    *
