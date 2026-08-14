@@ -5,35 +5,58 @@
  * -----------------------------------------------------------------------------
  */
 
+import { useNavigate } from "react-router-dom";
+
 import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
 
 import NewsMeta from "../NewsMeta";
 
 import type { SidebarNewsCardProps } from "./SidebarNewsCard.types";
+import { ROUTES } from "@/constants";
 
 export default function SidebarNewsCard({
   news,
   onClick,
 }: SidebarNewsCardProps) {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick(news);
+      return;
+    }
+
+    navigate(ROUTES.NEWSDETAIL(news.slug));
+  };
+
   return (
     <Surface
       layout="newspaper"
       hoverable
       clickable
-      onClick={() => onClick?.(news)}
+      onClick={handleClick}
     >
       <div className="flex gap-3">
         {news.thumbnailUrl && (
           <img
             src={news.thumbnailUrl}
             alt={news.title}
-            className="h-20 w-28 shrink-0 rounded object-cover"
+            className="
+              h-20
+              w-28
+              shrink-0
+              rounded
+              object-cover
+            "
           />
         )}
 
         <div className="min-w-0 flex-1">
-          <Typography variant="articleTitle" className="line-clamp-2">
+          <Typography
+            variant="articleTitle"
+            className="line-clamp-2"
+          >
             {news.title}
           </Typography>
 

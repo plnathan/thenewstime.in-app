@@ -6,6 +6,8 @@
  * -----------------------------------------------------------------------------
  */
 
+import { useNavigate } from "react-router-dom";
+
 import Badge from "@/components/ui/Badge";
 import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
@@ -13,19 +15,31 @@ import Typography from "@/components/ui/Typography";
 import NewsMeta from "../NewsMeta";
 
 import type { FeaturedNewsCardProps } from "./FeaturedNewsCard.types";
+import { ROUTES } from "@/constants";
 
 export default function FeaturedNewsCard({
   news,
   onClick,
 }: FeaturedNewsCardProps) {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick(news);
+      return;
+    }
+
+    navigate(ROUTES.NEWSDETAIL(news.slug));
+  };
+
   return (
     <Surface
       clickable
       radius="lg"
       className="group overflow-hidden"
-      onClick={() => onClick?.(news)}
+      onClick={handleClick}
     >
-      <div className="relative w-full aspect-[5/4] sm:aspect-[16/10] lg:aspect-[16/9]">
+      <div className="relative aspect-[5/4] w-full sm:aspect-[16/10] lg:aspect-[16/9]">
         <img
           src={news.thumbnailUrl}
           alt={news.title}
@@ -39,11 +53,14 @@ export default function FeaturedNewsCard({
           "
         />
 
-        {/* Overlay */}
-
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 lg:p-6 text-white">
-          {news.breaking && <Badge variant="danger">Breaking News</Badge>}
+
+        <div className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5 lg:p-6">
+          {news.breaking && (
+            <Badge variant="danger">
+              Breaking News
+            </Badge>
+          )}
 
           <Typography
             variant="heroTitle"
@@ -55,7 +72,7 @@ export default function FeaturedNewsCard({
           {news.summary && (
             <Typography
               variant="summary"
-              className="mt-3 hidden md:block text-gray-200 line-clamp-2"
+              className="mt-3 hidden line-clamp-2 text-gray-200 md:block"
             >
               {news.summary}
             </Typography>

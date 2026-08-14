@@ -1,7 +1,11 @@
 import apiClient from "./axios";
 
 import type { ApiResponse } from "../types/api";
-import type { CreateNewsInput, News, UpdateNewsInput } from "../types/news.types";
+import type {
+  CreateNewsInput,
+  News,
+  UpdateNewsInput,
+} from "../types/news.types";
 
 /**
  * News list query parameters

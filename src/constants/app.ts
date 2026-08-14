@@ -48,6 +48,8 @@ export const ROUTES = Object.freeze({
 
   SEARCH: "/search",
 
+  NEWSDETAIL: (slug: string) => `/news/${encodeURIComponent(slug)}`,
+
   CATEGORY: "/category",
 
   ABOUT: "/about",

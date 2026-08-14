@@ -7,10 +7,12 @@
  */
 
 import { Volume2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
+import NewsMeta from "@/components/news/NewsMeta/NewsMeta";
 import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
-import NewsMeta from "@/components/news/NewsMeta/NewsMeta";
+import { ROUTES } from "@/constants";
 
 import type { NewsCardProps } from "./NewsCard.types";
 
@@ -19,6 +21,17 @@ export default function NewsCard({
   compact = false,
   onClick,
 }: NewsCardProps) {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
+
+    navigate(ROUTES.NEWSDETAIL(news.slug));
+  };
+
   const {
     title,
     summary,
@@ -33,7 +46,7 @@ export default function NewsCard({
     <Surface
       hoverable
       clickable
-      onClick={onClick}
+      onClick={handleClick}
       className={`
         group
         overflow-hidden
@@ -43,15 +56,12 @@ export default function NewsCard({
       `}
     >
       <div className="flex items-start gap-4">
-        {/* Thumbnail */}
-
         {thumbnailUrl && (
           <div
             className={`
+              shrink-0
               overflow-hidden
               rounded-lg
-              shrink-0
-
               ${compact
                 ? "h-20 w-28"
                 : "h-24 w-32 sm:h-28 sm:w-40 md:h-32 md:w-48"
@@ -66,17 +76,13 @@ export default function NewsCard({
                 h-full
                 w-full
                 object-cover
-
                 transition-transform
                 duration-500
-
                 group-hover:scale-105
               "
             />
           </div>
         )}
-
-        {/* Content */}
 
         <div className="flex min-w-0 flex-1 flex-col">
           <Typography
@@ -85,11 +91,8 @@ export default function NewsCard({
               font-bold
               leading-snug
               text-gray-900
-
               transition-colors
-
               group-hover:text-green-700
-
               ${compact
                 ? "line-clamp-2 text-sm"
                 : "line-clamp-2 text-base sm:text-lg"
