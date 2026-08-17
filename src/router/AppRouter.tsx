@@ -1,21 +1,57 @@
-import { Routes, Route } from "react-router-dom";
+import {
+  Route,
+  Routes,
+} from "react-router-dom";
 
-//import HomePage from "../pages/Home/HomePage";
 import HomePage from "@/pages/Home/HomePage";
-// import NewsDetailPage from "../pages/NewsDetailPage";
-import NotFoundPage from "../pages/NotFoundPage";
 import NewsDetailPage from "@/pages/NewsDetail/NewsDetailPage";
+
+import AdminNewsPage from "@/pages/AdminNews";
+import AdminNewsCreatePage from "@/pages/AdminNewsCreate";
+import AdminNewsEditPage from "@/pages/AdminNewsEdit";
+
+import NotFoundPage from "@/pages/NotFoundPage";
 
 const AppRouter = () => {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      {/* <Route path="/news/:id" element={<NewsDetailPage />} /> */}
+      {/* Public */}
+      <Route
+        path="/"
+        element={<HomePage />}
+      />
+
       <Route
         path="/news/:slug"
         element={<NewsDetailPage />}
       />
-      <Route path="*" element={<NotFoundPage />} />
+
+      {/* ------------------------------------------------
+       * Admin
+       *
+       * Authentication/authorization will be added
+       * later by wrapping this route group with the
+       * security/user/role permission layer.
+       * ------------------------------------------------ */}
+      <Route
+        path="/admin/news"
+        element={<AdminNewsPage />}
+      />
+
+      <Route
+        path="/admin/news/create"
+        element={<AdminNewsCreatePage />}
+      />
+
+      <Route
+        path="/admin/news/:id/edit"
+        element={<AdminNewsEditPage />}
+      />
+
+      <Route
+        path="*"
+        element={<NotFoundPage />}
+      />
     </Routes>
   );
 };

@@ -58,6 +58,10 @@ export function toNewsView(news: News): NewsView {
 
     status: news.status,
 
+    displayPriority: news.displayPriority,
+
+    displayPriorityUntil: news.displayPriorityUntil,
+
     draftedBy: news.draftedBy,
 
     approvedBy: news.approvedBy,

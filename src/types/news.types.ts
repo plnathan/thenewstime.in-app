@@ -86,6 +86,21 @@ export interface News {
 
   status: NewsStatus;
 
+  /**
+   * Admin display ordering / promotion.
+   *
+   * displayPriority > 0 means the article has a
+   * temporary promoted position.
+   */
+  displayPriority: number;
+
+  /**
+   * Promotion expiration timestamp.
+   *
+   * null means the article is not currently promoted.
+   */
+  displayPriorityUntil: string | null;
+
   draftedBy: number;
   approvedBy: number | null;
   publishedBy: number | null;
@@ -167,6 +182,10 @@ export interface NewsView {
   districtUrlName?: string | null;
 
   status?: NewsStatus;
+
+  displayPriority?: number;
+
+  displayPriorityUntil?: string | null;
 
   draftedBy?: number;
   approvedBy?: number | null;

@@ -195,3 +195,7 @@ src/
 │ └── HeaderActions/
 │ ├── HeaderActions.tsx
 │ └── index.ts
+
+## GIT
+
+git remote -v
