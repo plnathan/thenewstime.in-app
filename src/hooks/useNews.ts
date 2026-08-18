@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getNewsList } from "@/api/news.api";
+import { getNewsList, getPublishedNewsList } from "@/api/news.api";
 
 import type { NewsQuery } from "@/api/news.api";
 
@@ -10,42 +10,94 @@ import { toNewsViewList } from "@/utils/news";
 
 interface UseNewsOptions extends Omit<NewsQuery, "sortOrder"> {
   sortOrder?: "ASC" | "DESC";
+
+  /**
+   * When true, use the public API.
+   *
+   * Public API guarantees PUBLISHED only.
+   */
+  publishedOnly?: boolean;
 }
 
 export function useNews(options?: UseNewsOptions) {
+  /*
+   * --------------------------------------------------
+   * Extract options individually.
+   *
+   * IMPORTANT:
+   * Do not use the complete `options` object as a
+   * dependency of loadNews().
+   *
+   * The parent component may create a new object on
+   * every render, which would cause loadNews() to be
+   * recreated and the effect to run again.
+   * --------------------------------------------------
+   */
+  const {
+    page = 1,
+    pageSize = 20,
+    search,
+    status,
+    categoryId,
+    countryId,
+    scope,
+    stateId,
+    districtId,
+    sortBy,
+    sortOrder,
+    publishedOnly = false,
+  } = options ?? {};
+
   const [news, setNews] = useState<NewsView[]>([]);
 
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
 
+  /*
+   * --------------------------------------------------
+   * Load News
+   * --------------------------------------------------
+   */
   const loadNews = useCallback(async () => {
     try {
       setLoading(true);
 
-      const response = await getNewsList({
-        page: options?.page ?? 1,
+      const query: NewsQuery = {
+        page,
+        pageSize,
+        search,
 
-        pageSize: options?.pageSize ?? 20,
+        /*
+         * Public API already guarantees PUBLISHED
+         * articles, so do not send status when using
+         * the public endpoint.
+         */
+        status: publishedOnly ? undefined : status,
 
-        search: options?.search,
+        categoryId,
+        countryId,
+        scope,
+        stateId,
+        districtId,
 
-        status: options?.status,
+        /*
+         * IMPORTANT:
+         * sortBy must use the backend-supported
+         * snake_case values, e.g.
+         *
+         * published_at
+         * created_at
+         * updated_at
+         */
+        sortBy,
 
-        categoryId: options?.categoryId,
+        sortOrder,
+      };
 
-        countryId: options?.countryId,
-
-        scope: options?.scope,
-
-        stateId: options?.stateId,
-
-        districtId: options?.districtId,
-
-        sortBy: options?.sortBy,
-
-        sortOrder: options?.sortOrder,
-      });
+      const response = publishedOnly
+        ? await getPublishedNewsList(query)
+        : await getNewsList(query);
 
       setNews(toNewsViewList(response.data));
 
@@ -57,8 +109,26 @@ export function useNews(options?: UseNewsOptions) {
     } finally {
       setLoading(false);
     }
-  }, [options]);
+  }, [
+    page,
+    pageSize,
+    search,
+    status,
+    categoryId,
+    countryId,
+    scope,
+    stateId,
+    districtId,
+    sortBy,
+    sortOrder,
+    publishedOnly,
+  ]);
 
+  /*
+   * --------------------------------------------------
+   * Initial load / reload when query changes
+   * --------------------------------------------------
+   */
   useEffect(() => {
     const fetchNews = async () => {
       await loadNews();
@@ -69,11 +139,8 @@ export function useNews(options?: UseNewsOptions) {
 
   return {
     news,
-
     loading,
-
     error,
-
     refresh: loadNews,
   };
 }

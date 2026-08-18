@@ -5,6 +5,7 @@ import type { ApiResponse } from "../types/api";
 import type {
   CreateNewsInput,
   News,
+  NewsStatus,
   UpdateNewsInput,
 } from "../types/news.types";
 
@@ -47,6 +48,14 @@ export const getNewsList = async (
 
   return response.data;
 };
+
+export async function getPublishedNewsList(params?: NewsQuery) {
+  const response = await apiClient.get("/news/public", {
+    params,
+  });
+
+  return response.data;
+}
 
 /**
  * Get News by ID.
@@ -136,7 +145,7 @@ export const archiveNews = async (
  */
 export const changeNewsStatus = async (
   id: number,
-  status: string,
+  status: NewsStatus,
   userId: number,
 ): Promise<ApiResponse<News>> => {
   const response = await apiClient.patch<ApiResponse<News>>(
@@ -148,6 +157,46 @@ export const changeNewsStatus = async (
   );
 
   return response.data;
+};
+
+/**
+ * Submit a news article for review.
+ */
+export const submitNewsForReview = async (
+  id: number,
+  submittedBy: number,
+): Promise<ApiResponse<News>> => {
+  return changeNewsStatus(id, "IN_REVIEW", submittedBy);
+};
+
+/**
+ * Approve a news article.
+ */
+export const approveNews = async (
+  id: number,
+  approvedBy: number,
+): Promise<ApiResponse<News>> => {
+  return changeNewsStatus(id, "APPROVED", approvedBy);
+};
+
+/**
+ * Reject a news article.
+ */
+export const rejectNews = async (
+  id: number,
+  rejectedBy: number,
+): Promise<ApiResponse<News>> => {
+  return changeNewsStatus(id, "REJECTED", rejectedBy);
+};
+
+/**
+ * Move a rejected article back to draft.
+ */
+export const moveNewsToDraft = async (
+  id: number,
+  updatedBy: number,
+): Promise<ApiResponse<News>> => {
+  return changeNewsStatus(id, "DRAFT", updatedBy);
 };
 
 /**
@@ -203,3 +252,4 @@ export const removeNewsPromotion = async (
 
   return response.data;
 };
+//////////////////////////

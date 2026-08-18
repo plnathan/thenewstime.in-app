@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { createNews } from "@/api/news.api";
+import { isAxiosError } from "axios";
 
 import Button from "@/components/ui/Button";
 import Surface from "@/components/ui/Surface";
@@ -43,6 +44,26 @@ interface FormState {
     districtId: string;
     categoryId: string;
 }
+
+const getApiErrorMessage = (error: unknown): string | null => {
+    if (!isAxiosError(error)) {
+        return null;
+    }
+
+    const data = error.response?.data as
+        | {
+            message?: string;
+            details?: Array<{ message?: string }>;
+        }
+        | undefined;
+
+    const detailMessage = data?.details
+        ?.map((detail) => detail.message?.trim())
+        .filter(Boolean)
+        .join(" ");
+
+    return detailMessage || data?.message?.trim() || null;
+};
 
 const INITIAL_FORM: FormState = {
     title: "",
@@ -289,6 +310,10 @@ export default function AdminNewsCreatePage() {
     ) => {
         event.preventDefault();
 
+        if (createdNewsId !== null) {
+            return;
+        }
+
         setError(null);
         setSuccess(null);
 
@@ -346,8 +371,12 @@ export default function AdminNewsCreatePage() {
         } catch (err) {
             console.error(err);
 
+            const apiMessage = getApiErrorMessage(err);
+
             setError(
-                "Unable to create the news article. Please check the entered information.",
+                apiMessage
+                    ? `Unable to create the news article. Please check the entered information. ${apiMessage}`
+                    : "Unable to create the news article. Please check the entered information.",
             );
         } finally {
             setSaving(false);
@@ -723,11 +752,12 @@ export default function AdminNewsCreatePage() {
                         <Button
                             type="submit"
                             loading={saving}
+                            disabled={createdNewsId !== null || saving}
                             leftIcon={<Save size={17} />}
                             fullWidth
                             className="sm:w-auto"
                         >
-                            Save Draft
+                            {createdNewsId !== null ? "Draft Saved" : "Save Draft"}
                         </Button>
                     </div>
                 </form>
@@ -774,3 +804,4 @@ function Field({
         </div>
     );
 }
+//////////////////////////////

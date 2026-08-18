@@ -19,7 +19,13 @@ export default function HomePage() {
     loading,
     error,
     refresh,
-  } = useNews();
+  } = useNews({
+    publishedOnly: true,
+    page: 1,
+    pageSize: 20,
+    sortBy: "published_at",
+    sortOrder: "DESC"
+  });
 
   /*
    * --------------------------------------------------

@@ -7,12 +7,17 @@ import { formatDate } from "@/utils/format/formatDate";
 import { calculateReadingTime } from "@/utils/news";
 
 import NewsArticleContent from "./NewsArticleContent";
+import NewsArticleHeroCarousel from "./NewsArticleHeroCarousel";
 import type { NewsArticleProps } from "./NewsArticle.types";
-import NewsArticleMedia from "./NewsArticleMedia";
 
-export default function NewsArticle({ news }: NewsArticleProps) {
+export default function NewsArticle({
+  news,
+}: NewsArticleProps) {
   const navigate = useNavigate();
-  const readingTime = calculateReadingTime(news.content ?? "");
+
+  const readingTime = calculateReadingTime(
+    news.content ?? "",
+  );
 
   const location =
     news.district?.displayName ??
@@ -21,11 +26,17 @@ export default function NewsArticle({ news }: NewsArticleProps) {
     null;
 
   const publishedDate = news.publishedAt
-    ? formatDate(news.publishedAt, "dd MMMM yyyy")
+    ? formatDate(
+      news.publishedAt,
+      "dd MMMM yyyy",
+    )
     : null;
 
   const publishedTime = news.publishedAt
-    ? formatDate(news.publishedAt, "hh:mm a")
+    ? formatDate(
+      news.publishedAt,
+      "hh:mm a",
+    )
     : null;
 
   const orderedMedia = [
@@ -36,14 +47,36 @@ export default function NewsArticle({ news }: NewsArticleProps) {
       b.displayOrder,
   );
 
+  const hasHeroCarousel =
+    orderedMedia.length > 3;
+
   return (
     <article className="mx-auto w-full max-w-4xl">
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="mb-7 inline-flex items-center gap-2 rounded-md text-sm font-medium text-gray-500 transition hover:text-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
+        className="
+          mb-7
+          inline-flex
+          items-center
+          gap-2
+          rounded-md
+          text-sm
+          font-medium
+          text-gray-500
+          transition
+          hover:text-green-700
+          focus-visible:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-green-600
+          focus-visible:ring-offset-2
+        "
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        <ArrowLeft
+          className="h-4 w-4"
+          aria-hidden="true"
+        />
+
         <span>மீண்டும் செய்திகள்</span>
       </button>
 
@@ -53,11 +86,19 @@ export default function NewsArticle({ news }: NewsArticleProps) {
 
           {location && (
             <>
-              <span className="text-gray-300" aria-hidden="true">
+              <span
+                className="text-gray-300"
+                aria-hidden="true"
+              >
                 •
               </span>
+
               <span className="inline-flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                <MapPin
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
+
                 {location}
               </span>
             </>
@@ -67,13 +108,34 @@ export default function NewsArticle({ news }: NewsArticleProps) {
         <Typography
           as="h1"
           variant="headline"
-          className="mt-4 max-w-4xl text-[2rem] leading-[1.3] text-gray-950 sm:text-[2.65rem] sm:leading-[1.28] lg:text-[3.2rem] lg:leading-[1.24]"
+          className="
+            mt-4
+            max-w-4xl
+            text-[2rem]
+            leading-[1.3]
+            text-gray-950
+            sm:text-[2.65rem]
+            sm:leading-[1.28]
+            lg:text-[3.2rem]
+            lg:leading-[1.24]
+          "
         >
           {news.title}
         </Typography>
 
         {news.summary && (
-          <p className="mt-5 max-w-3xl font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif] text-[1.05rem] leading-[1.9] text-gray-600 sm:text-[1.2rem] sm:leading-[1.9]">
+          <p
+            className="
+              mt-5
+              max-w-3xl
+              font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif]
+              text-[1.05rem]
+              leading-[1.9]
+              text-gray-600
+              sm:text-[1.2rem]
+              sm:leading-[1.9]
+            "
+          >
             {news.summary}
           </p>
         )}
@@ -90,47 +152,83 @@ export default function NewsArticle({ news }: NewsArticleProps) {
             {publishedDate && (
               <span>
                 வெளியிடப்பட்டது: {publishedDate}
-                {publishedTime ? `, ${publishedTime}` : ""}
+                {publishedTime
+                  ? `, ${publishedTime}`
+                  : ""}
               </span>
             )}
 
             {readingTime.minutes > 0 && (
               <span className="inline-flex items-center gap-1.5">
-                <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
-                வாசிப்பு நேரம்: {readingTime.minutes} நிமிடம்
+                <Clock3
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
+
+                வாசிப்பு நேரம்:{" "}
+                {readingTime.minutes} நிமிடம்
               </span>
             )}
           </div>
         </div>
       </header>
 
-      <figure className="mt-8 overflow-hidden rounded-xl bg-gray-100 sm:mt-10">
-        <img
-          src={
-            orderedMedia[0]?.fileUrl ??
-            news.thumbnailUrl
-          }
-          alt={news.title}
-          className="aspect-[16/9] w-full object-cover"
-          onError={(event) => {
-            event.currentTarget.src =
-              "/assets/hero.png";
-          }}
-        />
-      </figure>
+      {/*
+       * --------------------------------------------------
+       * MEDIA
+       *
+       * 1 image:
+       *   → regular primary image
+       *
+       * 2–3 images:
+       *   → image #1 remains at the top
+       *   → images #2/#3 are inserted between paragraphs
+       *
+       * 4+ images:
+       *   → Hero-style carousel at the top
+       *   → ALL images are handled by the carousel
+       *   → no separate gallery
+       *   → no image is repeated below
+       * --------------------------------------------------
+       */}
+      {hasHeroCarousel ? (
+        <div className="mt-8 sm:mt-10">
+          <NewsArticleHeroCarousel
+            media={orderedMedia}
+            title={news.title}
+          />
+        </div>
+      ) : (
+        <figure className="mt-8 overflow-hidden rounded-xl bg-gray-100 sm:mt-10">
+          <img
+            src={
+              orderedMedia[0]?.fileUrl ??
+              news.thumbnailUrl
+            }
+            alt={
+              orderedMedia[0]?.altText ??
+              news.title
+            }
+            className="aspect-[16/9] w-full object-cover"
+            onError={(event) => {
+              event.currentTarget.src =
+                "/assets/hero.png";
+            }}
+          />
+
+          {orderedMedia[0]?.caption && (
+            <figcaption className="px-3 py-2 text-xs text-gray-500 sm:px-4">
+              {orderedMedia[0].caption}
+            </figcaption>
+          )}
+        </figure>
+      )}
 
       <div className="mx-auto mt-8 max-w-3xl sm:mt-10">
         <NewsArticleContent
           content={news.content ?? ""}
-          media={news.media}
+          media={orderedMedia}
         />
-        {orderedMedia.length > 3 && (
-          <div className="mt-10">
-            <NewsArticleMedia
-              media={orderedMedia}
-            />
-          </div>
-        )}
       </div>
     </article>
   );

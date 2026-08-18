@@ -158,8 +158,8 @@ HomePage
 ↓
 Hero / News Sections / News Cards
 
-Frontend media architecture:
-----------------------------
+## Frontend media architecture:
+
                     ┌────────────────────┐
                     │   Admin Create      │
                     └─────────┬──────────┘
@@ -184,9 +184,8 @@ Frontend media architecture:
                     ▼             ┌──────┴──────┐
                Cloudinary       Delete       Reorder
 
+## Public:
 
-Public:
--------
                     News API
                        │
                        ▼
@@ -206,3 +205,51 @@ Public:
                   │            │            │
                   ▼            ▼            ▼
                Top image   Inline imgs   Carousel
+
+## deployment architecture
+
+thenewstime.in
+│
+▼
+┌─────────────────────────┐
+│ Frontend │
+│ React + Vite │
+│ Vercel │
+│ │
+│ / │
+│ /news/:slug │
+│ /admin/news │ ← React Router
+│ /admin/news/create │
+│ /admin/news/:id/edit │
+└─────────────────────────┘
+
+Backend
+│
+▼
+┌─────────────────────────┐
+│ Node + Express │
+│ Vercel │
+│ │
+│ /api/v1/news │
+│ /api/v1/media │
+│ etc. │
+└─────────────────────────┘
+
+/////////////////////
+HomePage
+↓
+useNews({ publicOnly: true })
+↓
+getPublishedNewsList()
+↓
+GET /api/v1/news/public
+↓
+getPublishedNewsList()
+↓
+repository.findAll({
+status: "PUBLISHED"
+})
+↓
+PostgreSQL
+↓
+ONLY PUBLISHED

@@ -5,14 +5,12 @@ interface NewsArticleContentProps {
   content: string;
   media?: NewsMedia[];
   showAdPlaceholder?: boolean;
-  advertisementPosition?: number;
 }
 
 export default function NewsArticleContent({
   content,
   media = [],
   showAdPlaceholder = true,
-  advertisementPosition = 4,
 }: NewsArticleContentProps) {
   const paragraphs = splitNewsContent(content);
 
@@ -23,21 +21,56 @@ export default function NewsArticleContent({
   );
 
   /*
-   * Image #1 is always the primary image.
+   * --------------------------------------------------
+   * INLINE MEDIA
    *
-   * For 2–3 images:
-   *   - Image #1 stays at the top of the article.
-   *   - Images #2 and #3 are displayed between paragraphs.
+   * 0–1 images:
+   *   No inline images.
    *
-   * For 4+ images:
-   *   - Images are handled by the article carousel,
-   *     outside this component.
+   * 2–3 images:
+   *   Image #1 is displayed by NewsArticle.
+   *   Images #2/#3 are inserted between paragraphs.
+   *
+   * 4+ images:
+   *   All images are handled by
+   *   NewsArticleHeroCarousel.
+   * --------------------------------------------------
    */
   const inlineMedia =
     orderedMedia.length >= 2 &&
       orderedMedia.length <= 3
       ? orderedMedia.slice(1)
       : [];
+
+  /*
+   * --------------------------------------------------
+   * Determine where the advertisement should appear.
+   *
+   * 2 images:
+   *   paragraph
+   *   image #2
+   *   paragraph
+   *   advertisement
+   *
+   * 3 images:
+   *   paragraph
+   *   image #2
+   *   paragraph
+   *   image #3
+   *   paragraph
+   *   advertisement
+   *
+   * For articles with fewer paragraphs, the ad falls
+   * after the final available paragraph.
+   * --------------------------------------------------
+   */
+  const advertisementParagraph =
+    inlineMedia.length > 0
+      ? Math.min(
+        inlineMedia.length + 1,
+        paragraphs.length,
+      )
+      : Math.min(4, paragraphs.length);
 
   return (
     <div className="space-y-0">
@@ -52,7 +85,7 @@ export default function NewsArticleContent({
           const shouldShowAdvertisement =
             showAdPlaceholder &&
             paragraphNumber ===
-            advertisementPosition;
+            advertisementParagraph;
 
           return (
             <div
@@ -87,13 +120,15 @@ export default function NewsArticleContent({
                       "News image"
                     }
                     className="w-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src =
+                        "/assets/hero.png";
+                    }}
                   />
 
                   {inlineImage.caption && (
-                    <figcaption className="px-3 py-2 text-xs text-gray-500">
-                      {
-                        inlineImage.caption
-                      }
+                    <figcaption className="px-3 py-2 text-xs text-gray-500 sm:px-4">
+                      {inlineImage.caption}
                     </figcaption>
                   )}
                 </figure>

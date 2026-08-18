@@ -199,3 +199,8 @@ src/
 ## GIT
 
 git remote -v
+///////////////
+git add vercel.json
+git commit -m "fix frontend routing for direct admin routes"
+git push
+////////////////
