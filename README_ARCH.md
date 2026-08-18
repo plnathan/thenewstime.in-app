@@ -157,3 +157,52 @@ NewsView
 HomePage
 ↓
 Hero / News Sections / News Cards
+
+Frontend media architecture:
+----------------------------
+                    ┌────────────────────┐
+                    │   Admin Create      │
+                    └─────────┬──────────┘
+                              │
+                         Create News
+                              │
+                              ▼
+                         News ID
+                              │
+                              ▼
+                    ┌────────────────────┐
+                    │ NewsMediaUploader  │
+                    └─────────┬──────────┘
+                              │
+                    ┌─────────┴──────────┐
+                    │                    │
+                 Upload               Preview
+                    │                    │
+                    ▼                    ▼
+                 API              NewsMediaItem
+                    │                    │
+                    ▼             ┌──────┴──────┐
+               Cloudinary       Delete       Reorder
+
+
+Public:
+-------
+                    News API
+                       │
+                       ▼
+                 News + media[]
+                       │
+              ┌────────┴────────┐
+              │                 │
+         Primary image      Article media
+              │                 │
+              ▼                 ▼
+       Homepage Hero       News Detail
+       Homepage Card           │
+                               │
+                  ┌────────────┼────────────┐
+                  │            │            │
+                1 image      2–3         4+
+                  │            │            │
+                  ▼            ▼            ▼
+               Top image   Inline imgs   Carousel

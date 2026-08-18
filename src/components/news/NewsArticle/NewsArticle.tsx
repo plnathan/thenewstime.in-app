@@ -8,6 +8,7 @@ import { calculateReadingTime } from "@/utils/news";
 
 import NewsArticleContent from "./NewsArticleContent";
 import type { NewsArticleProps } from "./NewsArticle.types";
+import NewsArticleMedia from "./NewsArticleMedia";
 
 export default function NewsArticle({ news }: NewsArticleProps) {
   const navigate = useNavigate();
@@ -26,6 +27,14 @@ export default function NewsArticle({ news }: NewsArticleProps) {
   const publishedTime = news.publishedAt
     ? formatDate(news.publishedAt, "hh:mm a")
     : null;
+
+  const orderedMedia = [
+    ...(news.media ?? []),
+  ].sort(
+    (a, b) =>
+      a.displayOrder -
+      b.displayOrder,
+  );
 
   return (
     <article className="mx-auto w-full max-w-4xl">
@@ -97,17 +106,31 @@ export default function NewsArticle({ news }: NewsArticleProps) {
 
       <figure className="mt-8 overflow-hidden rounded-xl bg-gray-100 sm:mt-10">
         <img
-          src={news.thumbnailUrl}
+          src={
+            orderedMedia[0]?.fileUrl ??
+            news.thumbnailUrl
+          }
           alt={news.title}
           className="aspect-[16/9] w-full object-cover"
           onError={(event) => {
-            event.currentTarget.src = "/assets/hero.png";
+            event.currentTarget.src =
+              "/assets/hero.png";
           }}
         />
       </figure>
 
       <div className="mx-auto mt-8 max-w-3xl sm:mt-10">
-        <NewsArticleContent content={news.content ?? ""} />
+        <NewsArticleContent
+          content={news.content ?? ""}
+          media={news.media}
+        />
+        {orderedMedia.length > 3 && (
+          <div className="mt-10">
+            <NewsArticleMedia
+              media={orderedMedia}
+            />
+          </div>
+        )}
       </div>
     </article>
   );

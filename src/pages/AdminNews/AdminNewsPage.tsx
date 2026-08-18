@@ -115,7 +115,7 @@ export default function AdminNewsPage() {
                 pageSize: PAGE_SIZE,
                 search: search.trim() || undefined,
                 status: status || undefined,
-                sortBy: "publishedAt",
+                sortBy: "published_at",
                 sortOrder: "DESC",
             });
 

@@ -1,3 +1,4 @@
+import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
 import type { News, NewsView } from "@/types";
 
 /**
@@ -6,10 +7,20 @@ import type { News, NewsView } from "@/types";
  */
 const NEWS_PLACEHOLDER_IMAGE = "/assets/images/news-placeholder.jpg";
 
+function getPrimaryMedia(media: NewsMedia[] | undefined) {
+  if (!media?.length) {
+    return null;
+  }
+
+  return [...media].sort((a, b) => a.displayOrder - b.displayOrder)[0] ?? null;
+}
+
 /**
  * Convert API News into the UI NewsView model.
  */
 export function toNewsView(news: News): NewsView {
+  const primaryMedia = getPrimaryMedia(news.media);
+
   return {
     id: news.id,
 
@@ -90,7 +101,9 @@ export function toNewsView(news: News): NewsView {
      * These will later come from the media/analytics
      * APIs instead of being hardcoded here.
      */
-    thumbnailUrl: NEWS_PLACEHOLDER_IMAGE,
+    thumbnailUrl: primaryMedia?.fileUrl ?? NEWS_PLACEHOLDER_IMAGE,
+
+    media: news.media ?? [],
 
     views: 0,
 

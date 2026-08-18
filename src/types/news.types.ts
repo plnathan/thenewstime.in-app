@@ -1,3 +1,5 @@
+import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
+
 /**
  * News status values returned by the API.
  */
@@ -73,6 +75,8 @@ export interface News {
 
   newsScope: NewsScope;
 
+  media?: NewsMedia[];
+
   countryId: number | null;
   stateId: number | null;
   districtId: number | null;
@@ -141,6 +145,8 @@ export interface NewsView {
   content?: string;
 
   newsScope?: NewsScope;
+
+  media?: NewsMedia[];
 
   countryId?: number | null;
   stateId?: number | null;

@@ -1,7 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { ArrowLeft, Save } from "lucide-react";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { createNews } from "@/api/news.api";
 
@@ -12,6 +12,23 @@ import Typography from "@/components/ui/Typography";
 import type { CreateNewsInput } from "@/types/news.types";
 
 import { normalizeSlug } from "@/utils/news/slug";
+
+import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
+import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
+
+import {
+    getCategories,
+    getCountries,
+    getDistricts,
+    getStates,
+} from "@/api/master-data.api";
+
+import type {
+    CountryItem,
+    DistrictItem,
+    MasterDataItem,
+    StateItem,
+} from "@/api/master-data.api";
 
 const ADMIN_USER_ID = 1;
 
@@ -40,7 +57,7 @@ const INITIAL_FORM: FormState = {
 };
 
 export default function AdminNewsCreatePage() {
-    const navigate = useNavigate();
+    //const navigate = useNavigate();
 
     const [form, setForm] =
         useState<FormState>(INITIAL_FORM);
@@ -55,6 +72,117 @@ export default function AdminNewsCreatePage() {
 
     const [success, setSuccess] =
         useState<string | null>(null);
+
+    const [createdNewsId, setCreatedNewsId] =
+        useState<number | null>(null);
+
+    const [media, setMedia] =
+        useState<NewsMedia[]>([]);
+
+    const [categories, setCategories] =
+        useState<MasterDataItem[]>([]);
+
+    const [countries, setCountries] =
+        useState<CountryItem[]>([]);
+
+    const [states, setStates] =
+        useState<StateItem[]>([]);
+
+    const [districts, setDistricts] =
+        useState<DistrictItem[]>([]);
+
+    const [loadingMasterData, setLoadingMasterData] =
+        useState(true);
+
+    useEffect(() => {
+        const loadMasterData =
+            async () => {
+                try {
+                    setLoadingMasterData(true);
+
+                    const [
+                        categoryResponse,
+                        countryResponse,
+                    ] = await Promise.all([
+                        getCategories(),
+                        getCountries(),
+                    ]);
+
+                    setCategories(
+                        categoryResponse.data,
+                    );
+
+                    setCountries(
+                        countryResponse.data,
+                    );
+                } catch (error) {
+                    console.error(
+                        "Unable to load master data:",
+                        error,
+                    );
+
+                    setError(
+                        "Unable to load category and location data.",
+                    );
+                } finally {
+                    setLoadingMasterData(false);
+                }
+            };
+
+        void loadMasterData();
+    }, []);
+
+    useEffect(() => {
+        if (!form.countryId) {
+            return;
+        }
+
+        const loadStates = async () => {
+            try {
+                const response = await getStates(
+                    Number(form.countryId),
+                );
+
+                setStates(response.data);
+            } catch (error) {
+                console.error(
+                    "Unable to load states:",
+                    error,
+                );
+
+                setStates([]);
+                setError("Unable to load states.");
+            }
+        };
+
+        void loadStates();
+    }, [form.countryId]);
+
+    useEffect(() => {
+        if (!form.stateId) {
+            return;
+        }
+
+        const loadDistricts = async () => {
+            try {
+                const response = await getDistricts(
+                    Number(form.stateId),
+                );
+
+                setDistricts(response.data);
+            } catch (error) {
+                console.error(
+                    "Unable to load districts:",
+                    error,
+                );
+
+                setDistricts([]);
+                setError("Unable to load districts.");
+            }
+        };
+
+        void loadDistricts();
+    }, [form.stateId]);
 
     const updateField = <
         K extends keyof FormState,
@@ -86,20 +214,36 @@ export default function AdminNewsCreatePage() {
         setForm((current) => ({
             ...current,
             newsScope: value,
+
             countryId:
                 value === "WORLD"
                     ? ""
                     : current.countryId,
+
             stateId:
                 value === "STATE" ||
                     value === "DISTRICT"
                     ? current.stateId
                     : "",
+
             districtId:
                 value === "DISTRICT"
                     ? current.districtId
                     : "",
         }));
+
+        if (
+            value !== "DISTRICT"
+        ) {
+            setDistricts([]);
+        }
+
+        if (
+            value !== "STATE" &&
+            value !== "DISTRICT"
+        ) {
+            setStates([]);
+        }
     };
 
     const validate = (): string | null => {
@@ -191,14 +335,14 @@ export default function AdminNewsCreatePage() {
             const response =
                 await createNews(payload);
 
-            setSuccess(
-                response.message ||
-                "News article created successfully.",
+            setCreatedNewsId(
+                response.data.id,
             );
 
-            setTimeout(() => {
-                navigate("/admin/news");
-            }, 600);
+            setSuccess(
+                response.message ||
+                "News article created successfully. You can now upload images.",
+            );
         } catch (err) {
             console.error(err);
 
@@ -338,6 +482,15 @@ export default function AdminNewsCreatePage() {
                         </div>
                     </Surface>
 
+                    {createdNewsId && (
+                        <NewsMediaUploader
+                            newsId={createdNewsId}
+                            media={media}
+                            onMediaChange={setMedia}
+                            disabled={saving}
+                        />
+                    )}
+
                     <Surface
                         padding="lg"
                         border="all"
@@ -384,13 +537,10 @@ export default function AdminNewsCreatePage() {
                             </Field>
 
                             <Field
-                                label="Category ID"
+                                label="Category"
                                 required
-                                hint="Master-data category ID. Category selection will be connected to the category API later."
                             >
-                                <input
-                                    type="number"
-                                    min="1"
+                                <select
                                     value={form.categoryId}
                                     onChange={(event) =>
                                         updateField(
@@ -398,9 +548,24 @@ export default function AdminNewsCreatePage() {
                                             event.target.value,
                                         )
                                     }
-                                    placeholder="Example: 1"
+                                    disabled={loadingMasterData}
                                     className={inputClass}
-                                />
+                                >
+                                    <option value="">
+                                        Select category
+                                    </option>
+
+                                    {categories.map(
+                                        (category) => (
+                                            <option
+                                                key={category.id}
+                                                value={category.id}
+                                            >
+                                                {category.displayName}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
                             </Field>
 
                             {(form.newsScope ===
@@ -409,20 +574,48 @@ export default function AdminNewsCreatePage() {
                                 "STATE" ||
                                 form.newsScope ===
                                 "DISTRICT") && (
-                                    <Field label="Country ID">
-                                        <input
-                                            type="number"
-                                            min="1"
+                                    <Field label="Country">
+                                        <select
                                             value={form.countryId}
-                                            onChange={(event) =>
+                                            onChange={(event) => {
                                                 updateField(
                                                     "countryId",
                                                     event.target.value,
-                                                )
+                                                );
+
+                                                updateField(
+                                                    "stateId",
+                                                    "",
+                                                );
+
+                                                updateField(
+                                                    "districtId",
+                                                    "",
+                                                );
+
+                                                setStates([]);
+                                                setDistricts([]);
+                                            }}
+                                            disabled={
+                                                loadingMasterData
                                             }
-                                            placeholder="Example: 1"
                                             className={inputClass}
-                                        />
+                                        >
+                                            <option value="">
+                                                Select country
+                                            </option>
+
+                                            {countries.map(
+                                                (country) => (
+                                                    <option
+                                                        key={country.id}
+                                                        value={country.id}
+                                                    >
+                                                        {country.displayName}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
                                     </Field>
                                 )}
 
@@ -430,39 +623,86 @@ export default function AdminNewsCreatePage() {
                                 "STATE" ||
                                 form.newsScope ===
                                 "DISTRICT") && (
-                                    <Field label="State ID">
-                                        <input
-                                            type="number"
-                                            min="1"
+                                    <Field label="State">
+                                        <select
                                             value={form.stateId}
-                                            onChange={(event) =>
+                                            onChange={(event) => {
                                                 updateField(
                                                     "stateId",
                                                     event.target.value,
-                                                )
+                                                );
+
+                                                updateField(
+                                                    "districtId",
+                                                    "",
+                                                );
+
+                                                setDistricts([]);
+                                            }}
+                                            disabled={
+                                                !form.countryId ||
+                                                states.length === 0
                                             }
-                                            placeholder="Example: 1"
                                             className={inputClass}
-                                        />
+                                        >
+                                            <option value="">
+                                                Select state
+                                            </option>
+
+                                            {states.map(
+                                                (state) => (
+                                                    <option
+                                                        key={state.id}
+                                                        value={state.id}
+                                                    >
+                                                        {state.displayName}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
                                     </Field>
                                 )}
 
                             {form.newsScope ===
                                 "DISTRICT" && (
-                                    <Field label="District ID">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={form.districtId}
+                                    <Field label="District">
+                                        <select
+                                            value={
+                                                form.districtId
+                                            }
                                             onChange={(event) =>
                                                 updateField(
                                                     "districtId",
                                                     event.target.value,
                                                 )
                                             }
-                                            placeholder="Example: 1"
-                                            className={inputClass}
-                                        />
+                                            disabled={
+                                                !form.stateId ||
+                                                districts.length === 0
+                                            }
+                                            className={
+                                                inputClass
+                                            }
+                                        >
+                                            <option value="">
+                                                Select district
+                                            </option>
+
+                                            {districts.map(
+                                                (district) => (
+                                                    <option
+                                                        key={district.id}
+                                                        value={
+                                                            district.id
+                                                        }
+                                                    >
+                                                        {
+                                                            district.displayName
+                                                        }
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
                                     </Field>
                                 )}
                         </div>

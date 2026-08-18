@@ -24,6 +24,9 @@ import type {
     UpdateNewsInput,
 } from "@/types/news.types";
 
+import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
+import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
+
 const ADMIN_USER_ID = 1;
 
 export default function AdminNewsEditPage() {
@@ -57,7 +60,8 @@ export default function AdminNewsEditPage() {
                 ? null
                 : "Invalid news article ID.",
         );
-
+    const [media, setMedia] =
+        useState<NewsMedia[]>([]);
     useEffect(() => {
         if (!Number.isInteger(newsId) || newsId <= 0) {
             return;
@@ -78,6 +82,7 @@ export default function AdminNewsEditPage() {
                 setSlug(article.slug);
                 setSummary(article.summary ?? "");
                 setContent(article.content);
+                setMedia(article.media ?? []);
             } catch (err) {
                 console.error(err);
 
@@ -286,6 +291,13 @@ export default function AdminNewsEditPage() {
                             </Field>
                         </div>
                     </Surface>
+
+                    <NewsMediaUploader
+                        newsId={news.id}
+                        media={media}
+                        onMediaChange={setMedia}
+                        disabled={saving}
+                    />
 
                     <div className="flex justify-end gap-3">
                         <Link to="/admin/news">
