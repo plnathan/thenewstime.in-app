@@ -9,7 +9,7 @@ import NewsDetailPage from "@/pages/NewsDetail/NewsDetailPage";
 import AdminNewsPage from "@/pages/AdminNews";
 import AdminNewsCreatePage from "@/pages/AdminNewsCreate";
 import AdminNewsEditPage from "@/pages/AdminNewsEdit";
-
+import NewsPage from "@/pages/News/NewsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 const AppRouter = () => {
@@ -19,6 +19,11 @@ const AppRouter = () => {
       <Route
         path="/"
         element={<HomePage />}
+      />
+
+      <Route
+        path="/news"
+        element={<NewsPage />}
       />
 
       <Route

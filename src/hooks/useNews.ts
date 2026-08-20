@@ -2,15 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 
 import { getNewsList, getPublishedNewsList } from "@/api/news.api";
 
-import type { NewsQuery } from "@/api/news.api";
+import type { NewsQuery, PublicNewsQuery } from "@/api/news.api";
 
 import type { NewsView } from "@/types";
 
 import { toNewsViewList } from "@/utils/news";
 
-interface UseNewsOptions extends Omit<NewsQuery, "sortOrder"> {
-  sortOrder?: "ASC" | "DESC";
-
+interface UseNewsOptions extends NewsQuery {
+  /**
+   * Controls whether the news request should execute.
+   *
+   * Defaults to true.
+   */
+  enabled?: boolean;
   /**
    * When true, use the public API.
    *
@@ -46,6 +50,7 @@ export function useNews(options?: UseNewsOptions) {
     sortBy,
     sortOrder,
     publishedOnly = false,
+    enabled = true,
   } = options ?? {};
 
   const [news, setNews] = useState<NewsView[]>([]);
@@ -53,7 +58,6 @@ export function useNews(options?: UseNewsOptions) {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
-
   /*
    * --------------------------------------------------
    * Load News
@@ -63,43 +67,56 @@ export function useNews(options?: UseNewsOptions) {
     try {
       setLoading(true);
 
-      const query: NewsQuery = {
-        page,
-        pageSize,
-        search,
+      if (publishedOnly) {
+        const query: PublicNewsQuery = {
+          page,
+          pageSize,
+          search,
+          categoryId,
+          countryId,
+          scope,
+          stateId,
+          districtId,
+          sortBy,
+          sortOrder,
+        };
 
-        /*
-         * Public API already guarantees PUBLISHED
-         * articles, so do not send status when using
-         * the public endpoint.
-         */
-        status: publishedOnly ? undefined : status,
+        const response = await getPublishedNewsList(query);
 
-        categoryId,
-        countryId,
-        scope,
-        stateId,
-        districtId,
+        setNews(toNewsViewList(response.data));
+      } else {
+        const query: NewsQuery = {
+          page,
+          pageSize,
+          search,
+          /*
+           * Public API already guarantees PUBLISHED
+           * articles, so do not send status when using
+           * the public endpoint.
+           */
+          status,
+          categoryId,
+          countryId,
+          scope,
+          stateId,
+          districtId,
+          /*
+           * IMPORTANT:
+           * sortBy must use the backend-supported
+           * snake_case values, e.g.
+           *
+           * published_at
+           * created_at
+           * updated_at
+           */
+          sortBy,
+          sortOrder,
+        };
 
-        /*
-         * IMPORTANT:
-         * sortBy must use the backend-supported
-         * snake_case values, e.g.
-         *
-         * published_at
-         * created_at
-         * updated_at
-         */
-        sortBy,
+        const response = await getNewsList(query);
 
-        sortOrder,
-      };
-
-      const response = publishedOnly
-        ? await getPublishedNewsList(query)
-        : await getNewsList(query);
-
-      setNews(toNewsViewList(response.data));
+        setNews(toNewsViewList(response.data));
+      }
 
       setError(null);
     } catch (err) {
@@ -124,18 +141,17 @@ export function useNews(options?: UseNewsOptions) {
     publishedOnly,
   ]);
 
-  /*
-   * --------------------------------------------------
-   * Initial load / reload when query changes
-   * --------------------------------------------------
-   */
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const fetchNews = async () => {
       await loadNews();
     };
 
     void fetchNews();
-  }, [loadNews]);
+  }, [enabled,loadNews]);
 
   return {
     news,

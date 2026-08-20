@@ -253,3 +253,80 @@ status: "PUBLISHED"
 PostgreSQL
 ↓
 ONLY PUBLISHED
+
+## Canonical feed
+
+PUBLISHED news
+↓
+ORDER BY published_at DESC
+↓
+STATE → INDIA → WORLD → DISTRICT
+↓
+┌─────────────────────────────┐
+│ HeroCarousel │ first 5
+├─────────────────────────────┤
+│ சமீபத்திய செய்திகள் │ next 10
+├─────────────────────────────┤
+│ தமிழ்நாடு │ remaining STATE
+├─────────────────────────────┤
+│ இந்தியா │ remaining INDIA
+├─────────────────────────────┤
+│ உலகம் │ remaining WORLD
+├─────────────────────────────┤
+│ மாவட்ட செய்திகள் │ remaining DISTRICT
+└─────────────────────────────┘
+
+---
+
+Published API
+│
+│ published_at DESC
+▼
+┌──────────────────────┐
+│ 50 articles │
+└──────────────────────┘
+│
+├───────────────► Hero
+│ 5
+│
+├───────────────► Latest
+│ 10
+│
+└───────────────► Remaining
+geographical sections
+
+-------------------------
+Home
+│
+├── Hero
+│   └── 5 articles
+│
+├── சமீபத்திய செய்திகள்
+│   └── articles 6–15
+│       └── அனைத்தையும் பார்க்க
+│             ↓
+│           /news
+│
+├── தமிழ்நாடு
+│   └── STATE + Tamil Nadu
+│       └── மேலும்
+│             ↓
+│           /news?scope=STATE&stateId=<TN_ID>
+│
+├── இந்தியா
+│   └── INDIA
+│       └── மேலும்
+│             ↓
+│           /news?scope=INDIA
+│
+├── உலகம்
+│   └── WORLD
+│       └── மேலும்
+│             ↓
+│           /news?scope=WORLD
+│
+└── மாவட்ட செய்திகள்
+    └── DISTRICT
+        └── மேலும்
+              ↓
+            /news?scope=DISTRICT

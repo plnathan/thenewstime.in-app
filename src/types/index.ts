@@ -7,7 +7,7 @@
  */
 
 export * from "./common";
-export * from "./news";
+// export * from "./news";
 export type {
   News,
   NewsCategory,
@@ -18,3 +18,4 @@ export type {
   NewsStatus,
   NewsView,
 } from "./news.types";
+export type { CountryItem, StateItem , DistrictItem } from "./master-data.types";

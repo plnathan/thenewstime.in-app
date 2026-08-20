@@ -28,7 +28,11 @@ export default function HomeNewsSection({
     layout = "list",
 }: Props) {
     return (
-        <Section title={title}>
+        <Section
+            title={title}
+            actionLabel={actionLabel}
+            onActionClick={onActionClick}
+        >
             {!news.length ? (
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-8 text-center">
                     <p className="text-sm text-gray-500">
@@ -86,26 +90,6 @@ export default function HomeNewsSection({
                                     news={item}
                                 />
                             ))}
-                        </div>
-                    )}
-
-                    {/* Section action */}
-                    {actionLabel && (
-                        <div className="mt-6 flex justify-end border-t border-gray-200 pt-4">
-                            <button
-                                type="button"
-                                onClick={onActionClick}
-                                className="inline-flex items-center gap-1.5 text-base font-semibold text-green-700 transition hover:text-green-800"
-                            >
-                                <span>{actionLabel}</span>
-
-                                <span
-                                    aria-hidden="true"
-                                    className="text-xl leading-none"
-                                >
-                                    ›
-                                </span>
-                            </button>
                         </div>
                     )}
                 </>

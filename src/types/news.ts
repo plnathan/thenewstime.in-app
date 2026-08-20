@@ -5,7 +5,7 @@
  * Module     : News Types
  * File       : news.ts
  * -----------------------------------------------------------------------------
- */
+
 
 export interface NewsCategory {
   id: number;
@@ -28,3 +28,4 @@ export interface NewsDetail extends NewsSummary {
   author?: string;
   readingTime?: number;
 }
+ */

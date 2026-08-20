@@ -1,19 +1,17 @@
-import type { ReactNode } from "react";
 import {
     Archive,
-    CheckCircle2,
-    Clock3,
+    Check,
     Edit3,
-    Megaphone,
-    Plus,
     RotateCcw,
-    Search,
-    XCircle,
+    Star,
+    StarOff,
+    X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
+    activateNews,
     archiveNews,
     changeNewsStatus,
     getNewsList,
@@ -21,90 +19,64 @@ import {
     removeNewsPromotion,
 } from "@/api/news.api";
 
-import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import Surface from "@/components/ui/Surface";
-import Typography from "@/components/ui/Typography";
+import MainLayout from "@/layouts/MainLayout";
 
-import type {
-    News,
-    NewsStatus,
-} from "@/types/news.types";
+import type { News, NewsStatus } from "@/types/news.types";
 
 const ADMIN_USER_ID = 1;
 
-const PAGE_SIZE = 20;
-
-const STATUS_OPTIONS: Array<{
-    value: "" | NewsStatus;
-    label: string;
-}> = [
-        { value: "", label: "All statuses" },
-        { value: "DRAFT", label: "Draft" },
-        { value: "IN_REVIEW", label: "In Review" },
-        { value: "APPROVED", label: "Approved" },
-        { value: "PUBLISHED", label: "Published" },
-        { value: "ARCHIVED", label: "Archived" },
-        { value: "REJECTED", label: "Rejected" },
-    ];
-
-function statusVariant(
-    status: NewsStatus,
-): "secondary" | "warning" | "success" | "danger" {
-    switch (status) {
-        case "PUBLISHED":
-            return "success";
-
-        case "APPROVED":
-            return "success";
-
-        case "IN_REVIEW":
-            return "warning";
-
-        case "ARCHIVED":
-        case "REJECTED":
-            return "danger";
-
-        default:
-            return "secondary";
-    }
-}
-
-function formatDate(value: string | null): string {
-    if (!value) {
-        return "—";
-    }
-
-    return new Intl.DateTimeFormat("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-    }).format(new Date(value));
-}
-
-function isPromotionActive(news: News): boolean {
-    if (!news.displayPriorityUntil) {
-        return false;
-    }
-
-    return (
-        news.status === "PUBLISHED" &&
-        new Date(news.displayPriorityUntil).getTime() > Date.now()
-    );
-}
+type StatusFilter = "ALL" | NewsStatus;
 
 export default function AdminNewsPage() {
     const [news, setNews] = useState<News[]>([]);
-
-    const [search, setSearch] = useState("");
-
-    const [status, setStatus] = useState<"" | NewsStatus>("");
 
     const [loading, setLoading] = useState(true);
 
     const [error, setError] = useState<string | null>(null);
 
+    const [statusFilter, setStatusFilter] =
+        useState<StatusFilter>("ALL");
+
+    /**
+     * ID of the article currently performing an action.
+     *
+     * This prevents multiple actions from being triggered
+     * on the same article while an API request is running.
+     */
     const [actionId, setActionId] = useState<number | null>(null);
 
+    /**
+     * Current time is kept in state instead of calling
+     * Date.now() directly during render.
+     *
+     * This also allows promotion expiry to update while
+     * the page remains open.
+     */
+    const [currentTime, setCurrentTime] = useState(() =>
+        Date.now(),
+    );
+
+    /*
+     * --------------------------------------------------
+     * Keep promotion state reasonably fresh.
+     * --------------------------------------------------
+     */
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setCurrentTime(Date.now());
+        }, 60_000);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, []);
+
+    /*
+     * --------------------------------------------------
+     * Load News
+     * --------------------------------------------------
+     */
     const loadNews = useCallback(async () => {
         try {
             setLoading(true);
@@ -112,41 +84,97 @@ export default function AdminNewsPage() {
 
             const response = await getNewsList({
                 page: 1,
-                pageSize: PAGE_SIZE,
-                search: search.trim() || undefined,
-                status: status || undefined,
-                sortBy: "published_at",
+                pageSize: 100,
+                sortBy: "created_at",
                 sortOrder: "DESC",
             });
 
-            setNews(response.data ?? []);
+            setNews(response.data);
         } catch (err) {
             console.error(err);
-            setError("Unable to load news articles.");
+
+            setError("Unable to load news.");
         } finally {
             setLoading(false);
         }
-    }, [search, status]);
+    }, []);
 
     useEffect(() => {
-        const timer = window.setTimeout(() => {
-            void loadNews();
-        }, 250);
-
-        return () => {
-            window.clearTimeout(timer);
+        const fetchNews = async () => {
+            await loadNews();
         };
+
+        void fetchNews();
     }, [loadNews]);
 
-    const handleArchive = async (article: News) => {
-        const confirmed = window.confirm(
-            `Deactivate "${article.title}" from display?`,
-        );
-
-        if (!confirmed) {
-            return;
+    /*
+     * --------------------------------------------------
+     * Filtered News
+     * --------------------------------------------------
+     */
+    const filteredNews = useMemo(() => {
+        if (statusFilter === "ALL") {
+            return news;
         }
 
+        return news.filter(
+            (article) => article.status === statusFilter,
+        );
+    }, [news, statusFilter]);
+
+    /*
+     * --------------------------------------------------
+     * Promotion helper
+     * --------------------------------------------------
+     */
+    const isPromotionActive = useCallback(
+        (article: News) => {
+            return (
+                article.status === "PUBLISHED" &&
+                article.displayPriority > 0 &&
+                Boolean(
+                    article.displayPriorityUntil &&
+                    new Date(
+                        article.displayPriorityUntil,
+                    ).getTime() > currentTime,
+                )
+            );
+        },
+        [currentTime],
+    );
+
+    /*
+     * --------------------------------------------------
+     * Activate
+     *
+     * ARCHIVED -> DRAFT
+     * --------------------------------------------------
+     */
+    const handleActivate = async (article: News) => {
+        try {
+            setActionId(article.id);
+
+            await activateNews(
+                article.id,
+                ADMIN_USER_ID,
+            );
+
+            await loadNews();
+        } catch (err) {
+            console.error(err);
+
+            setError("Unable to activate the news article.");
+        } finally {
+            setActionId(null);
+        }
+    };
+
+    /*
+     * --------------------------------------------------
+     * Archive / Deactivate
+     * --------------------------------------------------
+     */
+    const handleArchive = async (article: News) => {
         try {
             setActionId(article.id);
 
@@ -158,68 +186,18 @@ export default function AdminNewsPage() {
             await loadNews();
         } catch (err) {
             console.error(err);
-            window.alert("Unable to deactivate the news article.");
+
+            setError("Unable to deactivate the news article.");
         } finally {
             setActionId(null);
         }
     };
 
-    const handlePromote = async (article: News) => {
-        const confirmed = window.confirm(
-            `Promote "${article.title}" for 3 days?`,
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-            setActionId(article.id);
-
-            await promoteNews(
-                article.id,
-                ADMIN_USER_ID,
-            );
-
-            await loadNews();
-        } catch (err) {
-            console.error(err);
-            window.alert("Unable to promote the news article.");
-        } finally {
-            setActionId(null);
-        }
-    };
-
-    const handleRemovePromotion = async (
-        article: News,
-    ) => {
-        const confirmed = window.confirm(
-            `Remove promotion from "${article.title}"?`,
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-            setActionId(article.id);
-
-            await removeNewsPromotion(
-                article.id,
-                ADMIN_USER_ID,
-            );
-
-            await loadNews();
-        } catch (err) {
-            console.error(err);
-            window.alert(
-                "Unable to remove the news promotion.",
-            );
-        } finally {
-            setActionId(null);
-        }
-    };
-
+    /*
+     * --------------------------------------------------
+     * Approve
+     * --------------------------------------------------
+     */
     const handleApprove = async (article: News) => {
         try {
             setActionId(article.id);
@@ -233,530 +211,682 @@ export default function AdminNewsPage() {
             await loadNews();
         } catch (err) {
             console.error(err);
-            window.alert(
-                "Unable to approve the news article.",
+
+            setError("Unable to approve the news article.");
+        } finally {
+            setActionId(null);
+        }
+    };
+
+    /*
+     * --------------------------------------------------
+     * Reject
+     *
+     * IN_REVIEW -> REJECTED
+     *
+     * IMPORTANT:
+     * Button uses `outline`.
+     * There is no `danger` or `destructive`
+     * variant in the project's Button component.
+     * --------------------------------------------------
+     */
+    const handleReject = async (article: News) => {
+        try {
+            setActionId(article.id);
+
+            await changeNewsStatus(
+                article.id,
+                "REJECTED",
+                ADMIN_USER_ID,
+            );
+
+            await loadNews();
+        } catch (err) {
+            console.error(err);
+
+            setError("Unable to reject the news article.");
+        } finally {
+            setActionId(null);
+        }
+    };
+
+    /*
+     * --------------------------------------------------
+     * Promote
+     * --------------------------------------------------
+     */
+    const handlePromote = async (article: News) => {
+        try {
+            setActionId(article.id);
+
+            await promoteNews(
+                article.id,
+                ADMIN_USER_ID,
+            );
+
+            await loadNews();
+        } catch (err) {
+            console.error(err);
+
+            setError("Unable to promote the news article.");
+        } finally {
+            setActionId(null);
+        }
+    };
+
+    /*
+     * --------------------------------------------------
+     * Remove Promotion
+     * --------------------------------------------------
+     */
+    const handleRemovePromotion = async (
+        article: News,
+    ) => {
+        try {
+            setActionId(article.id);
+
+            await removeNewsPromotion(
+                article.id,
+                ADMIN_USER_ID,
+            );
+
+            await loadNews();
+        } catch (err) {
+            console.error(err);
+
+            setError(
+                "Unable to remove the news promotion.",
             );
         } finally {
             setActionId(null);
         }
     };
 
-    if (loading && news.length === 0) {
+    /*
+     * --------------------------------------------------
+     * Status badge
+     * --------------------------------------------------
+     */
+    const getStatusClassName = (
+        status: NewsStatus,
+    ) => {
+        switch (status) {
+            case "PUBLISHED":
+                return "bg-green-100 text-green-700";
+
+            case "APPROVED":
+                return "bg-blue-100 text-blue-700";
+
+            case "IN_REVIEW":
+                return "bg-yellow-100 text-yellow-700";
+
+            case "REJECTED":
+                return "bg-red-100 text-red-700";
+
+            case "ARCHIVED":
+                return "bg-gray-200 text-gray-700";
+
+            case "DRAFT":
+            default:
+                return "bg-gray-100 text-gray-600";
+        }
+    };
+
+    /*
+     * --------------------------------------------------
+     * Loading
+     * --------------------------------------------------
+     */
+    if (loading) {
         return (
-            <AdminNewsLayout>
-                <div className="flex min-h-[300px] items-center justify-center">
-                    <Typography
-                        variant="body"
-                        className="text-gray-500"
-                    >
-                        Loading news...
-                    </Typography>
+            <MainLayout>
+                <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6">
+                    <div className="flex min-h-[300px] items-center justify-center">
+                        <p className="text-sm text-gray-500">
+                            Loading news...
+                        </p>
+                    </div>
                 </div>
-            </AdminNewsLayout>
+            </MainLayout>
         );
     }
 
+    /*
+     * --------------------------------------------------
+     * Page
+     * --------------------------------------------------
+     */
     return (
-        <AdminNewsLayout>
-            <div className="space-y-6">
+        <MainLayout>
+            <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
                 {/* Header */}
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <Typography
-                            as="h1"
-                            variant="headline"
-                            className="text-2xl md:text-3xl"
-                        >
+                        <h1 className="text-2xl font-bold text-gray-900">
                             News Management
-                        </Typography>
+                        </h1>
 
-                        <Typography
-                            variant="body"
-                            className="mt-1 text-gray-500"
-                        >
-                            Create, edit, publish, deactivate and
-                            promote news articles.
-                        </Typography>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Manage news articles and publishing workflow.
+                        </p>
                     </div>
 
                     <Link to="/admin/news/create">
-                        <Button
-                            leftIcon={<Plus size={18} />}
-                        >
+                        <Button>
                             Create News
                         </Button>
                     </Link>
                 </div>
 
-                {/* Filters */}
-                <Surface
-                    padding="md"
-                    border="all"
-                    radius="lg"
-                >
-                    <div className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
-                        <div className="relative">
-                            <Search
-                                size={18}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                            />
-
-                            <input
-                                type="search"
-                                value={search}
-                                onChange={(event) =>
-                                    setSearch(event.target.value)
-                                }
-                                placeholder="Search news..."
-                                className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                            />
-                        </div>
-
-                        <select
-                            value={status}
-                            onChange={(event) =>
-                                setStatus(
-                                    event.target.value as
-                                    | ""
-                                    | NewsStatus,
-                                )
-                            }
-                            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                        >
-                            {STATUS_OPTIONS.map((option) => (
-                                <option
-                                    key={option.value}
-                                    value={option.value}
-                                >
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        <Button
-                            variant="outline"
-                            onClick={() => void loadNews()}
-                            leftIcon={<RotateCcw size={16} />}
-                        >
-                            Refresh
-                        </Button>
-                    </div>
-                </Surface>
-
+                {/* Error */}
                 {error && (
-                    <Surface
-                        padding="md"
-                        border="all"
-                        radius="lg"
-                        className="border-red-200 bg-red-50"
-                    >
-                        <div className="flex items-center gap-3 text-red-700">
-                            <XCircle size={20} />
-
-                            <Typography variant="body">
-                                {error}
-                            </Typography>
-                        </div>
-                    </Surface>
+                    <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {error}
+                    </div>
                 )}
 
-                {/* Desktop table */}
-                <Surface
-                    padding="none"
-                    border="all"
-                    radius="lg"
-                    className="hidden overflow-hidden md:block"
-                >
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1000px]">
-                            <thead className="border-b bg-gray-50">
-                                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    <th className="px-5 py-4">
-                                        Article
-                                    </th>
+                {/* Status Filters */}
+                <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200 pb-3">
+                    {(
+                        [
+                            "ALL",
+                            "DRAFT",
+                            "IN_REVIEW",
+                            "APPROVED",
+                            "PUBLISHED",
+                            "REJECTED",
+                            "ARCHIVED",
+                        ] as StatusFilter[]
+                    ).map((status) => (
+                        <button
+                            key={status}
+                            type="button"
+                            onClick={() =>
+                                setStatusFilter(status)
+                            }
+                            className={[
+                                "whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition",
+                                statusFilter === status
+                                    ? "bg-green-700 text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200",
+                            ].join(" ")}
+                        >
+                            {status === "ALL"
+                                ? "All"
+                                : status.replace("_", " ")}
+                        </button>
+                    ))}
+                </div>
 
-                                    <th className="px-5 py-4">
-                                        Scope
-                                    </th>
+                {/* Empty */}
+                {!filteredNews.length ? (
+                    <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
+                        <p className="text-sm text-gray-500">
+                            No news articles found.
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        {/* Desktop */}
+                        <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white md:block">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                News
+                                            </th>
 
-                                    <th className="px-5 py-4">
-                                        Status
-                                    </th>
+                                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Category
+                                            </th>
 
-                                    <th className="px-5 py-4">
-                                        Display
-                                    </th>
+                                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Status
+                                            </th>
 
-                                    <th className="px-5 py-4">
-                                        Published
-                                    </th>
+                                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Published
+                                            </th>
 
-                                    <th className="px-5 py-4 text-right">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
+                                            <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
 
-                            <tbody className="divide-y">
-                                {news.map((article) => {
-                                    const promoted =
-                                        isPromotionActive(article);
+                                    <tbody className="divide-y divide-gray-200">
+                                        {filteredNews.map((article) => {
+                                            const archived =
+                                                article.status === "ARCHIVED";
 
-                                    const busy =
-                                        actionId === article.id;
+                                            const promotionActive =
+                                                isPromotionActive(article);
 
-                                    return (
-                                        <tr
-                                            key={article.id}
-                                            className="align-top hover:bg-gray-50/70"
-                                        >
-                                            <td className="px-5 py-4">
-                                                <div className="max-w-[360px]">
-                                                    <Typography
-                                                        variant="articleTitle"
-                                                        className="text-base"
-                                                    >
-                                                        {article.title}
-                                                    </Typography>
+                                            const busy =
+                                                actionId === article.id;
 
-                                                    <Typography
-                                                        variant="caption"
-                                                        className="mt-1 block"
-                                                    >
-                                                        #{article.newsNumber} ·{" "}
-                                                        {article.category
-                                                            ?.displayName ??
-                                                            "—"}
-                                                    </Typography>
-                                                </div>
-                                            </td>
-
-                                            <td className="px-5 py-4">
-                                                <Badge variant="secondary">
-                                                    {article.newsScope}
-                                                </Badge>
-                                            </td>
-
-                                            <td className="px-5 py-4">
-                                                <Badge
-                                                    variant={statusVariant(
-                                                        article.status,
-                                                    )}
+                                            return (
+                                                <tr
+                                                    key={article.id}
+                                                    className="hover:bg-gray-50"
                                                 >
-                                                    {article.status}
-                                                </Badge>
-                                            </td>
-
-                                            <td className="px-5 py-4">
-                                                {promoted ? (
-                                                    <div className="space-y-1">
-                                                        <Badge variant="success">
-                                                            <span className="mr-1">
-                                                                #{article.displayPriority}
-                                                            </span>
-                                                            Promoted
-                                                        </Badge>
-
-                                                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                            <Clock3 size={12} />
-                                                            Until{" "}
-                                                            {formatDate(
-                                                                article.displayPriorityUntil,
-                                                            )}
+                                                    {/* News */}
+                                                    <td className="max-w-md px-5 py-4">
+                                                        <div className="font-medium text-gray-900">
+                                                            {article.title}
                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-sm text-gray-400">
-                                                        Normal order
-                                                    </span>
+
+                                                        <div className="mt-1 text-xs text-gray-500">
+                                                            #{article.newsNumber}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Category */}
+                                                    <td className="px-5 py-4 text-sm text-gray-600">
+                                                        {article.category?.displayName ??
+                                                            "-"}
+                                                    </td>
+
+                                                    {/* Status */}
+                                                    <td className="px-5 py-4">
+                                                        <span
+                                                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(
+                                                                article.status,
+                                                            )}`}
+                                                        >
+                                                            {article.status.replace(
+                                                                "_",
+                                                                " ",
+                                                            )}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Published */}
+                                                    <td className="px-5 py-4 text-sm text-gray-600">
+                                                        {article.publishedAt
+                                                            ? new Date(
+                                                                article.publishedAt,
+                                                            ).toLocaleDateString(
+                                                                "en-GB",
+                                                            )
+                                                            : "-"}
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td className="px-5 py-4">
+                                                        <div className="flex flex-wrap justify-end gap-2">
+                                                            {/* Edit
+                               *
+                               * ARCHIVED articles must not
+                               * expose Edit.
+                               */}
+                                                            {!archived && (
+                                                                <Link
+                                                                    to={`/admin/news/${article.id}/edit`}
+                                                                >
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        leftIcon={
+                                                                            <Edit3 size={15} />
+                                                                        }
+                                                                    >
+                                                                        Edit
+                                                                    </Button>
+                                                                </Link>
+                                                            )}
+
+                                                            {/* IN_REVIEW actions */}
+                                                            {article.status ===
+                                                                "IN_REVIEW" && (
+                                                                    <>
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            loading={
+                                                                                busy
+                                                                            }
+                                                                            onClick={() =>
+                                                                                void handleApprove(
+                                                                                    article,
+                                                                                )
+                                                                            }
+                                                                            leftIcon={
+                                                                                <Check size={15} />
+                                                                            }
+                                                                        >
+                                                                            Approve
+                                                                        </Button>
+
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            loading={
+                                                                                busy
+                                                                            }
+                                                                            onClick={() =>
+                                                                                void handleReject(
+                                                                                    article,
+                                                                                )
+                                                                            }
+                                                                            leftIcon={
+                                                                                <X size={15} />
+                                                                            }
+                                                                        >
+                                                                            Reject
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+
+                                                            {/* Archived -> Activate */}
+                                                            {archived && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    loading={busy}
+                                                                    onClick={() =>
+                                                                        void handleActivate(
+                                                                            article,
+                                                                        )
+                                                                    }
+                                                                    leftIcon={
+                                                                        <RotateCcw
+                                                                            size={15}
+                                                                        />
+                                                                    }
+                                                                >
+                                                                    Activate
+                                                                </Button>
+                                                            )}
+
+                                                            {/* Non-archived -> Deactivate */}
+                                                            {!archived &&
+                                                                article.status !==
+                                                                "DRAFT" && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        loading={busy}
+                                                                        onClick={() =>
+                                                                            void handleArchive(
+                                                                                article,
+                                                                            )
+                                                                        }
+                                                                        leftIcon={
+                                                                            <Archive
+                                                                                size={15}
+                                                                            />
+                                                                        }
+                                                                    >
+                                                                        Deactivate
+                                                                    </Button>
+                                                                )}
+
+                                                            {/* Promotion */}
+                                                            {article.status ===
+                                                                "PUBLISHED" &&
+                                                                (promotionActive ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        loading={busy}
+                                                                        onClick={() =>
+                                                                            void handleRemovePromotion(
+                                                                                article,
+                                                                            )
+                                                                        }
+                                                                        leftIcon={
+                                                                            <StarOff
+                                                                                size={15}
+                                                                            />
+                                                                        }
+                                                                    >
+                                                                        Remove Promotion
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        loading={busy}
+                                                                        onClick={() =>
+                                                                            void handlePromote(
+                                                                                article,
+                                                                            )
+                                                                        }
+                                                                        leftIcon={
+                                                                            <Star
+                                                                                size={15}
+                                                                            />
+                                                                        }
+                                                                    >
+                                                                        Promote
+                                                                    </Button>
+                                                                ))}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Mobile */}
+                        <div className="space-y-4 md:hidden">
+                            {filteredNews.map((article) => {
+                                const archived =
+                                    article.status === "ARCHIVED";
+
+                                const promotionActive =
+                                    isPromotionActive(article);
+
+                                const busy =
+                                    actionId === article.id;
+
+                                return (
+                                    <article
+                                        key={article.id}
+                                        className="rounded-xl border border-gray-200 bg-white p-4"
+                                    >
+                                        {/* Title */}
+                                        <div>
+                                            <div className="font-semibold text-gray-900">
+                                                {article.title}
+                                            </div>
+
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                #{article.newsNumber}
+                                            </div>
+                                        </div>
+
+                                        {/* Metadata */}
+                                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                                            <span
+                                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(
+                                                    article.status,
+                                                )}`}
+                                            >
+                                                {article.status.replace(
+                                                    "_",
+                                                    " ",
                                                 )}
-                                            </td>
+                                            </span>
 
-                                            <td className="px-5 py-4">
-                                                <span className="text-sm text-gray-600">
-                                                    {formatDate(
-                                                        article.publishedAt,
-                                                    )}
-                                                </span>
-                                            </td>
+                                            <span className="text-xs text-gray-500">
+                                                {article.category?.displayName ??
+                                                    "-"}
+                                            </span>
+                                        </div>
 
-                                            <td className="px-5 py-4">
-                                                <div className="flex justify-end gap-2">
-                                                    <Link
-                                                        to={`/admin/news/${article.id}/edit`}
+                                        {/* Published */}
+                                        <div className="mt-3 text-xs text-gray-500">
+                                            Published:{" "}
+                                            {article.publishedAt
+                                                ? new Date(
+                                                    article.publishedAt,
+                                                ).toLocaleDateString(
+                                                    "en-GB",
+                                                )
+                                                : "-"}
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {/* Edit */}
+                                            {!archived && (
+                                                <Link
+                                                    to={`/admin/news/${article.id}/edit`}
+                                                >
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        leftIcon={
+                                                            <Edit3 size={15} />
+                                                        }
                                                     >
+                                                        Edit
+                                                    </Button>
+                                                </Link>
+                                            )}
+
+                                            {/* IN_REVIEW */}
+                                            {article.status ===
+                                                "IN_REVIEW" && (
+                                                    <>
                                                         <Button
-                                                            variant="outline"
+                                                            type="button"
                                                             size="sm"
+                                                            loading={busy}
+                                                            onClick={() =>
+                                                                void handleApprove(
+                                                                    article,
+                                                                )
+                                                            }
                                                             leftIcon={
-                                                                <Edit3 size={14} />
+                                                                <Check size={15} />
                                                             }
                                                         >
-                                                            Edit
+                                                            Approve
                                                         </Button>
-                                                    </Link>
 
-                                                    {article.status ===
-                                                        "IN_REVIEW" && (
-                                                            <Button
-                                                                size="sm"
-                                                                loading={busy}
-                                                                leftIcon={
-                                                                    <CheckCircle2
-                                                                        size={14}
-                                                                    />
-                                                                }
-                                                                onClick={() =>
-                                                                    void handleApprove(
-                                                                        article,
-                                                                    )
-                                                                }
-                                                            >
-                                                                Approve
-                                                            </Button>
-                                                        )}
-
-                                                    {article.status ===
-                                                        "PUBLISHED" &&
-                                                        !promoted && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                loading={busy}
-                                                                leftIcon={
-                                                                    <Megaphone
-                                                                        size={14}
-                                                                    />
-                                                                }
-                                                                onClick={() =>
-                                                                    void handlePromote(
-                                                                        article,
-                                                                    )
-                                                                }
-                                                            >
-                                                                Promote
-                                                            </Button>
-                                                        )}
-
-                                                    {promoted && (
                                                         <Button
+                                                            type="button"
                                                             variant="outline"
                                                             size="sm"
                                                             loading={busy}
                                                             onClick={() =>
-                                                                void handleRemovePromotion(
+                                                                void handleReject(
                                                                     article,
                                                                 )
                                                             }
+                                                            leftIcon={
+                                                                <X size={15} />
+                                                            }
                                                         >
-                                                            Remove Promotion
+                                                            Reject
                                                         </Button>
-                                                    )}
-
-                                                    {article.status !==
-                                                        "ARCHIVED" && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                loading={busy}
-                                                                leftIcon={
-                                                                    <Archive size={14} />
-                                                                }
-                                                                onClick={() =>
-                                                                    void handleArchive(
-                                                                        article,
-                                                                    )
-                                                                }
-                                                                className="text-red-600 hover:text-red-700"
-                                                            >
-                                                                Deactivate
-                                                            </Button>
-                                                        )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {news.length === 0 && (
-                        <EmptyNews />
-                    )}
-                </Surface>
-
-                {/* Mobile cards */}
-                <div className="space-y-4 md:hidden">
-                    {news.map((article) => {
-                        const promoted =
-                            isPromotionActive(article);
-
-                        const busy =
-                            actionId === article.id;
-
-                        return (
-                            <Surface
-                                key={article.id}
-                                padding="md"
-                                border="all"
-                                radius="lg"
-                            >
-                                <div className="space-y-4">
-                                    <div>
-                                        <div className="mb-2 flex flex-wrap gap-2">
-                                            <Badge
-                                                variant={statusVariant(
-                                                    article.status,
+                                                    </>
                                                 )}
-                                            >
-                                                {article.status}
-                                            </Badge>
 
-                                            <Badge variant="secondary">
-                                                {article.newsScope}
-                                            </Badge>
-
-                                            {promoted && (
-                                                <Badge variant="success">
-                                                    Promoted #{article.displayPriority}
-                                                </Badge>
+                                            {/* Archived -> Activate */}
+                                            {archived && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    loading={busy}
+                                                    onClick={() =>
+                                                        void handleActivate(
+                                                            article,
+                                                        )
+                                                    }
+                                                    leftIcon={
+                                                        <RotateCcw size={15} />
+                                                    }
+                                                >
+                                                    Activate
+                                                </Button>
                                             )}
+
+                                            {/* Active -> Deactivate */}
+                                            {!archived &&
+                                                article.status !==
+                                                "DRAFT" && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        loading={busy}
+                                                        onClick={() =>
+                                                            void handleArchive(
+                                                                article,
+                                                            )
+                                                        }
+                                                        leftIcon={
+                                                            <Archive size={15} />
+                                                        }
+                                                    >
+                                                        Deactivate
+                                                    </Button>
+                                                )}
+
+                                            {/* Promotion */}
+                                            {article.status ===
+                                                "PUBLISHED" &&
+                                                (promotionActive ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        loading={busy}
+                                                        onClick={() =>
+                                                            void handleRemovePromotion(
+                                                                article,
+                                                            )
+                                                        }
+                                                        leftIcon={
+                                                            <StarOff
+                                                                size={15}
+                                                            />
+                                                        }
+                                                    >
+                                                        Remove Promotion
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        loading={busy}
+                                                        onClick={() =>
+                                                            void handlePromote(
+                                                                article,
+                                                            )
+                                                        }
+                                                        leftIcon={
+                                                            <Star size={15} />
+                                                        }
+                                                    >
+                                                        Promote
+                                                    </Button>
+                                                ))}
                                         </div>
-
-                                        <Typography
-                                            variant="articleTitle"
-                                            className="text-lg"
-                                        >
-                                            {article.title}
-                                        </Typography>
-
-                                        <Typography
-                                            variant="caption"
-                                            className="mt-1 block"
-                                        >
-                                            #{article.newsNumber} ·{" "}
-                                            {article.category?.displayName ??
-                                                "—"}
-                                        </Typography>
-                                    </div>
-
-                                    {promoted && (
-                                        <Typography
-                                            variant="caption"
-                                            className="flex items-center gap-1"
-                                        >
-                                            <Clock3 size={13} />
-                                            Promotion until{" "}
-                                            {formatDate(
-                                                article.displayPriorityUntil,
-                                            )}
-                                        </Typography>
-                                    )}
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Link
-                                            to={`/admin/news/${article.id}/edit`}
-                                        >
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                fullWidth
-                                                leftIcon={
-                                                    <Edit3 size={14} />
-                                                }
-                                            >
-                                                Edit
-                                            </Button>
-                                        </Link>
-
-                                        {article.status ===
-                                            "PUBLISHED" &&
-                                            !promoted && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    loading={busy}
-                                                    fullWidth
-                                                    onClick={() =>
-                                                        void handlePromote(
-                                                            article,
-                                                        )
-                                                    }
-                                                >
-                                                    Promote
-                                                </Button>
-                                            )}
-
-                                        {promoted && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                loading={busy}
-                                                fullWidth
-                                                onClick={() =>
-                                                    void handleRemovePromotion(
-                                                        article,
-                                                    )
-                                                }
-                                            >
-                                                Remove Promotion
-                                            </Button>
-                                        )}
-
-                                        {article.status !==
-                                            "ARCHIVED" && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    loading={busy}
-                                                    fullWidth
-                                                    onClick={() =>
-                                                        void handleArchive(
-                                                            article,
-                                                        )
-                                                    }
-                                                    className="text-red-600"
-                                                >
-                                                    Deactivate
-                                                </Button>
-                                            )}
-                                    </div>
-                                </div>
-                            </Surface>
-                        );
-                    })}
-
-                    {news.length === 0 && <EmptyNews />}
-                </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
             </div>
-        </AdminNewsLayout>
-    );
-}
-
-function EmptyNews() {
-    return (
-        <div className="px-5 py-12 text-center">
-            <Typography
-                variant="body"
-                className="text-gray-500"
-            >
-                No news articles found.
-            </Typography>
-        </div>
-    );
-}
-
-function AdminNewsLayout({
-    children,
-}: {
-    children: ReactNode;
-}) {
-    return (
-        <main className="min-h-screen bg-gray-50">
-            <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
-                {children}
-            </div>
-        </main>
+        </MainLayout>
     );
 }

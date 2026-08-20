@@ -41,6 +41,7 @@ import type {
 
 import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
 import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
+import MainLayout from "@/layouts/MainLayout";
 
 const ADMIN_USER_ID = 1;
 
@@ -352,16 +353,18 @@ export default function AdminNewsEditPage() {
 
     if (loading) {
         return (
-            <main className="min-h-screen bg-gray-50">
-                <div className="mx-auto max-w-5xl px-4 py-10">
-                    <Typography
-                        variant="body"
-                        className="text-gray-500"
-                    >
-                        Loading article...
-                    </Typography>
-                </div>
-            </main>
+            <MainLayout>
+                <main className="min-h-screen bg-gray-50">
+                    <div className="mx-auto max-w-5xl px-4 py-10">
+                        <Typography
+                            variant="body"
+                            className="text-gray-500"
+                        >
+                            Loading article...
+                        </Typography>
+                    </div>
+                </main>
+            </MainLayout>
         );
     }
 

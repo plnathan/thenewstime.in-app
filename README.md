@@ -204,3 +204,15 @@ git add vercel.json
 git commit -m "fix frontend routing for direct admin routes"
 git push
 ////////////////
+
+## For Vite + React + TypeScript frontend
+
+npm run typecheck
+
+## if the package.json already defines that script:
+
+npm run
+
+## If there is no typecheck script:(recommended for every phase implementation)
+
+npx tsc --noEmit

@@ -9,41 +9,41 @@ export const navigationItems: NavigationItem[] = [
   {
     id: 2,
     label: "தமிழ்நாடு",
-    path: "/tamilnadu",
+    path: "/news?scope=STATE&state=tamil-nadu",
   },
   {
     id: 3,
     label: "இந்தியா",
-    path: "/india",
+    path: "/news?scope=INDIA",
   },
   {
     id: 4,
     label: "உலகம்",
-    path: "/world",
+    path: "/news?scope=WORLD",
   },
   {
     id: 5,
     label: "அரசியல்",
-    path: "/politics",
+    path: "/news?category=politics",
   },
   {
     id: 6,
     label: "வணிகம்",
-    path: "/business",
+    path: "/news?category=business",
   },
   {
     id: 7,
     label: "விளையாட்டு",
-    path: "/sports",
+    path: "/news?category=sports",
   },
   {
     id: 8,
     label: "தொழில்நுட்பம்",
-    path: "/technology",
+    path: "/news?category=technology",
   },
   {
     id: 9,
     label: "சினிமா",
-    path: "/cinema",
+    path: "/news?category=cinema",
   },
 ];

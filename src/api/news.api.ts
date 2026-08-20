@@ -11,6 +11,8 @@ import type {
 
 /**
  * News list query parameters.
+ *
+ * Used by the admin/private news endpoint.
  */
 export interface NewsQuery {
   page?: number;
@@ -19,7 +21,7 @@ export interface NewsQuery {
 
   search?: string;
 
-  status?: string;
+  status?: NewsStatus;
 
   categoryId?: number;
 
@@ -37,7 +39,17 @@ export interface NewsQuery {
 }
 
 /**
- * Get News List
+ * Public news list query parameters.
+ *
+ * The public endpoint guarantees PUBLISHED news,
+ * therefore status is intentionally not supported here.
+ */
+export type PublicNewsQuery = Omit<NewsQuery, "status">;
+
+/**
+ * Get News List.
+ *
+ * Admin/private endpoint.
  */
 export const getNewsList = async (
   params?: NewsQuery,
@@ -49,13 +61,25 @@ export const getNewsList = async (
   return response.data;
 };
 
-export async function getPublishedNewsList(params?: NewsQuery) {
-  const response = await apiClient.get("/news/public", {
+/**
+ * Get Published News List.
+ *
+ * Public endpoint.
+ *
+ * Backend guarantees:
+ * - PUBLISHED news only
+ * - published_at DESC ordering by default
+ * - public pagination
+ */
+export const getPublishedNewsList = async (
+  params?: PublicNewsQuery,
+): Promise<ApiResponse<News[]>> => {
+  const response = await apiClient.get<ApiResponse<News[]>>("/news/public", {
     params,
   });
 
   return response.data;
-}
+};
 
 /**
  * Get News by ID.
@@ -132,6 +156,25 @@ export const archiveNews = async (
     `/news/${id}/archive`,
     {
       archivedBy,
+    },
+  );
+
+  return response.data;
+};
+
+/**
+ * Activate / restore an archived news article.
+ *
+ * ARCHIVED -> DRAFT
+ */
+export const activateNews = async (
+  id: number,
+  activatedBy: number,
+): Promise<ApiResponse<News>> => {
+  const response = await apiClient.patch<ApiResponse<News>>(
+    `/news/${id}/activate`,
+    {
+      activatedBy,
     },
   );
 
@@ -252,4 +295,3 @@ export const removeNewsPromotion = async (
 
   return response.data;
 };
-//////////////////////////

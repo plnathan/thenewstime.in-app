@@ -2,25 +2,23 @@ import apiClient from "./axios";
 
 import type { ApiResponse } from "@/types/api";
 
-export interface MasterDataItem {
-  id: number;
-  code: string;
-  displayName: string;
-  urlName: string;
-}
+export type {
+  CountryItem,
+  DistrictItem,
+  MasterDataItem,
+  StateItem,
+} from "@/types/master-data.types";
 
-export interface CountryItem extends MasterDataItem {
-  isoCode: string | null;
-}
+import type {
+  CountryItem,
+  DistrictItem,
+  MasterDataItem,
+  StateItem,
+} from "@/types/master-data.types";
 
-export interface StateItem extends MasterDataItem {
-  countryId: number;
-}
-
-export interface DistrictItem extends MasterDataItem {
-  stateId: number;
-}
-
+/**
+ * Get active categories.
+ */
 export const getCategories = async (): Promise<
   ApiResponse<MasterDataItem[]>
 > => {
@@ -31,6 +29,9 @@ export const getCategories = async (): Promise<
   return response.data;
 };
 
+/**
+ * Get active countries.
+ */
 export const getCountries = async (): Promise<ApiResponse<CountryItem[]>> => {
   const response = await apiClient.get<ApiResponse<CountryItem[]>>(
     "/master-data/countries",
@@ -39,6 +40,9 @@ export const getCountries = async (): Promise<ApiResponse<CountryItem[]>> => {
   return response.data;
 };
 
+/**
+ * Get active states for a country.
+ */
 export const getStates = async (
   countryId: number,
 ): Promise<ApiResponse<StateItem[]>> => {
@@ -54,6 +58,9 @@ export const getStates = async (
   return response.data;
 };
 
+/**
+ * Get active districts for a state.
+ */
 export const getDistricts = async (
   stateId: number,
 ): Promise<ApiResponse<DistrictItem[]>> => {

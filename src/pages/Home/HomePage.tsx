@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import AppContainer from "@/components/container/AppContainer";
 import MainContent from "@/components/container/MainContent";
 
@@ -14,6 +15,8 @@ import MainLayout from "@/layouts/MainLayout";
 import { useNews } from "@/hooks/useNews";
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  
   const {
     news,
     loading,
@@ -22,122 +25,94 @@ export default function HomePage() {
   } = useNews({
     publishedOnly: true,
     page: 1,
-    pageSize: 20,
+    pageSize: 50,
     sortBy: "published_at",
-    sortOrder: "DESC"
+    sortOrder: "DESC",
   });
 
   /*
    * --------------------------------------------------
-   * Hero News
+   * Homepage News Distribution
+   * --------------------------------------------------
+   *
+   * API result is already ordered by:
+   *
+   * published_at DESC
+   *
+   * Distribution:
+   *
+   * 1 - 5   → Hero
+   * 6 - 15  → Latest
+   * 16+     → Geographical sections
    * --------------------------------------------------
    */
+
   const featuredNews = news.slice(0, 5);
+
+  const latestNews = news.slice(5, 15);
+
+  const remainingNews = news.slice(15);
 
   /*
    * --------------------------------------------------
-   * Latest News
+   * Geographical Sections
+   * --------------------------------------------------
+   *
+   * Articles are classified from the remaining news
+   * only, so they do not duplicate Hero or Latest.
+   *
+   * Priority:
+   *
+   * DISTRICT
+   * STATE / Tamil Nadu
+   * INDIA
+   * WORLD
    * --------------------------------------------------
    */
-  const latestNews = news;
+
+  const districtNews = remainingNews.filter(
+    (item) => item.newsScope === "DISTRICT",
+  );
+
+  const tamilNaduNews = remainingNews.filter(
+    (item) =>
+      item.newsScope === "STATE" &&
+      item.stateUrlName === "tamil-nadu",
+  );
+
+  const indiaNews = remainingNews.filter(
+    (item) => item.newsScope === "INDIA",
+  );
+
+  const worldNews = remainingNews.filter(
+    (item) => item.newsScope === "WORLD",
+  );
+
+  const tamilNaduStateId =
+    tamilNaduNews.find(
+      (item) => item.stateId != null,
+    )?.stateId;
 
   /*
    * --------------------------------------------------
    * Sidebar
+   * --------------------------------------------------
    *
-   * This is currently using the latest articles.
+   * Popular-news API is not implemented yet.
    *
-   * Later we can replace this with a dedicated
-   * "popular news" API query based on views.
+   * For now, use the first four articles from the
+   * latest-news area.
    * --------------------------------------------------
    */
+
   const popularNews = latestNews.slice(0, 4);
-
-  /*
-   * --------------------------------------------------
-   * District level News to display in the "District News" section.
-   *
-   * District is geographical information.
-   *
-   * Therefore we must NOT use:
-   *
-   * This includes only district-level in Tamil Nadu news
-   * because district records are linked to Tamil Nadu.
-   * --------------------------------------------------
-   */
-  const districtNews = news.filter(
-    (item) => item.newsScope === "DISTRICT",
-  );
-
-  /*
-   * --------------------------------------------------
-   * Tamil Nadu News
-   *
-   * Tamil Nadu is geographical information.
-   *
-   * Therefore we must NOT use:
-   *
-   * item.categoryName === "தமிழ்நாடு"
-   *
-   * Instead we use the state's URL name.
-   *
-   * This also includes district-level Tamil Nadu news
-   * because district records are linked to Tamil Nadu.
-   * --------------------------------------------------
-   */
-  const tamilNaduNews = news.filter(
-    (item) =>
-      item.stateUrlName === "tamil-nadu",
-  );
-
-  /*
-   * --------------------------------------------------
-   * India News
-   *
-   * India-level news is identified by newsScope.
-   * --------------------------------------------------
-   */
-  const indiaNews = news.filter(
-    (item) =>
-      item.newsScope === "INDIA",
-  );
-
-  /*
-   * --------------------------------------------------
-   * World News
-   *
-   * World-level news is identified by newsScope.
-   * --------------------------------------------------
-   */
-  const worldNews = news.filter(
-    (item) =>
-      item.newsScope === "WORLD",
-  );
-
-  /*
-   * --------------------------------------------------
-   * Sports News
-   *
-   * Your current category master data does NOT contain
-   * "sports".
-   *
-   * We keep this filter ready for when the category is
-   * added to the master table.
-   *
-   * Once the "sports" category exists, this section
-   * will automatically start displaying articles.
-   * --------------------------------------------------
-   */
-  // const sportsNews = news.filter(
-  //   (item) =>
-  //     item.categoryUrlName === "sports",
-  // );
 
   /*
    * --------------------------------------------------
    * Loading
    * --------------------------------------------------
    */
+
   if (loading) {
     return (
       <MainLayout>
@@ -157,6 +132,7 @@ export default function HomePage() {
    * Error
    * --------------------------------------------------
    */
+
   if (error) {
     return (
       <MainLayout>
@@ -184,6 +160,7 @@ export default function HomePage() {
    * Page
    * --------------------------------------------------
    */
+
   return (
     <MainLayout>
       <AppContainer>
@@ -218,50 +195,70 @@ export default function HomePage() {
           >
             <MainContent>
 
+              {/* Latest */}
               <HomeNewsSection
                 title="சமீபத்திய செய்திகள்"
                 news={latestNews}
                 actionLabel="அனைத்தையும் பார்க்க"
+                onActionClick={() => navigate("/news")}
                 layout="list"
               />
 
-              <HomeNewsSection
-                title="தமிழ்நாடு"
-                news={tamilNaduNews}
-                actionLabel="மேலும்"
-                layout="featured"
-              />
-
-              <HomeNewsSection
-                title="இந்தியா"
-                news={indiaNews}
-                actionLabel="மேலும்"
-                layout="grid"
-              />
-
-              <HomeNewsSection
-                title="உலகம்"
-                news={worldNews}
-                actionLabel="மேலும்"
-                layout="grid"
-              />
-
-              <HomeNewsSection
-                title="மாவட்ட செய்திகள்"
-                news={districtNews}
-                actionLabel="மேலும்"
-                layout="compact"
-              />
-
-              {/* Sports */}
-              {/* {sportsNews.length > 0 && (
+              {/* Tamil Nadu */}
+              {tamilNaduNews.length > 0 && (
                 <HomeNewsSection
-                  title="விளையாட்டு"
-                  news={sportsNews}
+                  title="தமிழ்நாடு"
+                  news={tamilNaduNews}
                   actionLabel="மேலும்"
+                  onActionClick={() => {
+                    if (tamilNaduStateId != null) {
+                      navigate(
+                        `/news?scope=STATE&stateId=${tamilNaduStateId}`,
+                      );
+                    }
+                  }}
+                  layout="featured"
+                />
+              )}
+
+              {/* India */}
+              {indiaNews.length > 0 && (
+                <HomeNewsSection
+                  title="இந்தியா"
+                  news={indiaNews}
+                  actionLabel="மேலும்"
+                  onActionClick={() =>
+                    navigate("/news?scope=INDIA")
+                  }
+                  layout="grid"
+                />
+              )}
+
+              {/* World */}
+              {worldNews.length > 0 && (
+                <HomeNewsSection
+                  title="உலகம்"
+                  news={worldNews}
+                  actionLabel="மேலும்"
+                  onActionClick={() =>
+                    navigate("/news?scope=WORLD")
+                  }
+                  layout="grid"
+                />
+              )}
+
+              {/* District */}
+              {districtNews.length > 0 && (
+                <HomeNewsSection
+                  title="மாவட்ட செய்திகள்"
+                  news={districtNews}
+                  actionLabel="மேலும்"
+                  onActionClick={() =>
+                    navigate("/news?scope=DISTRICT")
+                  }
                   layout="compact"
                 />
-              )} */}
+              )}
 
             </MainContent>
           </HomeGrid>
