@@ -52,9 +52,11 @@ export default function NavigationItem({ item }: Props) {
             bottom-0
             left-2
             right-2
+            hidden
             h-0.5
             rounded-full
             bg-green-700
+            lg:block
           "
         />
       )}

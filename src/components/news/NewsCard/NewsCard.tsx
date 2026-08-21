@@ -55,7 +55,13 @@ export default function NewsCard({
         ${compact ? "p-3" : "p-4 md:p-5"}
       `}
     >
-      <div className="flex items-start gap-4">
+      <div
+        className="
+          grid
+          grid-cols-[auto_minmax(0,1fr)]
+          gap-4
+        "
+      >
         {thumbnailUrl && (
           <div
             className={`
@@ -84,7 +90,7 @@ export default function NewsCard({
           </div>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="min-w-0">
           <Typography
             variant="body"
             className={`
@@ -115,26 +121,32 @@ export default function NewsCard({
               {summary}
             </Typography>
           )}
+        </div>
 
-          <div className="mt-3">
-            <NewsMeta
-              publishedAt={publishedAt}
-              views={views}
-              comments={comments}
-              audioAvailable={audioAvailable}
-              compact={compact}
+        <div
+          className="
+            col-span-2
+            md:col-span-1
+            md:col-start-2
+          "
+        >
+          <NewsMeta
+            publishedAt={publishedAt}
+            views={views}
+            comments={comments}
+            audioAvailable={audioAvailable}
+            compact={compact}
+          />
+        </div>
+
+        {audioAvailable && compact && (
+          <div className="col-span-2 md:col-start-2 md:col-span-1">
+            <Volume2
+              size={15}
+              className="text-green-600"
             />
           </div>
-
-          {audioAvailable && compact && (
-            <div className="mt-2">
-              <Volume2
-                size={15}
-                className="text-green-600"
-              />
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </Surface>
   );
