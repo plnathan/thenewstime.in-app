@@ -5,11 +5,13 @@ import "./index.css";
 
 import App from "./App.tsx";
 import ErrorBoundary from "./components/common/ErrorBoundary";
+import ScrollToTop from "./components/common/ScrollToTop.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
+        <ScrollToTop />
         <App />
       </BrowserRouter>
     </ErrorBoundary>

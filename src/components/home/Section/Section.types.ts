@@ -10,4 +10,6 @@ export interface SectionProps {
   onActionClick?: () => void;
 
   children: ReactNode;
+
+  className?: string;
 }

@@ -1,10 +1,3 @@
-/**
- * -----------------------------------------------------------------------------
- * Project     : thenewstime.in
- * Component   : Section
- * -----------------------------------------------------------------------------
- */
-
 import SectionTitle from "@/components/ui/SectionTitle";
 
 import type { SectionProps } from "./Section.types";
@@ -15,9 +8,10 @@ export default function Section({
   actionLabel,
   onActionClick,
   children,
+  className,
 }: SectionProps) {
   return (
-    <section className="mb-10">
+    <section className={className ?? "mb-10"}>
       <SectionTitle
         title={title}
         subtitle={subtitle}
@@ -25,7 +19,7 @@ export default function Section({
         onActionClick={onActionClick}
       />
 
-      <div className="mt-5">{children}</div>
+      <div className="mt-2">{children}</div>
     </section>
   );
 }

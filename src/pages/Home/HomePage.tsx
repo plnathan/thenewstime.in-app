@@ -16,7 +16,7 @@ import { useNews } from "@/hooks/useNews";
 
 export default function HomePage() {
   const navigate = useNavigate();
-  
+
   const {
     news,
     loading,
@@ -205,60 +205,52 @@ export default function HomePage() {
               />
 
               {/* Tamil Nadu */}
-              {tamilNaduNews.length > 0 && (
-                <HomeNewsSection
-                  title="தமிழ்நாடு"
-                  news={tamilNaduNews}
-                  actionLabel="மேலும்"
-                  onActionClick={() => {
-                    if (tamilNaduStateId != null) {
-                      navigate(
-                        `/news?scope=STATE&stateId=${tamilNaduStateId}`,
-                      );
-                    }
-                  }}
-                  layout="featured"
-                />
-              )}
+              <HomeNewsSection
+                title="தமிழ்நாடு"
+                news={tamilNaduNews}
+                actionLabel="மேலும்"
+                onActionClick={() => {
+                  if (tamilNaduStateId != null) {
+                    navigate(
+                      `/news?scope=STATE&stateId=${tamilNaduStateId}`,
+                    );
+                  }
+                }}
+                layout="featured"
+              />
 
               {/* India */}
-              {indiaNews.length > 0 && (
-                <HomeNewsSection
-                  title="இந்தியா"
-                  news={indiaNews}
-                  actionLabel="மேலும்"
-                  onActionClick={() =>
-                    navigate("/news?scope=INDIA")
-                  }
-                  layout="grid"
-                />
-              )}
+              <HomeNewsSection
+                title="இந்தியா"
+                news={indiaNews}
+                actionLabel="மேலும்"
+                onActionClick={() =>
+                  navigate("/news?scope=INDIA")
+                }
+                layout="grid"
+              />
 
               {/* World */}
-              {worldNews.length > 0 && (
-                <HomeNewsSection
-                  title="உலகம்"
-                  news={worldNews}
-                  actionLabel="மேலும்"
-                  onActionClick={() =>
-                    navigate("/news?scope=WORLD")
-                  }
-                  layout="grid"
-                />
-              )}
+              <HomeNewsSection
+                title="உலகம்"
+                news={worldNews}
+                actionLabel="மேலும்"
+                onActionClick={() =>
+                  navigate("/news?scope=WORLD")
+                }
+                layout="grid"
+              />
 
               {/* District */}
-              {districtNews.length > 0 && (
-                <HomeNewsSection
-                  title="மாவட்ட செய்திகள்"
-                  news={districtNews}
-                  actionLabel="மேலும்"
-                  onActionClick={() =>
-                    navigate("/news?scope=DISTRICT")
-                  }
-                  layout="compact"
-                />
-              )}
+              <HomeNewsSection
+                title="மாவட்ட செய்திகள்"
+                news={districtNews}
+                actionLabel="மேலும்"
+                onActionClick={() =>
+                  navigate("/news?scope=DISTRICT")
+                }
+                layout="compact"
+              />
 
             </MainContent>
           </HomeGrid>
