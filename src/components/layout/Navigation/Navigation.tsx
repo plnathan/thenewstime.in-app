@@ -17,25 +17,21 @@ export default function Navigation({
   return (
     <nav
       className={cn(
-        "border-b",
-        "border-gray-200",
-        "bg-white",
+        "w-full",
         className,
       )}
     >
       <div
         className="
-          mx-auto
-          flex
-          h-12
-          max-w-7xl
-          items-center
-          justify-start
-          overflow-x-auto
-          whitespace-nowrap
-          scrollbar-hide
-          lg:justify-center
-        "
+        flex
+        h-12
+        items-center
+        justify-start
+        overflow-x-auto
+        whitespace-nowrap
+        scrollbar-hide
+        lg:justify-center
+      "
       >
         {visibleNavigationItems.map((item) => (
           <NavigationItem

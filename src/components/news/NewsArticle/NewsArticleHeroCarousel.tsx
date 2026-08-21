@@ -94,11 +94,12 @@ export default function NewsArticleHeroCarousel({
     return (
         <section
             className="
-        relative
-        overflow-hidden
-        rounded-xl
-        bg-black
-      "
+                    relative
+                    aspect-[16/9]
+                    overflow-hidden
+                    rounded-xl
+                    bg-gray-100
+                    "
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             onTouchStart={handleTouchStart}
@@ -114,15 +115,10 @@ export default function NewsArticleHeroCarousel({
                     title
                 }
                 className="
-          h-[340px]
-          w-full
-          object-cover
-
-          sm:h-[360px]
-          md:h-[400px]
-          lg:h-[430px]
-          xl:h-[450px]
-        "
+                        h-full
+                        w-full
+                        object-contain
+                        "
                 onError={(event) => {
                     event.currentTarget.src =
                         "/assets/hero.png";
@@ -131,39 +127,39 @@ export default function NewsArticleHeroCarousel({
 
             <div
                 className="
-          pointer-events-none
-          absolute
-          inset-0
-          z-10
-          bg-gradient-to-t
-          from-black/60
-          via-black/10
-          to-transparent
-        "
+                        pointer-events-none
+                        absolute
+                        inset-0
+                        z-10
+                        bg-gradient-to-t
+                        from-black/60
+                        via-black/10
+                        to-transparent
+                        "
             />
 
             {activeMedia.caption && (
                 <div
                     className="
-            absolute
-            bottom-10
-            left-4
-            right-4
-            z-20
-            sm:left-8
-            sm:right-8
-            md:left-12
-            md:right-12
-          "
+                            absolute
+                            bottom-10
+                            left-4
+                            right-4
+                            z-20
+                            sm:left-8
+                            sm:right-8
+                            md:left-12
+                            md:right-12
+                        "
                 >
                     <p
                         className="
-              max-w-2xl
-              text-sm
-              leading-6
-              text-white
-              drop-shadow
-            "
+                            max-w-2xl
+                            text-sm
+                            leading-6
+                            text-white
+                            drop-shadow
+                            "
                     >
                         {activeMedia.caption}
                     </p>

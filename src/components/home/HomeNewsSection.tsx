@@ -1,7 +1,7 @@
 import NewsCard from "@/components/news/NewsCard";
 import FeaturedNewsCard from "@/components/news/FeaturedNewsCard";
 import SidebarNewsCard from "@/components/news/SidebarNewsCard";
-
+import Advertisement from "@/components/advertisement/Advertisement";
 import Section from "@/components/home/Section";
 
 import type { NewsView } from "@/types";
@@ -101,11 +101,7 @@ export default function HomeNewsSection({
                 </Section>
             </div>
             {/* Advertisement */}
-            <div className="flex min-h-[96px] items-center justify-center rounded-lg border border-gray-200 bg-gray-50">
-                <span className="text-xs text-gray-400">
-                    விளம்பரம்
-                </span>
-            </div>
+            <Advertisement className="min-h-[96px]" />
         </div>
     );
 }

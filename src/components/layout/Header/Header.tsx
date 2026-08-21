@@ -1,21 +1,59 @@
 import { Menu, Search } from "lucide-react";
+//import { useEffect, useState } from "react";
 
 import Logo from "./Logo";
 import Navigation from "../Navigation";
 
+function getCurrentDate() {
+  const date = new Date();
+
+  const tamilDays = [
+    "ஞாயிறு",
+    "திங்கள்",
+    "செவ்வாய்",
+    "புதன்",
+    "வியாழன்",
+    "வெள்ளி",
+    "சனி",
+  ];
+
+  const tamilMonths = [
+    "ஜனவரி",
+    "பிப்ரவரி",
+    "மார்ச்",
+    "ஏப்ரல்",
+    "மே",
+    "ஜூன்",
+    "ஜூலை",
+    "ஆகஸ்ட்",
+    "செப்டம்பர்",
+    "அக்டோபர்",
+    "நவம்பர்",
+    "டிசம்பர்",
+  ];
+
+  const dayName = tamilDays[date.getDay()];
+  const day = date.getDate();
+  const monthName = tamilMonths[date.getMonth()];
+  const year = date.getFullYear();
+
+  return `${dayName}, ${day} ${monthName} ${year}`;
+}
+
 export default function Header() {
+  const currentDate = getCurrentDate();
+
   return (
     <header
       className="
         sticky
         top-0
         z-50
-        bg-white
         border-b
+        bg-white
       "
     >
       {/* Top Header */}
-
       <div
         className="
           mx-auto
@@ -28,79 +66,153 @@ export default function Header() {
           lg:px-6
         "
       >
-        {/* Left */}
-
+        {/* Menu */}
         <button
+          type="button"
           className="
             rounded
             p-2
             hover:bg-gray-100
+            focus-visible:outline-none
+            focus-visible:ring-2
+            focus-visible:ring-green-600
+            focus-visible:ring-offset-2
           "
+          aria-label="Open menu"
         >
-          <Menu size={24} />
+          <Menu
+            size={24}
+            aria-hidden="true"
+          />
         </button>
 
-        {/* Center */}
-
+        {/* Logo */}
         <Logo />
 
-        {/* Right */}
+        {/* Empty right side to keep logo centered */}
+        <div
+          className="
+            h-10
+            w-10
+          "
+          aria-hidden="true"
+        />
+      </div>
+
+      {/* Navigation / Utility Row */}
+      <div
+        className="
+    border-t
+    border-gray-100
+  "
+      >
+        {/* Mobile Date */}
+        <div
+          className="
+      border-b
+      border-gray-100
+      px-4
+      py-1.5
+      text-left
+      text-xs
+      font-medium
+      text-gray-500
+      sm:hidden
+    "
+        >
+          {currentDate}
+        </div>
 
         <div
           className="
-            flex
-            items-center
-            gap-6
-            text-sm
-          "
+      mx-auto
+      flex
+      h-12
+      max-w-7xl
+      items-center
+      px-4
+      lg:px-6
+    "
         >
-          <span
+          {/* Desktop Date */}
+          <div
             className="
-              hidden
-              lg:block
-              text-gray-600
-            "
+        hidden
+        shrink-0
+        items-center
+        pr-4
+        text-xs
+        font-medium
+        text-gray-500
+        sm:flex
+        lg:pr-6
+      "
           >
-            {new Date().toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
+            {currentDate}
+          </div>
 
-          <button
-            className="
-              hidden
-              lg:block
-              hover:text-green-700
-            "
-          >
-            E-Paper
-          </button>
+          {/* Navigation */}
+          <div className="min-w-0 flex-1">
+            <Navigation />
+          </div>
 
-          <button
+          {/* E-Paper + Search */}
+          <div
             className="
-              hidden
-              md:block
-              hover:text-green-700
-            "
+        flex
+        shrink-0
+        items-center
+        gap-2
+        pl-3
+        sm:gap-3
+        sm:pl-4
+        lg:gap-4
+        lg:pl-6
+      "
           >
-            தமிழ்
-          </button>
+            <button
+              type="button"
+              className="
+          whitespace-nowrap
+          text-xs
+          font-medium
+          text-gray-600
+          transition-colors
+          hover:text-green-700
+          focus-visible:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-green-600
+          focus-visible:ring-offset-2
+          sm:text-sm
+        "
+            >
+              தமிழ் E-Paper
+            </button>
 
-          <button
-            className="
-              rounded-full
-              p-2
-              hover:bg-gray-100
-            "
-          >
-            <Search size={22} />
-          </button>
+            <button
+              type="button"
+              className="
+          rounded-full
+          p-2
+          text-gray-700
+          transition-colors
+          hover:bg-gray-100
+          hover:text-green-700
+          focus-visible:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-green-600
+          focus-visible:ring-offset-2
+        "
+              aria-label="Search"
+            >
+              <Search
+                size={20}
+                aria-hidden="true"
+              />
+            </button>
+          </div>
         </div>
       </div>
-
-      <Navigation />
     </header>
   );
 }

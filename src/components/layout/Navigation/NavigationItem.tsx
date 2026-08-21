@@ -25,12 +25,17 @@ export default function NavigationItem({ item }: Props) {
     location.pathname === itemPath &&
     currentParams.toString() === itemParams.toString();
 
+  const Icon = item.icon;
+
   return (
     <NavLink
       to={item.path}
       className={() =>
         cn(
           "relative",
+          "flex",
+          "items-center",
+          "gap-1.5",
           "whitespace-nowrap",
           "px-4",
           "py-3",
@@ -43,7 +48,15 @@ export default function NavigationItem({ item }: Props) {
         )
       }
     >
-      {item.label}
+      {Icon && (
+        <Icon
+          size={16}
+          strokeWidth={2}
+          aria-hidden="true"
+        />
+      )}
+
+      <span>{item.label}</span>
 
       {isActive && (
         <span
@@ -52,11 +65,9 @@ export default function NavigationItem({ item }: Props) {
             bottom-0
             left-2
             right-2
-            hidden
             h-0.5
             rounded-full
             bg-green-700
-            lg:block
           "
         />
       )}

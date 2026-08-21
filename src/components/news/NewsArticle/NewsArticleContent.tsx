@@ -1,5 +1,6 @@
 import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
 import { splitNewsContent } from "@/utils/news";
+import Advertisement from "@/components/advertisement/Advertisement";
 
 interface NewsArticleContentProps {
   content: string;
@@ -98,7 +99,7 @@ export default function NewsArticleContent({
                 className={[
                   "indent-7 sm:indent-10",
                   "font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif]",
-                  "text-[1.05rem] sm:text-[1.1rem]",
+                  "text-[1rem] sm:text-[1rem]",
                   "leading-[2] sm:leading-[2.05]",
                   "tracking-[0.005em]",
                   "text-gray-800",
@@ -119,7 +120,11 @@ export default function NewsArticleContent({
                       inlineImage.originalFileName ??
                       "News image"
                     }
-                    className="w-full object-cover"
+                    className="
+                        aspect-[16/9]
+                        w-full
+                        object-contain
+                        bg-gray-100"
                     onError={(event) => {
                       event.currentTarget.src =
                         "/assets/hero.png";
@@ -135,21 +140,8 @@ export default function NewsArticleContent({
               )}
 
               {shouldShowAdvertisement && (
-                <div
-                  className="my-10 sm:my-12"
-                  aria-label="Advertisement placeholder"
-                >
-                  <div className="flex min-h-[140px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-8 text-center">
-                    <div>
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">
-                        Advertisement
-                      </span>
-
-                      <p className="mt-2 text-sm text-gray-500">
-                        விளம்பரத்திற்கான இடம்
-                      </p>
-                    </div>
-                  </div>
+                <div className="my-10 sm:my-12">
+                  <Advertisement />
                 </div>
               )}
             </div>

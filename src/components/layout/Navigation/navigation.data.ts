@@ -1,3 +1,4 @@
+import { House } from "lucide-react";
 import type { NavigationItem } from "./Navigation.types";
 
 export const navigationItems: NavigationItem[] = [
@@ -5,6 +6,7 @@ export const navigationItems: NavigationItem[] = [
     id: 1,
     label: "முகப்பு",
     path: "/",
+    icon: House,
   },
   {
     id: 2,

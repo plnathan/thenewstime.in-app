@@ -69,15 +69,16 @@ export default function SectionTitle({
           <Typography
             variant="sectionTitle"
             className="
-              leading-none
+                whitespace-nowrap
+                leading-none
 
-              text-2xl
-              font-extrabold
+                text-xl
+                font-extrabold
 
-              text-neutral-900
+                text-neutral-900
 
-              md:text-3xl
-            "
+                md:text-2xl
+              "
           >
             {title}
           </Typography>

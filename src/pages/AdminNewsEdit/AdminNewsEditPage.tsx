@@ -15,7 +15,19 @@ import {
     Link,
     useParams,
 } from "react-router-dom";
+import {
+    getCategories,
+    getCountries,
+    getDistricts,
+    getStates,
+} from "@/api/master-data.api";
 
+import type {
+    CountryItem,
+    DistrictItem,
+    MasterDataItem,
+    StateItem,
+} from "@/api/master-data.api";
 import {
     approveNews,
     archiveNews,
@@ -119,6 +131,36 @@ export default function AdminNewsEditPage() {
     const [content, setContent] =
         useState("");
 
+    const [newsScope, setNewsScope] =
+        useState<News["newsScope"]>("STATE");
+
+    const [categoryId, setCategoryId] =
+        useState("");
+
+    const [countryId, setCountryId] =
+        useState("");
+
+    const [stateId, setStateId] =
+        useState("");
+
+    const [districtId, setDistrictId] =
+        useState("");
+
+    const [categories, setCategories] =
+        useState<MasterDataItem[]>([]);
+
+    const [countries, setCountries] =
+        useState<CountryItem[]>([]);
+
+    const [states, setStates] =
+        useState<StateItem[]>([]);
+
+    const [districts, setDistricts] =
+        useState<DistrictItem[]>([]);
+
+    const [loadingMasterData, setLoadingMasterData] =
+        useState(true);
+
     const isValidNewsId =
         Number.isInteger(newsId) &&
         newsId > 0;
@@ -148,6 +190,95 @@ export default function AdminNewsEditPage() {
     const [currentTime] = useState(() => Date.now());
 
     useEffect(() => {
+        const loadMasterData = async () => {
+            try {
+                setLoadingMasterData(true);
+
+                const [
+                    categoryResponse,
+                    countryResponse,
+                ] = await Promise.all([
+                    getCategories(),
+                    getCountries(),
+                ]);
+
+                setCategories(
+                    categoryResponse.data,
+                );
+
+                setCountries(
+                    countryResponse.data,
+                );
+            } catch (error) {
+                console.error(
+                    "Unable to load master data:",
+                    error,
+                );
+
+                setError(
+                    "Unable to load category and location data.",
+                );
+            } finally {
+                setLoadingMasterData(false);
+            }
+        };
+
+        void loadMasterData();
+    }, []);
+
+    useEffect(() => {
+        if (!countryId) {
+            return;
+        }
+
+        const loadStates = async () => {
+            try {
+                const response = await getStates(
+                    Number(countryId),
+                );
+
+                setStates(response.data);
+            } catch (error) {
+                console.error(
+                    "Unable to load states:",
+                    error,
+                );
+
+                setStates([]);
+                setError("Unable to load states.");
+            }
+        };
+
+        void loadStates();
+    }, [countryId]);
+
+    useEffect(() => {
+        if (!stateId) {
+            return;
+        }
+
+        const loadDistricts = async () => {
+            try {
+                const response = await getDistricts(
+                    Number(stateId),
+                );
+
+                setDistricts(response.data);
+            } catch (error) {
+                console.error(
+                    "Unable to load districts:",
+                    error,
+                );
+
+                setDistricts([]);
+                setError("Unable to load districts.");
+            }
+        };
+
+        void loadDistricts();
+    }, [stateId]);
+
+    useEffect(() => {
         if (
             !Number.isInteger(newsId) ||
             newsId <= 0
@@ -173,6 +304,24 @@ export default function AdminNewsEditPage() {
                     article.summary ?? "",
                 );
                 setContent(article.content);
+                setNewsScope(article.newsScope);
+                setCategoryId(
+                    String(article.categoryId),
+                );
+                setCountryId(
+                    article.countryId !== null
+                        ? String(article.countryId)
+                        : "",
+                );
+                setStateId(
+                    article.stateId !== null
+                        ? String(article.stateId)
+                        : "",
+                );
+                setDistrictId(
+                    article.districtId !== null
+                        ? String(article.districtId)
+                        : "");
                 setMedia(
                     article.media ?? [],
                 );
@@ -193,6 +342,44 @@ export default function AdminNewsEditPage() {
 
         void load();
     }, [newsId]);
+
+    const handleScopeChange = (
+        value: News["newsScope"],
+    ) => {
+        setNewsScope(value);
+
+        if (value === "WORLD") {
+            setCountryId("");
+            setStateId("");
+            setDistrictId("");
+
+            setStates([]);
+            setDistricts([]);
+
+            return;
+        }
+
+        if (
+            value === "INDIA"
+        ) {
+            setStateId("");
+            setDistrictId("");
+
+            setStates([]);
+            setDistricts([]);
+
+            return;
+        }
+
+        if (
+            value === "STATE"
+        ) {
+            setDistrictId("");
+            setDistricts([]);
+
+            return;
+        }
+    };
 
     const handleSubmit = async (
         event: FormEvent<HTMLFormElement>,
@@ -221,12 +408,60 @@ export default function AdminNewsEditPage() {
             return;
         }
 
+        if (!categoryId) {
+            setError("Category is required.");
+            setSuccess(null);
+            return;
+        }
+
+        if (
+            newsScope === "STATE" &&
+            !stateId
+        ) {
+            setError(
+                "State is required for state news.",
+            );
+            setSuccess(null);
+            return;
+        }
+
+        if (
+            newsScope === "DISTRICT" &&
+            (!stateId || !districtId)
+        ) {
+            setError(
+                "State and District are required for district news.",
+            );
+            setSuccess(null);
+            return;
+        }
+
         const payload: UpdateNewsInput = {
             title: title.trim(),
             slug: slug.trim(),
             summary:
                 summary.trim() || undefined,
             content: content.trim(),
+
+            newsScope,
+
+            categoryId: Number(categoryId),
+
+            countryId:
+                countryId
+                    ? Number(countryId)
+                    : null,
+
+            stateId:
+                stateId
+                    ? Number(stateId)
+                    : null,
+
+            districtId:
+                districtId
+                    ? Number(districtId)
+                    : null,
+
             updatedBy: ADMIN_USER_ID,
         };
 
@@ -557,6 +792,221 @@ export default function AdminNewsEditPage() {
                                 />
                             </Field>
 
+                        </div>
+                    </Surface>
+
+                    {/* ----------------------------------------
+                    * News Classification
+                    * ---------------------------------------- */}
+                    <Surface
+                        padding="lg"
+                        border="all"
+                        radius="lg"
+                    >
+                        <Typography
+                            as="h2"
+                            variant="sectionTitle"
+                            className="mb-5 text-xl"
+                        >
+                            News Classification
+                        </Typography>
+
+                        <div className="grid gap-5 md:grid-cols-2">
+
+                            {/* News Scope */}
+                            <Field
+                                label="News Scope"
+                                required
+                            >
+                                <select
+                                    value={newsScope}
+                                    onChange={(event) =>
+                                        handleScopeChange(
+                                            event.target.value as News["newsScope"],
+                                        )
+                                    }
+                                    disabled={
+                                        saving ||
+                                        workflowLoading
+                                    }
+                                    className={inputClass}
+                                >
+                                    <option value="STATE">
+                                        State
+                                    </option>
+
+                                    <option value="DISTRICT">
+                                        District
+                                    </option>
+
+                                    <option value="INDIA">
+                                        India
+                                    </option>
+
+                                    <option value="WORLD">
+                                        World
+                                    </option>
+                                </select>
+                            </Field>
+
+                            {/* Category */}
+                            <Field
+                                label="Category"
+                                required
+                            >
+                                <select
+                                    value={categoryId}
+                                    onChange={(event) =>
+                                        setCategoryId(
+                                            event.target.value,
+                                        )
+                                    }
+                                    disabled={
+                                        loadingMasterData ||
+                                        saving ||
+                                        workflowLoading
+                                    }
+                                    className={inputClass}
+                                >
+                                    <option value="">
+                                        Select category
+                                    </option>
+
+                                    {categories.map(
+                                        (category) => (
+                                            <option
+                                                key={category.id}
+                                                value={category.id}
+                                            >
+                                                {category.displayName}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                            </Field>
+
+                            {/* Country */}
+                            {(newsScope === "INDIA" ||
+                                newsScope === "STATE" ||
+                                newsScope === "DISTRICT") && (
+                                    <Field label="Country">
+                                        <select
+                                            value={countryId}
+                                            onChange={(event) => {
+                                                const value = event.target.value;
+                                                setCountryId(value);
+
+                                                setStateId("");
+                                                setDistrictId("");
+
+                                                setStates([]);
+                                                setDistricts([]);
+                                            }}
+                                            disabled={
+                                                loadingMasterData ||
+                                                saving ||
+                                                workflowLoading
+                                            }
+                                            className={inputClass}
+                                        >
+                                            <option value="">
+                                                Select country
+                                            </option>
+
+                                            {countries.map(
+                                                (country) => (
+                                                    <option
+                                                        key={country.id}
+                                                        value={country.id}
+                                                    >
+                                                        {
+                                                            country.displayName
+                                                        }
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </Field>
+                                )}
+
+                            {/* State */}
+                            {(newsScope === "STATE" ||
+                                newsScope === "DISTRICT") && (
+                                    <Field label="State">
+                                        <select
+                                            value={stateId}
+                                            onChange={(event) => {
+                                                const value = event.target.value;
+                                                setStateId(value);
+
+                                                setDistrictId("");
+                                                setDistricts([]);
+                                            }}
+                                            disabled={
+                                                !countryId ||
+                                                states.length === 0 ||
+                                                saving ||
+                                                workflowLoading
+                                            }
+                                            className={inputClass}
+                                        >
+                                            <option value="">
+                                                Select state
+                                            </option>
+
+                                            {states.map(
+                                                (state) => (
+                                                    <option
+                                                        key={state.id}
+                                                        value={state.id}
+                                                    >
+                                                        {
+                                                            state.displayName
+                                                        }
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </Field>
+                                )}
+
+                            {/* District */}
+                            {newsScope === "DISTRICT" && (
+                                <Field label="District">
+                                    <select
+                                        value={districtId}
+                                        onChange={(event) =>
+                                            setDistrictId(
+                                                event.target.value,
+                                            )
+                                        }
+                                        disabled={
+                                            !stateId ||
+                                            districts.length === 0 ||
+                                            saving ||
+                                            workflowLoading
+                                        }
+                                        className={inputClass}
+                                    >
+                                        <option value="">
+                                            Select district
+                                        </option>
+
+                                        {districts.map(
+                                            (district) => (
+                                                <option
+                                                    key={district.id}
+                                                    value={district.id}
+                                                >
+                                                    {
+                                                        district.displayName
+                                                    }
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </Field>
+                            )}
                         </div>
                     </Surface>
 
@@ -923,16 +1373,32 @@ const textareaClass =
 
 function Field({
     label,
+    required = false,
+    hint,
     children,
 }: {
     label: string;
+    required?: boolean;
+    hint?: string;
     children: ReactNode;
 }) {
     return (
         <div>
             <label className="mb-1.5 block text-sm font-semibold text-gray-800">
                 {label}
+
+                {required && (
+                    <span className="ml-1 text-red-500">
+                        *
+                    </span>
+                )}
             </label>
+
+            {hint && (
+                <p className="mb-2 text-xs text-gray-500">
+                    {hint}
+                </p>
+            )}
 
             {children}
         </div>
