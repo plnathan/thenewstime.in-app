@@ -44,8 +44,9 @@ export default function Logo() {
                 left-0.5
                 text-[6px]
                 font-bold
+                font-black
                 tracking-[1px]
-                text-gray-700
+                text-green-900
                 sm:-top-1
                 sm:text-[8px]
                 sm:tracking-[1.3px]
@@ -105,7 +106,7 @@ export default function Logo() {
               text-[12px]
               text-gray-500
               sm:mt-1
-              sm:text-[8px]
+              sm:text-[7px]
               md:text-[9px]
             "
         >

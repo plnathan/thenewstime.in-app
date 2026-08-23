@@ -1,5 +1,4 @@
 import { Menu, Search } from "lucide-react";
-//import { useEffect, useState } from "react";
 
 import Logo from "./Logo";
 import Navigation from "../Navigation";
@@ -102,51 +101,112 @@ export default function Header() {
       {/* Navigation / Utility Row */}
       <div
         className="
-    border-t
-    border-gray-100
-  "
+          border-t
+          border-gray-100
+        "
       >
-        {/* Mobile Date */}
+        {/* Mobile Date + E-Paper + Search */}
         <div
           className="
-      border-b
-      border-gray-100
-      px-4
-      py-1.5
-      text-left
-      text-xs
-      font-medium
-      text-gray-500
-      sm:hidden
-    "
+            flex
+            items-center
+            justify-between
+            border-b
+            border-gray-100
+            px-4
+            py-1.5
+            sm:hidden
+          "
         >
-          {currentDate}
+          {/* Mobile Date */}
+          <div
+            className="
+              min-w-0
+              truncate
+              text-xs
+              font-medium
+              text-gray-500
+            "
+          >
+            {currentDate}
+          </div>
+
+          {/* Mobile E-Paper + Search */}
+          <div
+            className="
+              flex
+              shrink-0
+              items-center
+              gap-2
+              pl-3
+            "
+          >
+            <button
+              type="button"
+              className="
+                whitespace-nowrap
+                text-xs
+                font-medium
+                text-gray-600
+                transition-colors
+                hover:text-green-700
+                focus-visible:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-green-600
+                focus-visible:ring-offset-2
+              "
+            >
+              தமிழ் E-Paper
+            </button>
+
+            <button
+              type="button"
+              className="
+                rounded-full
+                p-1.5
+                text-gray-700
+                transition-colors
+                hover:bg-gray-100
+                hover:text-green-700
+                focus-visible:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-green-600
+                focus-visible:ring-offset-2
+              "
+              aria-label="Search"
+            >
+              <Search
+                size={18}
+                aria-hidden="true"
+              />
+            </button>
+          </div>
         </div>
 
         <div
           className="
-      mx-auto
-      flex
-      h-12
-      max-w-7xl
-      items-center
-      px-4
-      lg:px-6
-    "
+            mx-auto
+            flex
+            h-12
+            max-w-7xl
+            items-center
+            px-4
+            lg:px-6
+          "
         >
           {/* Desktop Date */}
           <div
             className="
-        hidden
-        shrink-0
-        items-center
-        pr-4
-        text-xs
-        font-medium
-        text-gray-500
-        sm:flex
-        lg:pr-6
-      "
+              hidden
+              shrink-0
+              items-center
+              pr-4
+              text-xs
+              font-medium
+              text-gray-500
+              sm:flex
+              lg:pr-6
+            "
           >
             {currentDate}
           </div>
@@ -156,35 +216,36 @@ export default function Header() {
             <Navigation />
           </div>
 
-          {/* E-Paper + Search */}
+          {/* Desktop E-Paper + Search */}
           <div
             className="
-        flex
-        shrink-0
-        items-center
-        gap-2
-        pl-3
-        sm:gap-3
-        sm:pl-4
-        lg:gap-4
-        lg:pl-6
-      "
+              hidden
+              shrink-0
+              items-center
+              gap-2
+              pl-3
+              sm:flex
+              sm:gap-3
+              sm:pl-4
+              lg:gap-4
+              lg:pl-6
+            "
           >
             <button
               type="button"
               className="
-          whitespace-nowrap
-          text-xs
-          font-medium
-          text-gray-600
-          transition-colors
-          hover:text-green-700
-          focus-visible:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-green-600
-          focus-visible:ring-offset-2
-          sm:text-sm
-        "
+                whitespace-nowrap
+                text-xs
+                font-medium
+                text-gray-600
+                transition-colors
+                hover:text-green-700
+                focus-visible:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-green-600
+                focus-visible:ring-offset-2
+                sm:text-sm
+              "
             >
               தமிழ் E-Paper
             </button>
@@ -192,17 +253,17 @@ export default function Header() {
             <button
               type="button"
               className="
-          rounded-full
-          p-2
-          text-gray-700
-          transition-colors
-          hover:bg-gray-100
-          hover:text-green-700
-          focus-visible:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-green-600
-          focus-visible:ring-offset-2
-        "
+                rounded-full
+                p-2
+                text-gray-700
+                transition-colors
+                hover:bg-gray-100
+                hover:text-green-700
+                focus-visible:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-green-600
+                focus-visible:ring-offset-2
+              "
               aria-label="Search"
             >
               <Search
