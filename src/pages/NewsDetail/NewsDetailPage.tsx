@@ -2,8 +2,10 @@ import { Link, useParams } from "react-router-dom";
 
 import AppContainer from "@/components/container/AppContainer";
 import NewsArticle from "@/components/news/NewsArticle";
-//import { ROUTES } from "@/constants/routes";
+import PageLoader from "@/components/ui/PageLoader/PageLoader";
+
 import { useNewsDetail } from "@/hooks/useNewsDetail";
+
 import MainLayout from "@/layouts/MainLayout";
 
 function decodeSlug(value?: string) {
@@ -19,26 +21,29 @@ function decodeSlug(value?: string) {
 export default function NewsDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const decodedSlug = decodeSlug(slug);
-  const { news, loading, error, refresh } = useNewsDetail(decodedSlug);
+
+  const {
+    news,
+    loading,
+    error,
+    refresh,
+  } = useNewsDetail(decodedSlug);
 
   return (
     <MainLayout>
       <AppContainer>
         <main className="py-6 sm:py-10 lg:py-12">
+
+          {/* Loading */}
           {loading && (
-            <div className="mx-auto flex min-h-[60vh] max-w-4xl items-center justify-center">
-              <div className="text-center" role="status" aria-live="polite">
-                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-gray-200 border-t-green-600" />
-                <p className="mt-4 text-sm text-gray-500">
-                  செய்தி ஏற்றப்படுகிறது...
-                </p>
-              </div>
-            </div>
+            <PageLoader message="செய்தி ஏற்றப்படுகிறது..." />
           )}
 
+          {/* Error / Not Found */}
           {!loading && (error || !news) && (
             <div className="flex min-h-[60vh] items-center justify-center py-12">
               <div className="max-w-md text-center">
+
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-2xl">
                   📰
                 </div>
@@ -52,6 +57,7 @@ export default function NewsDetailPage() {
                 </p>
 
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
+
                   <button
                     type="button"
                     onClick={() => void refresh()}
@@ -61,17 +67,22 @@ export default function NewsDetailPage() {
                   </button>
 
                   <Link
-                    to={"/"}
+                    to="/"
                     className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-green-600 hover:text-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
                   >
                     முகப்புப் பக்கம்
                   </Link>
+
                 </div>
               </div>
             </div>
           )}
 
-          {!loading && news && <NewsArticle news={news} />}
+          {/* News Article */}
+          {!loading && news && (
+            <NewsArticle news={news} />
+          )}
+
         </main>
       </AppContainer>
     </MainLayout>

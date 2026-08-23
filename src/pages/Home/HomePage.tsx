@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+
 import AppContainer from "@/components/container/AppContainer";
 import MainContent from "@/components/container/MainContent";
 
@@ -9,6 +10,8 @@ import Section from "@/components/home/Section";
 import Sidebar from "@/components/home/Sidebar";
 
 import NewsCard from "@/components/news/NewsCard";
+
+import PageLoader from "@/components/ui/PageLoader/PageLoader";
 
 import MainLayout from "@/layouts/MainLayout";
 
@@ -117,11 +120,7 @@ export default function HomePage() {
     return (
       <MainLayout>
         <AppContainer>
-          <div className="flex min-h-[300px] items-center justify-center">
-            <p className="text-sm text-gray-500">
-              Loading news...
-            </p>
-          </div>
+          <PageLoader message="செய்திகள் ஏற்றப்படுகின்றன..." />
         </AppContainer>
       </MainLayout>
     );
