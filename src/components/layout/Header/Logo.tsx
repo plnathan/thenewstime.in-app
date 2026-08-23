@@ -41,7 +41,7 @@ export default function Logo() {
               className="
                 absolute
                 -top-0.5
-                left-0
+                left-0.5
                 text-[6px]
                 font-bold
                 tracking-[1px]

@@ -1,22 +1,10 @@
 import type { FormEvent, ReactNode } from "react";
 import { ArrowLeft, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
-import { createNews } from "@/api/news.api";
 import { isAxiosError } from "axios";
 
-import Button from "@/components/ui/Button";
-import Surface from "@/components/ui/Surface";
-import Typography from "@/components/ui/Typography";
-
-import type { CreateNewsInput } from "@/types/news.types";
-
-import { normalizeSlug } from "@/utils/news/slug";
-
-import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
-import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
-
+import { createNews } from "@/api/news.api";
 import {
     getCategories,
     getCountries,
@@ -30,23 +18,91 @@ import type {
     MasterDataItem,
     StateItem,
 } from "@/api/master-data.api";
+
+import Button from "@/components/ui/Button";
+import Surface from "@/components/ui/Surface";
+import Typography from "@/components/ui/Typography";
+
+import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
+import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
+
 import MainLayout from "@/layouts/MainLayout";
+
+import type { CreateNewsInput } from "@/types/news.types";
+
+import { normalizeSlug } from "@/utils/news/slug";
 
 const ADMIN_USER_ID = 1;
 
+type NewsScopeValue =
+    | ""
+    | CreateNewsInput["newsScope"];
+
 interface FormState {
     title: string;
-    slug: string;
     summary: string;
     content: string;
-    newsScope: CreateNewsInput["newsScope"];
+    newsScope: NewsScopeValue;
     countryId: string;
     stateId: string;
     districtId: string;
     categoryId: string;
+    slug: string;
 }
 
-const getApiErrorMessage = (error: unknown): string | null => {
+const INITIAL_FORM: FormState = {
+    title: "",
+    summary: "",
+    content: "",
+    newsScope: "",
+    countryId: "",
+    stateId: "",
+    districtId: "",
+    categoryId: "",
+    slug: "",
+};
+
+type MasterDataWithOptionalCode = {
+    id: number;
+    displayName: string;
+    code?: string | null;
+    urlName?: string | null;
+};
+
+// const getMasterDataCode = (
+//     item:
+//         | CountryItem
+//         | StateItem
+//         | DistrictItem
+//         | MasterDataItem,
+// ): string => {
+//     const value =
+//         item as MasterDataWithOptionalCode;
+
+//     return value.code?.trim() ?? "";
+// };
+
+const getMasterDataSlugName = (
+    item:
+        | CountryItem
+        | StateItem
+        | DistrictItem
+        | MasterDataItem
+        | undefined,
+): string => {
+    if (!item) {
+        return "";
+    }
+
+    const value =
+        item as MasterDataWithOptionalCode;
+
+    return value.displayName.trim();
+};
+
+const getApiErrorMessage = (
+    error: unknown,
+): string | null => {
     if (!isAxiosError(error)) {
         return null;
     }
@@ -54,40 +110,33 @@ const getApiErrorMessage = (error: unknown): string | null => {
     const data = error.response?.data as
         | {
             message?: string;
-            details?: Array<{ message?: string }>;
+            details?: Array<{
+                message?: string;
+            }>;
         }
         | undefined;
 
-    const detailMessage = data?.details
-        ?.map((detail) => detail.message?.trim())
-        .filter(Boolean)
-        .join(" ");
+    const detailMessage =
+        data?.details
+            ?.map((detail) =>
+                detail.message?.trim(),
+            )
+            .filter(Boolean)
+            .join(" ");
 
-    return detailMessage || data?.message?.trim() || null;
-};
-
-const INITIAL_FORM: FormState = {
-    title: "",
-    slug: "",
-    summary: "",
-    content: "",
-    newsScope: "STATE",
-    countryId: "",
-    stateId: "",
-    districtId: "",
-    categoryId: "",
+    return (
+        detailMessage ||
+        data?.message?.trim() ||
+        null
+    );
 };
 
 export default function AdminNewsCreatePage() {
-    //const navigate = useNavigate();
-
     const [form, setForm] =
         useState<FormState>(INITIAL_FORM);
 
-    const [slugEdited, setSlugEdited] =
+    const [saving, setSaving] =
         useState(false);
-
-    const [saving, setSaving] = useState(false);
 
     const [error, setError] =
         useState<string | null>(null);
@@ -100,6 +149,9 @@ export default function AdminNewsCreatePage() {
 
     const [media, setMedia] =
         useState<NewsMedia[]>([]);
+
+    const [slugManuallyEdited, setSlugManuallyEdited] =
+        useState(false);
 
     const [categories, setCategories] =
         useState<MasterDataItem[]>([]);
@@ -116,98 +168,296 @@ export default function AdminNewsCreatePage() {
     const [loadingMasterData, setLoadingMasterData] =
         useState(true);
 
-    //const [loading, setLoading] = useState(true);
+    const india = useMemo(
+        () => countries.find((country) => {
+            const value = country as MasterDataWithOptionalCode;
+            return value.code?.trim().toUpperCase() === "IN" || value.displayName.trim().toLowerCase() === "india";
+        }),
+        [countries],
+    );
 
+    const tamilNadu = useMemo(
+        () => states.find((state) => {
+            const value = state as MasterDataWithOptionalCode;
+            return value.code?.trim().toUpperCase() === "TN" || value.displayName.trim().toLowerCase() === "tamil nadu";
+        }),
+        [states],
+    );
+
+    /*
+     * For INDIA / STATE / DISTRICT the classification always uses India.
+     * DISTRICT always uses Tamil Nadu. These are derived values rather than
+     * effect-driven state synchronization, which avoids cascading renders.
+     */
+    const selectedCountryId =
+        form.newsScope === "WORLD"
+            ? form.countryId
+            : india
+                ? String(india.id)
+                : form.countryId;
+
+    const selectedStateId =
+        form.newsScope === "DISTRICT"
+            ? tamilNadu
+                ? String(tamilNadu.id)
+                : form.stateId
+            : form.stateId;
+
+
+    /*
+     * -------------------------------------------------------------------------
+     * Load categories and countries.
+     * -------------------------------------------------------------------------
+     */
     useEffect(() => {
-        const loadMasterData =
-            async () => {
-                try {
-                    setLoadingMasterData(true);
-                    //setLoading(true);
-                    const [
-                        categoryResponse,
-                        countryResponse,
-                    ] = await Promise.all([
-                        getCategories(),
-                        getCountries(),
-                    ]);
+        let cancelled = false;
 
-                    setCategories(
-                        categoryResponse.data,
-                    );
+        const loadMasterData = async () => {
+            try {
+                const [
+                    categoryResponse,
+                    countryResponse,
+                ] = await Promise.all([
+                    getCategories(),
+                    getCountries(),
+                ]);
 
-                    setCountries(
-                        countryResponse.data,
-                    );
-                } catch (error) {
-                    console.error(
-                        "Unable to load master data:",
-                        error,
-                    );
-
-                    setError(
-                        "Unable to load category and location data.",
-                    );
-                } finally {
-                    setLoadingMasterData(false);
-                    //setLoading(false);
+                if (cancelled) {
+                    return;
                 }
-            };
+
+                setCategories(
+                    categoryResponse.data,
+                );
+
+                setCountries(
+                    countryResponse.data,
+                );
+            } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
+                console.error(
+                    "Unable to load master data:",
+                    err,
+                );
+
+                setError(
+                    "Unable to load category and location data.",
+                );
+            } finally {
+                if (!cancelled) {
+                    setLoadingMasterData(false);
+                }
+            }
+        };
 
         void loadMasterData();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
+    /*
+     * -------------------------------------------------------------------------
+     * Load states when STATE or DISTRICT scope is selected.
+     *
+     * The selected country determines which states are loaded.
+     * -------------------------------------------------------------------------
+     */
     useEffect(() => {
-        if (!form.countryId) {
+        if (
+            !selectedCountryId ||
+            (
+                form.newsScope !== "STATE" &&
+                form.newsScope !== "DISTRICT"
+            )
+        ) {
             return;
         }
 
+        let cancelled = false;
+
         const loadStates = async () => {
             try {
-                const response = await getStates(
-                    Number(form.countryId),
-                );
+                const response =
+                    await getStates(
+                        Number(
+                            selectedCountryId,
+                        ),
+                    );
 
-                setStates(response.data);
-            } catch (error) {
+                if (cancelled) {
+                    return;
+                }
+
+                setStates(
+                    response.data,
+                );
+            } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
                 console.error(
                     "Unable to load states:",
-                    error,
+                    err,
                 );
 
                 setStates([]);
-                setError("Unable to load states.");
+
+                setError(
+                    "Unable to load states.",
+                );
             }
         };
 
         void loadStates();
-    }, [form.countryId]);
 
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        form.newsScope,
+        selectedCountryId,
+    ]);
+
+    /*
+     * -------------------------------------------------------------------------
+     * Load districts when DISTRICT scope and a state are selected.
+     * -------------------------------------------------------------------------
+     */
     useEffect(() => {
-        if (!form.stateId) {
+        if (
+            form.newsScope !== "DISTRICT" ||
+            !selectedStateId
+        ) {
             return;
         }
 
+        let cancelled = false;
+
         const loadDistricts = async () => {
             try {
-                const response = await getDistricts(
-                    Number(form.stateId),
-                );
+                const response =
+                    await getDistricts(
+                        Number(
+                            selectedStateId,
+                        ),
+                    );
 
-                setDistricts(response.data);
-            } catch (error) {
+                if (cancelled) {
+                    return;
+                }
+
+                setDistricts(
+                    response.data,
+                );
+            } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
                 console.error(
                     "Unable to load districts:",
-                    error,
+                    err,
                 );
 
                 setDistricts([]);
-                setError("Unable to load districts.");
+
+                setError(
+                    "Unable to load districts.",
+                );
             }
         };
 
         void loadDistricts();
-    }, [form.stateId]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        form.newsScope,
+        selectedStateId,
+    ]);
+
+    /*
+     * -------------------------------------------------------------------------
+     * Generate slug prefix from SELECTED dropdown values.
+     *
+     * WORLD:
+     *   category-country
+     *
+     * INDIA:
+     *   category-country
+     *
+     * STATE:
+     *   category-country-state
+     *
+     * DISTRICT:
+     *   category-country-state-district
+     * -------------------------------------------------------------------------
+     */
+    const generatedSlugPrefix =
+        useMemo(() => {
+            if (!form.newsScope) return "";
+
+            const category = categories.find(
+                (item) => String(item.id) === form.categoryId,
+            );
+            if (!category) return "";
+
+            const categoryName = getMasterDataSlugName(category);
+            const country = countries.find(
+                (item) => String(item.id) === selectedCountryId,
+            );
+            if (!country) return "";
+
+            const countryName = getMasterDataSlugName(country);
+
+            if (form.newsScope === "WORLD" || form.newsScope === "INDIA") {
+                return normalizeSlug(`${categoryName}-${countryName}`);
+            }
+
+            const state = states.find(
+                (item) => String(item.id) === selectedStateId,
+            );
+            if (!state) return "";
+
+            const stateName = getMasterDataSlugName(state);
+
+            if (form.newsScope === "STATE") {
+                return normalizeSlug(`${categoryName}-${countryName}-${stateName}`);
+            }
+
+            const district = districts.find(
+                (item) => String(item.id) === form.districtId,
+            );
+            if (!district) return "";
+
+            return normalizeSlug(
+                `${categoryName}-${countryName}-${stateName}-${getMasterDataSlugName(district)}`,
+            );
+        }, [
+            categories, countries, states, districts,
+            form.newsScope, form.categoryId, selectedCountryId,
+            selectedStateId, form.districtId,
+        ]);
+
+    const generatedSlug = useMemo(() => {
+        if (!generatedSlugPrefix) return "";
+        const titleSlug = normalizeSlug(form.title);
+        return titleSlug
+            ? `${generatedSlugPrefix}-${titleSlug}`
+            : `${generatedSlugPrefix}-`;
+    }, [generatedSlugPrefix, form.title]);
+
+    const effectiveSlug =
+        slugManuallyEdited
+            ? form.slug
+            : generatedSlug;
 
     const updateField = <
         K extends keyof FormState,
@@ -221,89 +471,125 @@ export default function AdminNewsCreatePage() {
         }));
     };
 
-    const handleTitleChange = (
-        value: string,
-    ) => {
-        setForm((current) => ({
-            ...current,
-            title: value,
-            slug: slugEdited
-                ? current.slug
-                : normalizeSlug(value),
-        }));
-    };
-
     const handleScopeChange = (
-        value: FormState["newsScope"],
+        value: NewsScopeValue,
     ) => {
+        setSlugManuallyEdited(false);
         setForm((current) => ({
             ...current,
             newsScope: value,
-
-            countryId:
-                value === "WORLD"
-                    ? ""
-                    : current.countryId,
-
-            stateId:
-                value === "STATE" ||
-                    value === "DISTRICT"
-                    ? current.stateId
-                    : "",
-
-            districtId:
-                value === "DISTRICT"
-                    ? current.districtId
-                    : "",
+            countryId: value === "WORLD" ? "" : india ? String(india.id) : "",
+            stateId: value === "DISTRICT" && tamilNadu ? String(tamilNadu.id) : "",
+            districtId: "",
         }));
 
-        if (
-            value !== "DISTRICT"
-        ) {
-            setDistricts([]);
-        }
+        setStates([]);
+        setDistricts([]);
+    };
 
-        if (
-            value !== "STATE" &&
-            value !== "DISTRICT"
-        ) {
-            setStates([]);
-        }
+    /*
+     * -------------------------------------------------------------------------
+     * Country change.
+     *
+     * Country is selectable for WORLD, INDIA, STATE and DISTRICT.
+     *
+     * Changing country invalidates state and district selections.
+     * -------------------------------------------------------------------------
+     */
+    const handleCountryChange = (
+        value: string,
+    ) => {
+        setSlugManuallyEdited(false);
+        setForm((current) => ({
+            ...current,
+            countryId: value,
+            stateId: "",
+            districtId: "",
+        }));
+
+        setStates([]);
+        setDistricts([]);
+    };
+
+    /*
+     * -------------------------------------------------------------------------
+     * State change.
+     *
+     * Changing state invalidates the district selection.
+     * -------------------------------------------------------------------------
+     */
+    const handleStateChange = (
+        value: string,
+    ) => {
+        setSlugManuallyEdited(false);
+        setForm((current) => ({
+            ...current,
+            stateId: value,
+            districtId: "",
+        }));
+
+        setDistricts([]);
     };
 
     const validate = (): string | null => {
+        if (!form.newsScope) {
+            return "News scope is required.";
+        }
+
+        if (!form.categoryId) {
+            return "Category is required.";
+        }
+
         if (!form.title.trim()) {
             return "Title is required.";
         }
 
-        if (!form.slug.trim()) {
-            return "Slug is required.";
+        if (!effectiveSlug.trim()) {
+            return "Slug could not be generated. Please check the classification selections.";
         }
 
-        if (!/^[a-z0-9-]+$/.test(form.slug)) {
-            return "Slug can contain only lowercase letters, numbers and hyphens.";
+        if (
+            !/^[a-z0-9-]+$/.test(
+                effectiveSlug,
+            )
+        ) {
+            return "Generated slug contains invalid characters.";
         }
 
         if (!form.content.trim()) {
             return "News content is required.";
         }
 
-        if (!form.categoryId) {
-            return "Category ID is required.";
+        /*
+         * Every actual scope requires a country.
+         */
+        if (!selectedCountryId) {
+            return "Country is required.";
         }
 
+        /*
+         * STATE requires state.
+         */
         if (
-            form.newsScope === "STATE" &&
-            !form.stateId
+            form.newsScope ===
+            "STATE" &&
+            !selectedStateId
         ) {
-            return "State ID is required for state news.";
+            return "State is required for state news.";
         }
 
+        /*
+         * DISTRICT requires state + district.
+         */
         if (
-            form.newsScope === "DISTRICT" &&
-            (!form.stateId || !form.districtId)
+            form.newsScope ===
+            "DISTRICT" &&
+            (
+                !selectedStateId ||
+                !form.districtId
+            )
         ) {
-            return "State ID and District ID are required for district news.";
+            return "State and district are required for district news.";
         }
 
         return null;
@@ -314,55 +600,88 @@ export default function AdminNewsCreatePage() {
     ) => {
         event.preventDefault();
 
-        if (createdNewsId !== null) {
+        if (
+            createdNewsId !== null
+        ) {
             return;
         }
 
         setError(null);
         setSuccess(null);
 
-        const validationError = validate();
+        const validationError =
+            validate();
 
         if (validationError) {
-            setError(validationError);
+            setError(
+                validationError,
+            );
+            return;
+        }
+
+        /*
+         * At this point newsScope is guaranteed to be non-empty
+         * by validation.
+         */
+        if (!form.newsScope) {
             return;
         }
 
         const payload: CreateNewsInput = {
-            title: form.title.trim(),
-            slug: form.slug.trim(),
+            title:
+                form.title.trim(),
+
+            slug:
+                effectiveSlug.trim(),
+
             summary:
-                form.summary.trim() || undefined,
-            content: form.content.trim(),
-            newsScope: form.newsScope,
-            categoryId: Number(form.categoryId),
-            draftedBy: ADMIN_USER_ID,
-            createdBy: ADMIN_USER_ID,
+                form.summary.trim() ||
+                undefined,
+
+            content:
+                form.content.trim(),
+
+            newsScope:
+                form.newsScope,
+
+            categoryId:
+                Number(
+                    form.categoryId,
+                ),
+
+            draftedBy:
+                ADMIN_USER_ID,
+
+            createdBy:
+                ADMIN_USER_ID,
+
+            countryId:
+                Number(
+                    selectedCountryId,
+                ),
         };
 
-        if (form.countryId) {
-            payload.countryId = Number(
-                form.countryId,
-            );
-        }
-
-        if (form.stateId) {
-            payload.stateId = Number(
-                form.stateId,
-            );
+        if (selectedStateId) {
+            payload.stateId =
+                Number(
+                    selectedStateId,
+                );
         }
 
         if (form.districtId) {
-            payload.districtId = Number(
-                form.districtId,
-            );
+            payload.districtId =
+                Number(
+                    form.districtId,
+                );
         }
 
         try {
             setSaving(true);
 
             const response =
-                await createNews(payload);
+                await createNews(
+                    payload,
+                );
 
             setCreatedNewsId(
                 response.data.id,
@@ -375,18 +694,21 @@ export default function AdminNewsCreatePage() {
         } catch (err) {
             console.error(err);
 
-            const apiMessage = getApiErrorMessage(err);
+            const apiMessage =
+                getApiErrorMessage(
+                    err,
+                );
 
             setError(
                 apiMessage
-                    ? `Unable to create the news article. Please check the entered information. ${apiMessage}`
+                    ? `Unable to create the news article. ${apiMessage}`
                     : "Unable to create the news article. Please check the entered information.",
             );
         } finally {
             setSaving(false);
         }
     };
-    // if (loading) {
+
     return (
         <MainLayout>
             <main className="min-h-screen bg-gray-50">
@@ -396,7 +718,9 @@ export default function AdminNewsCreatePage() {
                             to="/admin/news"
                             className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-green-700"
                         >
-                            <ArrowLeft size={16} />
+                            <ArrowLeft
+                                size={16}
+                            />
                             Back to News Management
                         </Link>
                     </div>
@@ -414,7 +738,7 @@ export default function AdminNewsCreatePage() {
                             variant="body"
                             className="mt-1 text-gray-500"
                         >
-                            Create a new article as a draft.
+                            Select the news classification first, then enter the article details.
                         </Typography>
                     </div>
 
@@ -431,100 +755,14 @@ export default function AdminNewsCreatePage() {
                     )}
 
                     <form
-                        onSubmit={handleSubmit}
+                        onSubmit={
+                            handleSubmit
+                        }
                         className="space-y-6"
                     >
-                        <Surface
-                            padding="lg"
-                            border="all"
-                            radius="lg"
-                        >
-                            <div className="space-y-5">
-                                <Field
-                                    label="Title"
-                                    required
-                                >
-                                    <input
-                                        value={form.title}
-                                        onChange={(event) =>
-                                            handleTitleChange(
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="Enter news headline"
-                                        className={inputClass}
-                                    />
-                                </Field>
-
-                                <Field
-                                    label="Slug"
-                                    required
-                                    hint="English lowercase URL name."
-                                >
-                                    <input
-                                        value={form.slug}
-                                        onChange={(event) => {
-                                            setSlugEdited(true);
-
-                                            updateField(
-                                                "slug",
-                                                normalizeSlug(
-                                                    event.target.value,
-                                                ),
-                                            );
-                                        }}
-                                        placeholder="news-article-slug"
-                                        className={inputClass}
-                                    />
-                                </Field>
-
-                                <Field label="Summary">
-                                    <textarea
-                                        value={form.summary}
-                                        onChange={(event) =>
-                                            updateField(
-                                                "summary",
-                                                event.target.value,
-                                            )
-                                        }
-                                        rows={4}
-                                        placeholder="Short summary of the news..."
-                                        className={textareaClass}
-                                    />
-                                </Field>
-
-                                <Field
-                                    label="Content"
-                                    required
-                                    hint="Separate paragraphs with a blank line. The public article page will render them as separate paragraphs."
-                                >
-                                    <textarea
-                                        value={form.content}
-                                        onChange={(event) =>
-                                            updateField(
-                                                "content",
-                                                event.target.value,
-                                            )
-                                        }
-                                        rows={16}
-                                        placeholder={
-                                            "First paragraph...\n\nSecond paragraph...\n\nThird paragraph..."
-                                        }
-                                        className={`${textareaClass} leading-7`}
-                                    />
-                                </Field>
-                            </div>
-                        </Surface>
-
-                        {createdNewsId && (
-                            <NewsMediaUploader
-                                newsId={createdNewsId}
-                                media={media}
-                                onMediaChange={setMedia}
-                                disabled={saving}
-                            />
-                        )}
-
+                        {/* -----------------------------------------------------------------
+                         * NEWS CLASSIFICATION
+                         * ----------------------------------------------------------------- */}
                         <Surface
                             padding="lg"
                             border="all"
@@ -539,19 +777,43 @@ export default function AdminNewsCreatePage() {
                             </Typography>
 
                             <div className="grid gap-5 md:grid-cols-2">
+                                {/* News Scope */}
                                 <Field
                                     label="News Scope"
                                     required
                                 >
                                     <select
-                                        value={form.newsScope}
-                                        onChange={(event) =>
+                                        value={
+                                            form.newsScope
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
                                             handleScopeChange(
-                                                event.target.value as FormState["newsScope"],
+                                                event
+                                                    .target
+                                                    .value as NewsScopeValue,
                                             )
                                         }
-                                        className={inputClass}
+                                        disabled={
+                                            saving
+                                        }
+                                        className={
+                                            inputClass
+                                        }
                                     >
+                                        <option value="">
+                                            Select News Scope
+                                        </option>
+
+                                        <option value="WORLD">
+                                            World
+                                        </option>
+
+                                        <option value="INDIA">
+                                            India
+                                        </option>
+
                                         <option value="STATE">
                                             State
                                         </option>
@@ -559,137 +821,166 @@ export default function AdminNewsCreatePage() {
                                         <option value="DISTRICT">
                                             District
                                         </option>
-
-                                        <option value="INDIA">
-                                            India
-                                        </option>
-
-                                        <option value="WORLD">
-                                            World
-                                        </option>
                                     </select>
                                 </Field>
 
+                                {/* Category */}
                                 <Field
                                     label="Category"
                                     required
                                 >
                                     <select
-                                        value={form.categoryId}
-                                        onChange={(event) =>
+                                        value={
+                                            form.categoryId
+                                        }
+                                        onChange={(event) => {
+                                            setSlugManuallyEdited(false);
                                             updateField(
                                                 "categoryId",
-                                                event.target.value,
-                                            )
+                                                event
+                                                    .target
+                                                    .value,
+                                            );
+                                        }}
+                                        disabled={
+                                            loadingMasterData ||
+                                            saving
                                         }
-                                        disabled={loadingMasterData}
-                                        className={inputClass}
+                                        className={
+                                            inputClass
+                                        }
                                     >
                                         <option value="">
                                             Select category
                                         </option>
 
                                         {categories.map(
-                                            (category) => (
+                                            (
+                                                category,
+                                            ) => (
                                                 <option
-                                                    key={category.id}
-                                                    value={category.id}
+                                                    key={
+                                                        category.id
+                                                    }
+                                                    value={
+                                                        category.id
+                                                    }
                                                 >
-                                                    {category.displayName}
+                                                    {
+                                                        category.displayName
+                                                    }
                                                 </option>
                                             ),
                                         )}
                                     </select>
                                 </Field>
 
+                                {/* Country */}
+                                {form.newsScope && (
+                                    <Field
+                                        label="Country"
+                                        required
+                                    // hint={
+                                    //     form.newsScope === "WORLD"
+                                    //         ? undefined
+                                    //         : "India is automatically selected and cannot be changed for this news scope."
+                                    // }
+                                    >
+                                        <select
+                                            value={
+                                                form.countryId
+                                            }
+                                            onChange={(
+                                                event,
+                                            ) =>
+                                                handleCountryChange(
+                                                    event
+                                                        .target
+                                                        .value,
+                                                )
+                                            }
+                                            disabled={
+                                                loadingMasterData ||
+                                                saving ||
+                                                form.newsScope !== "WORLD"
+                                            }
+                                            className={
+                                                inputClass
+                                            }
+                                        >
+                                            <option value="">
+                                                Select country
+                                            </option>
+
+                                            {countries.map(
+                                                (
+                                                    country,
+                                                ) => (
+                                                    <option
+                                                        key={
+                                                            country.id
+                                                        }
+                                                        value={
+                                                            country.id
+                                                        }
+                                                    >
+                                                        {
+                                                            country.displayName
+                                                        }
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </Field>
+                                )}
+
+                                {/* State */}
                                 {(form.newsScope ===
-                                    "INDIA" ||
-                                    form.newsScope ===
                                     "STATE" ||
                                     form.newsScope ===
                                     "DISTRICT") && (
-                                        <Field label="Country">
+                                        <Field
+                                            label="State"
+                                            required
+                                        >
                                             <select
-                                                value={form.countryId}
-                                                onChange={(event) => {
-                                                    updateField(
-                                                        "countryId",
-                                                        event.target.value,
-                                                    );
-
-                                                    updateField(
-                                                        "stateId",
-                                                        "",
-                                                    );
-
-                                                    updateField(
-                                                        "districtId",
-                                                        "",
-                                                    );
-
-                                                    setStates([]);
-                                                    setDistricts([]);
-                                                }}
-                                                disabled={
-                                                    loadingMasterData
+                                                value={
+                                                    form.stateId
                                                 }
-                                                className={inputClass}
-                                            >
-                                                <option value="">
-                                                    Select country
-                                                </option>
-
-                                                {countries.map(
-                                                    (country) => (
-                                                        <option
-                                                            key={country.id}
-                                                            value={country.id}
-                                                        >
-                                                            {country.displayName}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                        </Field>
-                                    )}
-
-                                {(form.newsScope ===
-                                    "STATE" ||
-                                    form.newsScope ===
-                                    "DISTRICT") && (
-                                        <Field label="State">
-                                            <select
-                                                value={form.stateId}
-                                                onChange={(event) => {
-                                                    updateField(
-                                                        "stateId",
+                                                onChange={(event) =>
+                                                    handleStateChange(
                                                         event.target.value,
-                                                    );
-
-                                                    updateField(
-                                                        "districtId",
-                                                        "",
-                                                    );
-
-                                                    setDistricts([]);
-                                                }}
-                                                disabled={
-                                                    !form.countryId ||
-                                                    states.length === 0
+                                                    )
                                                 }
-                                                className={inputClass}
+                                                disabled={
+                                                    !selectedCountryId ||
+                                                    states.length === 0 ||
+                                                    saving ||
+                                                    form.newsScope === "DISTRICT"
+                                                }
+                                                className={
+                                                    inputClass
+                                                }
                                             >
                                                 <option value="">
                                                     Select state
                                                 </option>
 
                                                 {states.map(
-                                                    (state) => (
+                                                    (
+                                                        state,
+                                                    ) => (
                                                         <option
-                                                            key={state.id}
-                                                            value={state.id}
+                                                            key={
+                                                                state.id
+                                                            }
+                                                            value={
+                                                                state.id
+                                                            }
                                                         >
-                                                            {state.displayName}
+                                                            {
+                                                                state.displayName
+                                                            }
                                                         </option>
                                                     ),
                                                 )}
@@ -697,22 +988,31 @@ export default function AdminNewsCreatePage() {
                                         </Field>
                                     )}
 
+                                {/* District */}
                                 {form.newsScope ===
                                     "DISTRICT" && (
-                                        <Field label="District">
+                                        <Field
+                                            label="District"
+                                            required
+                                        >
                                             <select
                                                 value={
                                                     form.districtId
                                                 }
-                                                onChange={(event) =>
+                                                onChange={(event) => {
+                                                    setSlugManuallyEdited(false);
                                                     updateField(
                                                         "districtId",
-                                                        event.target.value,
-                                                    )
-                                                }
+                                                        event
+                                                            .target
+                                                            .value,
+                                                    );
+                                                }}
                                                 disabled={
-                                                    !form.stateId ||
-                                                    districts.length === 0
+                                                    !selectedStateId ||
+                                                    districts.length ===
+                                                    0 ||
+                                                    saving
                                                 }
                                                 className={
                                                     inputClass
@@ -723,9 +1023,13 @@ export default function AdminNewsCreatePage() {
                                                 </option>
 
                                                 {districts.map(
-                                                    (district) => (
+                                                    (
+                                                        district,
+                                                    ) => (
                                                         <option
-                                                            key={district.id}
+                                                            key={
+                                                                district.id
+                                                            }
                                                             value={
                                                                 district.id
                                                             }
@@ -740,7 +1044,158 @@ export default function AdminNewsCreatePage() {
                                         </Field>
                                     )}
                             </div>
+
+                            {/* Generated Slug */}
+                            <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Generated Slug
+                                </p>
+
+                                <p className="mt-1 break-all text-sm font-medium text-gray-800">
+                                    {effectiveSlug ||
+                                        "Select classification and enter a title"}
+                                </p>
+                            </div>
                         </Surface>
+
+                        {/* -----------------------------------------------------------------
+                         * ARTICLE DETAILS
+                         * ----------------------------------------------------------------- */}
+                        <Surface
+                            padding="lg"
+                            border="all"
+                            radius="lg"
+                        >
+                            <Typography
+                                as="h2"
+                                variant="sectionTitle"
+                                className="mb-5 text-xl"
+                            >
+                                Article Details
+                            </Typography>
+
+                            <div className="space-y-5">
+                                <Field
+                                    label="Title"
+                                    required
+                                >
+                                    <input
+                                        value={
+                                            form.title
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            updateField(
+                                                "title",
+                                                event
+                                                    .target
+                                                    .value,
+                                            )
+                                        }
+                                        placeholder="Enter news headline"
+                                        disabled={
+                                            saving
+                                        }
+                                        className={
+                                            inputClass
+                                        }
+                                    />
+                                </Field>
+
+                                <Field
+                                    label="Slug"
+                                    hint="Automatically generated from the selected classification and title."
+                                >
+                                    <input
+                                        value={effectiveSlug}
+                                        onChange={(event) => {
+                                            setSlugManuallyEdited(true);
+                                            updateField(
+                                                "slug",
+                                                normalizeSlug(event.target.value),
+                                            );
+                                        }}
+                                        disabled={saving}
+                                        className={inputClass}
+                                    />
+                                </Field>
+
+                                <Field label="Summary">
+                                    <textarea
+                                        value={
+                                            form.summary
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            updateField(
+                                                "summary",
+                                                event
+                                                    .target
+                                                    .value,
+                                            )
+                                        }
+                                        rows={4}
+                                        placeholder="Short summary of the news..."
+                                        disabled={
+                                            saving
+                                        }
+                                        className={
+                                            textareaClass
+                                        }
+                                    />
+                                </Field>
+
+                                <Field
+                                    label="Content"
+                                    required
+                                    hint="Separate paragraphs with a blank line. The public article page will render them as separate paragraphs."
+                                >
+                                    <textarea
+                                        value={
+                                            form.content
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            updateField(
+                                                "content",
+                                                event
+                                                    .target
+                                                    .value,
+                                            )
+                                        }
+                                        rows={16}
+                                        placeholder={
+                                            "First paragraph...\n\nSecond paragraph...\n\nThird paragraph..."
+                                        }
+                                        disabled={
+                                            saving
+                                        }
+                                        className={`${textareaClass} leading-7`}
+                                    />
+                                </Field>
+                            </div>
+                        </Surface>
+
+                        {createdNewsId !==
+                            null && (
+                                <NewsMediaUploader
+                                    newsId={
+                                        createdNewsId
+                                    }
+                                    media={
+                                        media
+                                    }
+                                    onMediaChange={
+                                        setMedia
+                                    }
+                                    disabled={
+                                        saving
+                                    }
+                                />
+                            )}
 
                         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <Link to="/admin/news">
@@ -756,13 +1211,26 @@ export default function AdminNewsCreatePage() {
 
                             <Button
                                 type="submit"
-                                loading={saving}
-                                disabled={createdNewsId !== null || saving}
-                                leftIcon={<Save size={17} />}
+                                loading={
+                                    saving
+                                }
+                                disabled={
+                                    createdNewsId !==
+                                    null ||
+                                    saving
+                                }
+                                leftIcon={
+                                    <Save
+                                        size={17}
+                                    />
+                                }
                                 fullWidth
                                 className="sm:w-auto"
                             >
-                                {createdNewsId !== null ? "Draft Saved" : "Save Draft"}
+                                {createdNewsId !==
+                                    null
+                                    ? "Draft Saved"
+                                    : "Save Draft"}
                             </Button>
                         </div>
                     </form>
@@ -770,14 +1238,13 @@ export default function AdminNewsCreatePage() {
             </main>
         </MainLayout>
     );
-    // }
 }
 
 const inputClass =
-    "h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100";
+    "h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100 disabled:cursor-not-allowed disabled:bg-gray-100";
 
 const textareaClass =
-    "w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100";
+    "w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100 disabled:cursor-not-allowed disabled:bg-gray-100";
 
 function Field({
     label,
@@ -794,6 +1261,7 @@ function Field({
         <div>
             <label className="mb-1.5 block text-sm font-semibold text-gray-800">
                 {label}
+
                 {required && (
                     <span className="ml-1 text-red-500">
                         *
@@ -811,4 +1279,3 @@ function Field({
         </div>
     );
 }
-//////////////////////////////

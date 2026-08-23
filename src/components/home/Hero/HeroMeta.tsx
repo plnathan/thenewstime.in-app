@@ -1,4 +1,4 @@
-import { Eye, MessageCircle } from "lucide-react";
+import { Eye, MessageSquare } from "lucide-react";
 
 interface Props {
   publishedAt: string | null;
@@ -6,10 +6,12 @@ interface Props {
   comments?: number;
 }
 
+const TEMP_COMMENTS_COUNT = 1;
+
 export default function HeroMeta({
   publishedAt,
   views = 0,
-  comments = 0,
+  // comments = 0,
 }: Props) {
   const formattedDate = publishedAt
     ? new Date(publishedAt).toLocaleDateString("ta-IN", {
@@ -33,8 +35,9 @@ export default function HeroMeta({
       </span>
 
       <span className="inline-flex items-center gap-1">
-        <MessageCircle size={14} />
-        {comments.toLocaleString()}
+        <MessageSquare size={14} />
+        {/* {comments.toLocaleString()} */}
+        {TEMP_COMMENTS_COUNT}
       </span>
     </div>
   );

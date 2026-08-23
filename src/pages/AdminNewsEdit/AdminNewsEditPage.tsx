@@ -4,17 +4,22 @@ import {
     Check,
     RotateCcw,
     Save,
+    Send,
     Star,
     StarOff,
     X,
-    Send,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import { isAxiosError } from "axios";
+import { useEffect, useMemo, useState } from "react";
+import type {
+    FormEvent,
+    ReactNode,
+} from "react";
 import {
     Link,
     useParams,
 } from "react-router-dom";
+
 import {
     getCategories,
     getCountries,
@@ -28,7 +33,9 @@ import type {
     MasterDataItem,
     StateItem,
 } from "@/api/master-data.api";
+
 import {
+    activateNews,
     approveNews,
     archiveNews,
     getNewsById,
@@ -40,22 +47,66 @@ import {
     submitNewsForReview,
     updateNews,
 } from "@/api/news.api";
-import { isAxiosError } from "axios";
 
 import Button from "@/components/ui/Button";
 import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
+
+import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
+import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
+
+import MainLayout from "@/layouts/MainLayout";
 
 import type {
     News,
     UpdateNewsInput,
 } from "@/types/news.types";
 
-import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
-import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
-import MainLayout from "@/layouts/MainLayout";
+import { normalizeSlug } from "@/utils/news/slug";
 
 const ADMIN_USER_ID = 1;
+
+type NewsScopeValue =
+    | ""
+    | News["newsScope"];
+
+type MasterDataWithOptionalCode = {
+    id: number;
+    displayName: string;
+    code?: string | null;
+    urlName?: string | null;
+};
+
+// const getMasterDataCode = (
+//     item:
+//         | CountryItem
+//         | StateItem
+//         | DistrictItem
+//         | MasterDataItem,
+// ): string => {
+//     const value =
+//         item as MasterDataWithOptionalCode;
+
+//     return value.code?.trim() ?? "";
+// };
+
+const getMasterDataSlugName = (
+    item:
+        | CountryItem
+        | StateItem
+        | DistrictItem
+        | MasterDataItem
+        | undefined,
+): string => {
+    if (!item) {
+        return "";
+    }
+
+    const value =
+        item as MasterDataWithOptionalCode;
+
+    return value.displayName.trim();
+};
 
 const getApiErrorMessage = (
     error: unknown,
@@ -94,7 +145,7 @@ const formatPromotionUntil = (
         | Date
         | null
         | undefined,
-) => {
+): string | null => {
     if (!value) {
         return null;
     }
@@ -116,6 +167,10 @@ export default function AdminNewsEditPage() {
 
     const newsId = Number(id);
 
+    const isValidNewsId =
+        Number.isInteger(newsId) &&
+        newsId > 0;
+
     const [news, setNews] =
         useState<News | null>(null);
 
@@ -132,7 +187,7 @@ export default function AdminNewsEditPage() {
         useState("");
 
     const [newsScope, setNewsScope] =
-        useState<News["newsScope"]>("STATE");
+        useState<NewsScopeValue>("");
 
     const [categoryId, setCategoryId] =
         useState("");
@@ -161,10 +216,6 @@ export default function AdminNewsEditPage() {
     const [loadingMasterData, setLoadingMasterData] =
         useState(true);
 
-    const isValidNewsId =
-        Number.isInteger(newsId) &&
-        newsId > 0;
-
     const [loading, setLoading] =
         useState(isValidNewsId);
 
@@ -187,13 +238,53 @@ export default function AdminNewsEditPage() {
     const [media, setMedia] =
         useState<NewsMedia[]>([]);
 
-    const [currentTime] = useState(() => Date.now());
+    const [currentTime] =
+        useState(() => Date.now());
 
+    const india = useMemo(
+        () => countries.find((country) => {
+            const value = country as MasterDataWithOptionalCode;
+            return value.code?.trim().toUpperCase() === "IN" || value.displayName.trim().toLowerCase() === "india";
+        }),
+        [countries],
+    );
+
+    const tamilNadu = useMemo(
+        () => states.find((state) => {
+            const value = state as MasterDataWithOptionalCode;
+            return value.code?.trim().toUpperCase() === "TN" || value.displayName.trim().toLowerCase() === "tamil nadu";
+        }),
+        [states],
+    );
+
+    /*
+     * Frozen classification values are derived during render instead of being
+     * synchronized through effects. This avoids cascading-render lint errors.
+     */
+    const selectedCountryId =
+        newsScope === "WORLD"
+            ? countryId
+            : india
+                ? String(india.id)
+                : countryId;
+
+    const selectedStateId =
+        newsScope === "DISTRICT"
+            ? tamilNadu
+                ? String(tamilNadu.id)
+                : stateId
+            : stateId;
+
+    /*
+     * -------------------------------------------------------------------------
+     * Load categories and countries.
+     * -------------------------------------------------------------------------
+     */
     useEffect(() => {
+        let cancelled = false;
+
         const loadMasterData = async () => {
             try {
-                setLoadingMasterData(true);
-
                 const [
                     categoryResponse,
                     countryResponse,
@@ -202,6 +293,10 @@ export default function AdminNewsEditPage() {
                     getCountries(),
                 ]);
 
+                if (cancelled) {
+                    return;
+                }
+
                 setCategories(
                     categoryResponse.data,
                 );
@@ -209,90 +304,55 @@ export default function AdminNewsEditPage() {
                 setCountries(
                     countryResponse.data,
                 );
-            } catch (error) {
+            } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
                 console.error(
                     "Unable to load master data:",
-                    error,
+                    err,
                 );
 
                 setError(
                     "Unable to load category and location data.",
                 );
             } finally {
-                setLoadingMasterData(false);
+                if (!cancelled) {
+                    setLoadingMasterData(false);
+                }
             }
         };
 
         void loadMasterData();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
+    /*
+     * -------------------------------------------------------------------------
+     * Load article.
+     * -------------------------------------------------------------------------
+     */
     useEffect(() => {
-        if (!countryId) {
+        if (!isValidNewsId) {
             return;
         }
 
-        const loadStates = async () => {
+        let cancelled = false;
+
+        const loadNews = async () => {
             try {
-                const response = await getStates(
-                    Number(countryId),
-                );
-
-                setStates(response.data);
-            } catch (error) {
-                console.error(
-                    "Unable to load states:",
-                    error,
-                );
-
-                setStates([]);
-                setError("Unable to load states.");
-            }
-        };
-
-        void loadStates();
-    }, [countryId]);
-
-    useEffect(() => {
-        if (!stateId) {
-            return;
-        }
-
-        const loadDistricts = async () => {
-            try {
-                const response = await getDistricts(
-                    Number(stateId),
-                );
-
-                setDistricts(response.data);
-            } catch (error) {
-                console.error(
-                    "Unable to load districts:",
-                    error,
-                );
-
-                setDistricts([]);
-                setError("Unable to load districts.");
-            }
-        };
-
-        void loadDistricts();
-    }, [stateId]);
-
-    useEffect(() => {
-        if (
-            !Number.isInteger(newsId) ||
-            newsId <= 0
-        ) {
-            return;
-        }
-
-        const load = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-
                 const response =
-                    await getNewsById(newsId);
+                    await getNewsById(
+                        newsId,
+                    );
+
+                if (cancelled) {
+                    return;
+                }
 
                 const article =
                     response.data;
@@ -303,82 +363,392 @@ export default function AdminNewsEditPage() {
                 setSummary(
                     article.summary ?? "",
                 );
-                setContent(article.content);
-                setNewsScope(article.newsScope);
+                setContent(
+                    article.content,
+                );
+                setNewsScope(
+                    article.newsScope,
+                );
                 setCategoryId(
-                    String(article.categoryId),
+                    String(
+                        article.categoryId,
+                    ),
                 );
                 setCountryId(
-                    article.countryId !== null
-                        ? String(article.countryId)
+                    article.countryId !==
+                        null
+                        ? String(
+                            article.countryId,
+                        )
                         : "",
                 );
                 setStateId(
-                    article.stateId !== null
-                        ? String(article.stateId)
+                    article.stateId !==
+                        null
+                        ? String(
+                            article.stateId,
+                        )
                         : "",
                 );
                 setDistrictId(
-                    article.districtId !== null
-                        ? String(article.districtId)
-                        : "");
+                    article.districtId !==
+                        null
+                        ? String(
+                            article.districtId,
+                        )
+                        : "",
+                );
                 setMedia(
                     article.media ?? [],
                 );
             } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
                 console.error(err);
 
                 const apiMessage =
-                    getApiErrorMessage(err);
+                    getApiErrorMessage(
+                        err,
+                    );
 
                 setError(
                     apiMessage ??
                     "Unable to load the news article.",
                 );
             } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
         };
 
-        void load();
-    }, [newsId]);
+        void loadNews();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        isValidNewsId,
+        newsId,
+    ]);
+
+    /*
+     * -------------------------------------------------------------------------
+     * Load states according to the SELECTED country.
+     * -------------------------------------------------------------------------
+     */
+    useEffect(() => {
+        if (
+            !selectedCountryId ||
+            (
+                newsScope !== "STATE" &&
+                newsScope !== "DISTRICT"
+            )
+        ) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadStates = async () => {
+            try {
+                const response =
+                    await getStates(
+                        Number(
+                            selectedCountryId,
+                        ),
+                    );
+
+                if (cancelled) {
+                    return;
+                }
+
+                setStates(
+                    response.data,
+                );
+            } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
+                console.error(
+                    "Unable to load states:",
+                    err,
+                );
+
+                setStates([]);
+
+                setError(
+                    "Unable to load states.",
+                );
+            }
+        };
+
+        void loadStates();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        newsScope,
+        selectedCountryId,
+    ]);
+
+    /*
+     * -------------------------------------------------------------------------
+     * Load districts according to the SELECTED state.
+     * -------------------------------------------------------------------------
+     */
+    useEffect(() => {
+        if (
+            newsScope !== "DISTRICT" ||
+            !selectedStateId
+        ) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadDistricts = async () => {
+            try {
+                const response =
+                    await getDistricts(
+                        Number(
+                            selectedStateId,
+                        ),
+                    );
+
+                if (cancelled) {
+                    return;
+                }
+
+                setDistricts(
+                    response.data,
+                );
+            } catch (err) {
+                if (cancelled) {
+                    return;
+                }
+
+                console.error(
+                    "Unable to load districts:",
+                    err,
+                );
+
+                setDistricts([]);
+
+                setError(
+                    "Unable to load districts.",
+                );
+            }
+        };
+
+        void loadDistricts();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        newsScope,
+        selectedStateId,
+    ]);
+
+    /*
+     * -------------------------------------------------------------------------
+     * Generate classification prefix from selected dropdown values.
+     * -------------------------------------------------------------------------
+     */
+    const generatedSlugPrefix = useMemo(() => {
+        if (!newsScope) {
+            return "";
+        }
+
+        const category = categories.find(
+            (item) => String(item.id) === categoryId,
+        );
+
+        if (!category) {
+            return "";
+        }
+
+        const categoryName =
+            getMasterDataSlugName(category);
+
+        const country = countries.find(
+            (item) => String(item.id) === selectedCountryId,
+        );
+
+        if (!country) {
+            return "";
+        }
+
+        const countryName =
+            getMasterDataSlugName(country);
+
+        if (
+            newsScope === "WORLD" ||
+            newsScope === "INDIA"
+        ) {
+            return normalizeSlug(
+                `${categoryName}-${countryName}`,
+            ).replace(/-+$/, "");
+        }
+
+        const state = states.find(
+            (item) => String(item.id) === selectedStateId,
+        );
+
+        if (!state) {
+            return "";
+        }
+
+        const stateName =
+            getMasterDataSlugName(state);
+
+        if (newsScope === "STATE") {
+            return normalizeSlug(
+                `${categoryName}-${countryName}-${stateName}`,
+            ).replace(/-+$/, "");
+        }
+
+        const district = districts.find(
+            (item) => String(item.id) === districtId,
+        );
+
+        if (!district) {
+            return "";
+        }
+
+        const districtName =
+            getMasterDataSlugName(district);
+
+        return normalizeSlug(
+            `${categoryName}-${countryName}-${stateName}-${districtName}`,
+        ).replace(/-+$/, "");
+    }, [
+        categories,
+        countries,
+        states,
+        districts,
+        newsScope,
+        categoryId,
+        selectedCountryId,
+        selectedStateId,
+        districtId,
+    ]);
+
+    /*
+     * -------------------------------------------------------------------------
+     * Generated slug.
+     *
+     * Classification + title are always regenerated.
+     * -------------------------------------------------------------------------
+     */
+    const generatedSlug = useMemo(() => {
+        if (!generatedSlugPrefix) {
+            return "";
+        }
+
+        return `${generatedSlugPrefix.replace(/-+$/, "")}-`;
+    }, [generatedSlugPrefix]);
+
+    // const effectiveSlug =
+    //     slugManuallyEdited
+    //         ? slug
+    //         : generatedSlug;
 
     const handleScopeChange = (
-        value: News["newsScope"],
+        value: NewsScopeValue,
     ) => {
         setNewsScope(value);
+        setCountryId(value === "WORLD" ? "" : india ? String(india.id) : "");
+        setStateId(value === "DISTRICT" && tamilNadu ? String(tamilNadu.id) : "");
+        setDistrictId("");
+        setStates([]);
+        setDistricts([]);
+    };
 
-        if (value === "WORLD") {
-            setCountryId("");
-            setStateId("");
-            setDistrictId("");
+    /*
+     * -------------------------------------------------------------------------
+     * Country change.
+     *
+     * Country is selectable for every actual scope.
+     * -------------------------------------------------------------------------
+     */
+    const handleCountryChange = (
+        value: string,
+    ) => {
+        setCountryId(value);
+        setStateId("");
+        setDistrictId("");
 
-            setStates([]);
-            setDistricts([]);
+        setStates([]);
+        setDistricts([]);
+    };
 
-            return;
+    /*
+     * -------------------------------------------------------------------------
+     * State change.
+     * -------------------------------------------------------------------------
+     */
+    const handleStateChange = (
+        value: string,
+    ) => {
+        setStateId(value);
+        setDistrictId("");
+
+        setDistricts([]);
+    };
+
+    const validate = (): string | null => {
+        if (!newsScope) {
+            return "News scope is required.";
+        }
+
+        if (!categoryId) {
+            return "Category is required.";
+        }
+
+        if (!title.trim()) {
+            return "Title is required.";
+        }
+
+        if (!slug.trim()) {
+            return "Slug is required.";
+        }
+
+        if (!/^[a-z0-9-]+$/.test(slug)) {
+            return "Slug contains invalid characters.";
+        }
+
+        if (!content.trim()) {
+            return "Content is required.";
+        }
+
+        if (!selectedCountryId) {
+            return "Country is required.";
         }
 
         if (
-            value === "INDIA"
+            newsScope === "STATE" &&
+            !selectedStateId
         ) {
-            setStateId("");
-            setDistrictId("");
-
-            setStates([]);
-            setDistricts([]);
-
-            return;
+            return "State is required for state news.";
         }
 
         if (
-            value === "STATE"
+            newsScope === "DISTRICT" &&
+            (
+                !selectedStateId ||
+                !districtId
+            )
         ) {
-            setDistrictId("");
-            setDistricts([]);
-
-            return;
+            return "State and district are required for district news.";
         }
+
+        return null;
     };
 
     const handleSubmit = async (
@@ -390,79 +760,73 @@ export default function AdminNewsEditPage() {
             return;
         }
 
-        if (!title.trim()) {
-            setError("Title is required.");
-            setSuccess(null);
-            return;
-        }
-
-        if (!slug.trim()) {
-            setError("Slug is required.");
-            setSuccess(null);
-            return;
-        }
-
-        if (!content.trim()) {
-            setError("Content is required.");
-            setSuccess(null);
-            return;
-        }
-
-        if (!categoryId) {
-            setError("Category is required.");
-            setSuccess(null);
-            return;
-        }
-
         if (
-            newsScope === "STATE" &&
-            !stateId
+            news.status ===
+            "ARCHIVED"
         ) {
             setError(
-                "State is required for state news.",
+                "Archived news articles cannot be edited. Activate the article first.",
+            );
+            return;
+        }
+
+        const validationError =
+            validate();
+
+        if (validationError) {
+            setError(
+                validationError,
             );
             setSuccess(null);
             return;
         }
 
-        if (
-            newsScope === "DISTRICT" &&
-            (!stateId || !districtId)
-        ) {
-            setError(
-                "State and District are required for district news.",
-            );
-            setSuccess(null);
+        if (!newsScope) {
             return;
         }
 
         const payload: UpdateNewsInput = {
-            title: title.trim(),
-            slug: slug.trim(),
+            title:
+                title.trim(),
+
+            slug:
+                slug.trim(),
+
             summary:
-                summary.trim() || undefined,
-            content: content.trim(),
+                summary.trim() ||
+                undefined,
+
+            content:
+                content.trim(),
 
             newsScope,
 
-            categoryId: Number(categoryId),
+            categoryId:
+                Number(
+                    categoryId,
+                ),
 
             countryId:
-                countryId
-                    ? Number(countryId)
-                    : null,
+                Number(
+                    countryId,
+                ),
 
             stateId:
-                stateId
-                    ? Number(stateId)
+                selectedStateId
+                    ? Number(
+                        selectedStateId,
+                    )
                     : null,
 
             districtId:
                 districtId
-                    ? Number(districtId)
+                    ? Number(
+                        districtId,
+                    )
                     : null,
 
-            updatedBy: ADMIN_USER_ID,
+            updatedBy:
+                ADMIN_USER_ID,
         };
 
         try {
@@ -476,13 +840,14 @@ export default function AdminNewsEditPage() {
                     payload,
                 );
 
-            setNews((current) =>
-                current
-                    ? {
-                        ...current,
-                        ...response.data,
-                    }
-                    : current,
+            setNews(
+                (current) =>
+                    current
+                        ? {
+                            ...current,
+                            ...response.data,
+                        }
+                        : current,
             );
 
             setSuccess(
@@ -493,7 +858,9 @@ export default function AdminNewsEditPage() {
             console.error(err);
 
             const apiMessage =
-                getApiErrorMessage(err);
+                getApiErrorMessage(
+                    err,
+                );
 
             setError(
                 apiMessage
@@ -503,6 +870,63 @@ export default function AdminNewsEditPage() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const reloadArticle = async (
+        articleId: number,
+    ) => {
+        const response =
+            await getNewsById(
+                articleId,
+            );
+
+        const article =
+            response.data;
+
+        setNews(article);
+        setTitle(article.title);
+        setSlug(article.slug);
+        setSummary(
+            article.summary ?? "",
+        );
+        setContent(
+            article.content,
+        );
+        setNewsScope(
+            article.newsScope,
+        );
+        setCategoryId(
+            String(
+                article.categoryId,
+            ),
+        );
+        setCountryId(
+            article.countryId !==
+                null
+                ? String(
+                    article.countryId,
+                )
+                : "",
+        );
+        setStateId(
+            article.stateId !==
+                null
+                ? String(
+                    article.stateId,
+                )
+                : "",
+        );
+        setDistrictId(
+            article.districtId !==
+                null
+                ? String(
+                    article.districtId,
+                )
+                : "",
+        );
+        setMedia(
+            article.media ?? [],
+        );
     };
 
     const handleWorkflowAction = async (
@@ -523,44 +947,20 @@ export default function AdminNewsEditPage() {
 
             await action();
 
-            /*
-             * Reload the article after every
-             * workflow operation so that the
-             * latest status, timestamps,
-             * promotion information, etc.
-             * are reflected immediately.
-             */
-            const response =
-                await getNewsById(news.id);
-
-            setNews(response.data);
-
-            setTitle(
-                response.data.title,
+            await reloadArticle(
+                news.id,
             );
 
-            setSlug(
-                response.data.slug,
+            setSuccess(
+                successMessage,
             );
-
-            setSummary(
-                response.data.summary ?? "",
-            );
-
-            setContent(
-                response.data.content,
-            );
-
-            setMedia(
-                response.data.media ?? [],
-            );
-
-            setSuccess(successMessage);
         } catch (err) {
             console.error(err);
 
             const apiMessage =
-                getApiErrorMessage(err);
+                getApiErrorMessage(
+                    err,
+                );
 
             setError(
                 apiMessage
@@ -578,11 +978,14 @@ export default function AdminNewsEditPage() {
         );
 
     const promotionActive =
-        news?.status === "PUBLISHED" &&
+        news?.status ===
+        "PUBLISHED" &&
         news.displayPriority > 0 &&
         Boolean(
             news.displayPriorityUntil &&
-            new Date(news.displayPriorityUntil).getTime() >
+            new Date(
+                news.displayPriorityUntil,
+            ).getTime() >
             currentTime,
         );
 
@@ -605,319 +1008,347 @@ export default function AdminNewsEditPage() {
 
     if (!news) {
         return (
-            <main className="min-h-screen bg-gray-50">
-                <div className="mx-auto max-w-5xl px-4 py-10">
-                    <Surface
-                        padding="lg"
-                        border="all"
-                        radius="lg"
-                    >
-                        <Typography
-                            variant="body"
-                            className="text-red-600"
+            <MainLayout>
+                <main className="min-h-screen bg-gray-50">
+                    <div className="mx-auto max-w-5xl px-4 py-10">
+                        <Surface
+                            padding="lg"
+                            border="all"
+                            radius="lg"
                         >
-                            {error ??
-                                "News article not found."}
-                        </Typography>
+                            <Typography
+                                variant="body"
+                                className="text-red-600"
+                            >
+                                {error ??
+                                    "News article not found."}
+                            </Typography>
 
+                            <Link
+                                to="/admin/news"
+                                className="mt-4 inline-flex text-sm font-medium text-green-700"
+                            >
+                                Back to News Management
+                            </Link>
+                        </Surface>
+                    </div>
+                </main>
+            </MainLayout>
+        );
+    }
+
+    if (
+        news.status ===
+        "ARCHIVED"
+    ) {
+        return (
+            <MainLayout>
+                <main className="min-h-screen bg-gray-50">
+                    <div className="mx-auto max-w-5xl px-4 py-8 lg:px-6">
                         <Link
                             to="/admin/news"
-                            className="mt-4 inline-flex text-sm font-medium text-green-700"
+                            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-green-700"
                         >
+                            <ArrowLeft
+                                size={16}
+                            />
                             Back to News Management
                         </Link>
-                    </Surface>
-                </div>
-            </main>
+
+                        <Surface
+                            padding="lg"
+                            border="all"
+                            radius="lg"
+                        >
+                            <div className="space-y-4">
+                                <Typography
+                                    as="h1"
+                                    variant="headline"
+                                    className="text-2xl md:text-3xl"
+                                >
+                                    Archived News
+                                </Typography>
+
+                                <Typography
+                                    variant="body"
+                                    className="text-gray-600"
+                                >
+                                    This article is currently archived and cannot be edited. Activate it to return it to draft status.
+                                </Typography>
+
+                                {error && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                        {error}
+                                    </div>
+                                )}
+
+                                {success && (
+                                    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                                        {success}
+                                    </div>
+                                )}
+
+                                <div className="flex flex-wrap gap-3 pt-2">
+                                    <Button
+                                        type="button"
+                                        loading={
+                                            workflowLoading
+                                        }
+                                        disabled={
+                                            workflowLoading
+                                        }
+                                        leftIcon={
+                                            <RotateCcw
+                                                size={
+                                                    16
+                                                }
+                                            />
+                                        }
+                                        onClick={() =>
+                                            void handleWorkflowAction(
+                                                () =>
+                                                    activateNews(
+                                                        news.id,
+                                                        ADMIN_USER_ID,
+                                                    ),
+                                                "News activated successfully and moved back to draft.",
+                                            )
+                                        }
+                                    >
+                                        Activate News
+                                    </Button>
+
+                                    <Link to="/admin/news">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                        >
+                                            Back to News Management
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        </Surface>
+                    </div>
+                </main>
+            </MainLayout>
         );
     }
 
     return (
-        <main className="min-h-screen bg-gray-50">
-            <div className="mx-auto max-w-5xl px-4 py-8 lg:px-6">
-
-                {/* Back */}
-                <Link
-                    to="/admin/news"
-                    className="
-                        mb-6
-                        inline-flex
-                        items-center
-                        gap-2
-                        text-sm
-                        font-medium
-                        text-gray-600
-                        hover:text-green-700
-                    "
-                >
-                    <ArrowLeft size={16} />
-                    Back to News Management
-                </Link>
-
-                {/* Page heading */}
-                <div className="mb-6">
-                    <Typography
-                        as="h1"
-                        variant="headline"
-                        className="text-2xl md:text-3xl"
+        <MainLayout>
+            <main className="min-h-screen bg-gray-50">
+                <div className="mx-auto max-w-5xl px-4 py-8 lg:px-6">
+                    <Link
+                        to="/admin/news"
+                        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-green-700"
                     >
-                        Edit News
-                    </Typography>
+                        <ArrowLeft
+                            size={16}
+                        />
+                        Back to News Management
+                    </Link>
 
-                    <Typography
-                        variant="caption"
-                        className="mt-2 block"
-                    >
-                        News #{news.newsNumber} ·{" "}
-                        {news.status}
-                    </Typography>
-                </div>
-
-                {/* Error */}
-                {error && (
-                    <div
-                        className="
-                            mb-5
-                            rounded-lg
-                            border
-                            border-red-200
-                            bg-red-50
-                            px-4
-                            py-3
-                            text-sm
-                            text-red-700
-                        "
-                    >
-                        {error}
-                    </div>
-                )}
-
-                {/* Success */}
-                {success && (
-                    <div
-                        className="
-                            mb-5
-                            rounded-lg
-                            border
-                            border-green-200
-                            bg-green-50
-                            px-4
-                            py-3
-                            text-sm
-                            text-green-700
-                        "
-                    >
-                        {success}
-                    </div>
-                )}
-
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-6"
-                >
-
-                    {/* ----------------------------------------
-                     * Article Details
-                     * ---------------------------------------- */}
-                    <Surface
-                        padding="lg"
-                        border="all"
-                        radius="lg"
-                    >
-                        <div className="space-y-5">
-
-                            <Field label="Title">
-                                <input
-                                    value={title}
-                                    onChange={(event) =>
-                                        setTitle(
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={inputClass}
-                                    disabled={
-                                        saving ||
-                                        workflowLoading
-                                    }
-                                />
-                            </Field>
-
-                            <Field label="Slug">
-                                <input
-                                    value={slug}
-                                    onChange={(event) =>
-                                        setSlug(
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={inputClass}
-                                    disabled={
-                                        saving ||
-                                        workflowLoading
-                                    }
-                                />
-                            </Field>
-
-                            <Field label="Summary">
-                                <textarea
-                                    value={summary}
-                                    onChange={(event) =>
-                                        setSummary(
-                                            event.target.value,
-                                        )
-                                    }
-                                    rows={4}
-                                    className={textareaClass}
-                                    disabled={
-                                        saving ||
-                                        workflowLoading
-                                    }
-                                />
-                            </Field>
-
-                            <Field label="Content">
-                                <textarea
-                                    value={content}
-                                    onChange={(event) =>
-                                        setContent(
-                                            event.target.value,
-                                        )
-                                    }
-                                    rows={18}
-                                    className={`${textareaClass} leading-7`}
-                                    disabled={
-                                        saving ||
-                                        workflowLoading
-                                    }
-                                />
-                            </Field>
-
-                        </div>
-                    </Surface>
-
-                    {/* ----------------------------------------
-                    * News Classification
-                    * ---------------------------------------- */}
-                    <Surface
-                        padding="lg"
-                        border="all"
-                        radius="lg"
-                    >
+                    <div className="mb-6">
                         <Typography
-                            as="h2"
-                            variant="sectionTitle"
-                            className="mb-5 text-xl"
+                            as="h1"
+                            variant="headline"
+                            className="text-2xl md:text-3xl"
                         >
-                            News Classification
+                            Edit News
                         </Typography>
 
-                        <div className="grid gap-5 md:grid-cols-2">
+                        <Typography
+                            variant="caption"
+                            className="mt-2 block"
+                        >
+                            News #{news.newsNumber} ·{" "}
+                            {news.status}
+                        </Typography>
+                    </div>
 
-                            {/* News Scope */}
-                            <Field
-                                label="News Scope"
-                                required
+                    {error && (
+                        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                            {success}
+                        </div>
+                    )}
+
+                    <form
+                        onSubmit={
+                            handleSubmit
+                        }
+                        className="space-y-6"
+                    >
+                        {/* -----------------------------------------------------------------
+                         * NEWS CLASSIFICATION
+                         * ----------------------------------------------------------------- */}
+                        <Surface
+                            padding="lg"
+                            border="all"
+                            radius="lg"
+                        >
+                            <Typography
+                                as="h2"
+                                variant="sectionTitle"
+                                className="mb-5 text-xl"
                             >
-                                <select
-                                    value={newsScope}
-                                    onChange={(event) =>
-                                        handleScopeChange(
-                                            event.target.value as News["newsScope"],
-                                        )
-                                    }
-                                    disabled={
-                                        saving ||
-                                        workflowLoading
-                                    }
-                                    className={inputClass}
+                                News Classification
+                            </Typography>
+
+                            <div className="grid gap-5 md:grid-cols-2">
+                                {/* News Scope */}
+                                <Field
+                                    label="News Scope"
+                                    required
                                 >
-                                    <option value="STATE">
-                                        State
-                                    </option>
+                                    <select
+                                        value={
+                                            newsScope
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            handleScopeChange(
+                                                event
+                                                    .target
+                                                    .value as NewsScopeValue,
+                                            )
+                                        }
+                                        disabled={
+                                            saving ||
+                                            workflowLoading
+                                        }
+                                        className={
+                                            inputClass
+                                        }
+                                    >
+                                        <option value="">
+                                            Select News Scope
+                                        </option>
 
-                                    <option value="DISTRICT">
-                                        District
-                                    </option>
+                                        <option value="WORLD">
+                                            World
+                                        </option>
 
-                                    <option value="INDIA">
-                                        India
-                                    </option>
+                                        <option value="INDIA">
+                                            India
+                                        </option>
 
-                                    <option value="WORLD">
-                                        World
-                                    </option>
-                                </select>
-                            </Field>
+                                        <option value="STATE">
+                                            State
+                                        </option>
 
-                            {/* Category */}
-                            <Field
-                                label="Category"
-                                required
-                            >
-                                <select
-                                    value={categoryId}
-                                    onChange={(event) =>
-                                        setCategoryId(
-                                            event.target.value,
-                                        )
-                                    }
-                                    disabled={
-                                        loadingMasterData ||
-                                        saving ||
-                                        workflowLoading
-                                    }
-                                    className={inputClass}
+                                        <option value="DISTRICT">
+                                            District
+                                        </option>
+                                    </select>
+                                </Field>
+
+                                {/* Category */}
+                                <Field
+                                    label="Category"
+                                    required
                                 >
-                                    <option value="">
-                                        Select category
-                                    </option>
+                                    <select
+                                        value={
+                                            categoryId
+                                        }
+                                        onChange={(event) => {
+                                            setCategoryId(
+                                                event
+                                                    .target
+                                                    .value,
+                                            );
+                                        }}
+                                        disabled={
+                                            loadingMasterData ||
+                                            saving ||
+                                            workflowLoading
+                                        }
+                                        className={
+                                            inputClass
+                                        }
+                                    >
+                                        <option value="">
+                                            Select category
+                                        </option>
 
-                                    {categories.map(
-                                        (category) => (
-                                            <option
-                                                key={category.id}
-                                                value={category.id}
-                                            >
-                                                {category.displayName}
-                                            </option>
-                                        ),
-                                    )}
-                                </select>
-                            </Field>
+                                        {categories.map(
+                                            (
+                                                category,
+                                            ) => (
+                                                <option
+                                                    key={
+                                                        category.id
+                                                    }
+                                                    value={
+                                                        category.id
+                                                    }
+                                                >
+                                                    {
+                                                        category.displayName
+                                                    }
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </Field>
 
-                            {/* Country */}
-                            {(newsScope === "INDIA" ||
-                                newsScope === "STATE" ||
-                                newsScope === "DISTRICT") && (
-                                    <Field label="Country">
+                                {/* Country */}
+                                {newsScope && (
+                                    <Field
+                                        label="Country"
+                                        required
+                                    // hint={
+                                    //     newsScope === "WORLD"
+                                    //         ? undefined
+                                    //         : "India is automatically selected and cannot be changed for this news scope."
+                                    // }
+                                    >
                                         <select
-                                            value={countryId}
-                                            onChange={(event) => {
-                                                const value = event.target.value;
-                                                setCountryId(value);
-
-                                                setStateId("");
-                                                setDistrictId("");
-
-                                                setStates([]);
-                                                setDistricts([]);
-                                            }}
+                                            value={
+                                                countryId
+                                            }
+                                            onChange={(
+                                                event,
+                                            ) =>
+                                                handleCountryChange(
+                                                    event
+                                                        .target
+                                                        .value,
+                                                )
+                                            }
                                             disabled={
                                                 loadingMasterData ||
                                                 saving ||
-                                                workflowLoading
+                                                workflowLoading ||
+                                                newsScope !== "WORLD"
                                             }
-                                            className={inputClass}
+                                            className={
+                                                inputClass
+                                            }
                                         >
                                             <option value="">
                                                 Select country
                                             </option>
 
                                             {countries.map(
-                                                (country) => (
+                                                (
+                                                    country,
+                                                ) => (
                                                     <option
-                                                        key={country.id}
-                                                        value={country.id}
+                                                        key={
+                                                            country.id
+                                                        }
+                                                        value={
+                                                            country.id
+                                                        }
                                                     >
                                                         {
                                                             country.displayName
@@ -929,439 +1360,617 @@ export default function AdminNewsEditPage() {
                                     </Field>
                                 )}
 
-                            {/* State */}
-                            {(newsScope === "STATE" ||
-                                newsScope === "DISTRICT") && (
-                                    <Field label="State">
-                                        <select
-                                            value={stateId}
-                                            onChange={(event) => {
-                                                const value = event.target.value;
-                                                setStateId(value);
-
-                                                setDistrictId("");
-                                                setDistricts([]);
-                                            }}
-                                            disabled={
-                                                !countryId ||
-                                                states.length === 0 ||
-                                                saving ||
-                                                workflowLoading
-                                            }
-                                            className={inputClass}
+                                {/* State */}
+                                {(newsScope ===
+                                    "STATE" ||
+                                    newsScope ===
+                                    "DISTRICT") && (
+                                        <Field
+                                            label="State"
+                                            required
                                         >
-                                            <option value="">
-                                                Select state
-                                            </option>
+                                            <select
+                                                value={
+                                                    stateId
+                                                }
+                                                onChange={(event) =>
+                                                    handleStateChange(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                disabled={
+                                                    !selectedCountryId ||
+                                                    states.length === 0 ||
+                                                    saving ||
+                                                    workflowLoading ||
+                                                    newsScope === "DISTRICT"
+                                                }
+                                                className={
+                                                    inputClass
+                                                }
+                                            >
+                                                <option value="">
+                                                    Select state
+                                                </option>
 
-                                            {states.map(
-                                                (state) => (
-                                                    <option
-                                                        key={state.id}
-                                                        value={state.id}
-                                                    >
-                                                        {
-                                                            state.displayName
-                                                        }
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                    </Field>
-                                )}
+                                                {states.map(
+                                                    (
+                                                        state,
+                                                    ) => (
+                                                        <option
+                                                            key={
+                                                                state.id
+                                                            }
+                                                            value={
+                                                                state.id
+                                                            }
+                                                        >
+                                                            {
+                                                                state.displayName
+                                                            }
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                        </Field>
+                                    )}
 
-                            {/* District */}
-                            {newsScope === "DISTRICT" && (
-                                <Field label="District">
-                                    <select
-                                        value={districtId}
-                                        onChange={(event) =>
-                                            setDistrictId(
-                                                event.target.value,
+                                {/* District */}
+                                {newsScope ===
+                                    "DISTRICT" && (
+                                        <Field
+                                            label="District"
+                                            required
+                                        >
+                                            <select
+                                                value={
+                                                    districtId
+                                                }
+                                                onChange={(event) => {
+                                                    setDistrictId(
+                                                        event
+                                                            .target
+                                                            .value,
+                                                    );
+                                                }}
+                                                disabled={
+                                                    !selectedStateId ||
+                                                    districts.length ===
+                                                    0 ||
+                                                    saving ||
+                                                    workflowLoading
+                                                }
+                                                className={
+                                                    inputClass
+                                                }
+                                            >
+                                                <option value="">
+                                                    Select district
+                                                </option>
+
+                                                {districts.map(
+                                                    (
+                                                        district,
+                                                    ) => (
+                                                        <option
+                                                            key={
+                                                                district.id
+                                                            }
+                                                            value={
+                                                                district.id
+                                                            }
+                                                        >
+                                                            {
+                                                                district.displayName
+                                                            }
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                        </Field>
+                                    )}
+                            </div>
+
+                            {/* Generated Slug */}
+                            <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Generated Slug
+                                </p>
+
+                                <p className="mt-1 break-all text-sm font-medium text-gray-800">
+                                    {generatedSlug ||
+                                        "Select classification to generate a slug"}
+                                </p>
+                            </div>
+                        </Surface>
+
+                        {/* -----------------------------------------------------------------
+                         * ARTICLE DETAILS
+                         * ----------------------------------------------------------------- */}
+                        <Surface
+                            padding="lg"
+                            border="all"
+                            radius="lg"
+                        >
+                            <Typography
+                                as="h2"
+                                variant="sectionTitle"
+                                className="mb-5 text-xl"
+                            >
+                                Article Details
+                            </Typography>
+
+                            <div className="space-y-5">
+                                <Field
+                                    label="Title"
+                                    required
+                                >
+                                    <input
+                                        value={
+                                            title
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            setTitle(
+                                                event
+                                                    .target
+                                                    .value,
                                             )
                                         }
+                                        className={
+                                            inputClass
+                                        }
                                         disabled={
-                                            !stateId ||
-                                            districts.length === 0 ||
                                             saving ||
                                             workflowLoading
                                         }
-                                        className={inputClass}
-                                    >
-                                        <option value="">
-                                            Select district
-                                        </option>
-
-                                        {districts.map(
-                                            (district) => (
-                                                <option
-                                                    key={district.id}
-                                                    value={district.id}
-                                                >
-                                                    {
-                                                        district.displayName
-                                                    }
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
+                                    />
                                 </Field>
-                            )}
-                        </div>
-                    </Surface>
 
-                    {/* ----------------------------------------
-                     * Workflow
-                     * ---------------------------------------- */}
-                    <Surface
-                        padding="lg"
-                        border="all"
-                        radius="lg"
-                    >
-                        <div className="space-y-5">
-
-                            <div>
-                                <Typography
-                                    as="h2"
-                                    variant="sectionTitle"
-                                    className="text-xl"
+                                <Field
+                                    label="Slug"
+                                    hint="Automatically generated from the selected classification and title."
                                 >
-                                    Workflow
-                                </Typography>
+                                    <input
+                                        value={slug}
+                                        onChange={(event) => {
+                                            setSlug(normalizeSlug(event.target.value));
+                                        }}
+                                        disabled={saving || workflowLoading}
+                                        className={inputClass}
+                                    />
+                                </Field>
 
-                                <Typography
-                                    variant="caption"
-                                    className="mt-1 block"
-                                >
-                                    Current status:{" "}
-                                    <strong>
-                                        {news.status}
-                                    </strong>
-                                </Typography>
-                            </div>
-
-                            <div className="flex flex-wrap gap-3">
-
-                                {/* DRAFT */}
-                                {news.status === "DRAFT" && (
-                                    <>
-                                        <Button
-                                            type="button"
-                                            disabled={
-                                                workflowLoading
-                                            }
-                                            leftIcon={
-                                                <Send size={16} />
-                                            }
-                                            onClick={() =>
-                                                void handleWorkflowAction(
-                                                    () =>
-                                                        submitNewsForReview(
-                                                            news.id,
-                                                            ADMIN_USER_ID,
-                                                        ),
-                                                    "News submitted for review successfully.",
-                                                )
-                                            }
-                                        >
-                                            Submit for Review
-                                        </Button>
-
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            disabled={
-                                                workflowLoading
-                                            }
-                                            leftIcon={
-                                                <Check size={16} />
-                                            }
-                                            onClick={() =>
-                                                void handleWorkflowAction(
-                                                    () =>
-                                                        approveNews(
-                                                            news.id,
-                                                            ADMIN_USER_ID,
-                                                        ),
-                                                    "News approved successfully.",
-                                                )
-                                            }
-                                        >
-                                            Approve
-                                        </Button>
-                                    </>
-                                )}
-
-                                {/* IN REVIEW */}
-                                {news.status === "IN_REVIEW" && (
-                                    <>
-                                        <Button
-                                            type="button"
-                                            disabled={
-                                                workflowLoading
-                                            }
-                                            leftIcon={
-                                                <Check size={16} />
-                                            }
-                                            onClick={() =>
-                                                void handleWorkflowAction(
-                                                    () =>
-                                                        approveNews(
-                                                            news.id,
-                                                            ADMIN_USER_ID,
-                                                        ),
-                                                    "News approved successfully.",
-                                                )
-                                            }
-                                        >
-                                            Approve
-                                        </Button>
-
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            disabled={
-                                                workflowLoading
-                                            }
-                                            leftIcon={
-                                                <X size={16} />
-                                            }
-                                            onClick={() =>
-                                                void handleWorkflowAction(
-                                                    () =>
-                                                        rejectNews(
-                                                            news.id,
-                                                            ADMIN_USER_ID,
-                                                        ),
-                                                    "News rejected successfully.",
-                                                )
-                                            }
-                                        >
-                                            Reject
-                                        </Button>
-                                    </>
-                                )}
-
-                                {/* APPROVED */}
-                                {news.status === "APPROVED" && (
-                                    <Button
-                                        type="button"
-                                        disabled={
-                                            workflowLoading
+                                <Field label="Summary">
+                                    <textarea
+                                        value={
+                                            summary
                                         }
-                                        leftIcon={
-                                            <Check size={16} />
-                                        }
-                                        onClick={() =>
-                                            void handleWorkflowAction(
-                                                () =>
-                                                    publishNews(
-                                                        news.id,
-                                                        ADMIN_USER_ID,
-                                                    ),
-                                                "News published successfully.",
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            setSummary(
+                                                event
+                                                    .target
+                                                    .value,
                                             )
                                         }
-                                    >
-                                        Publish
-                                    </Button>
-                                )}
+                                        rows={4}
+                                        className={
+                                            textareaClass
+                                        }
+                                        disabled={
+                                            saving ||
+                                            workflowLoading
+                                        }
+                                    />
+                                </Field>
 
-                                {/* PUBLISHED */}
-                                {news.status === "PUBLISHED" && (
-                                    <>
-                                        {promotionActive ? (
+                                <Field
+                                    label="Content"
+                                    required
+                                >
+                                    <textarea
+                                        value={
+                                            content
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            setContent(
+                                                event
+                                                    .target
+                                                    .value,
+                                            )
+                                        }
+                                        rows={18}
+                                        className={`${textareaClass} leading-7`}
+                                        disabled={
+                                            saving ||
+                                            workflowLoading
+                                        }
+                                    />
+                                </Field>
+                            </div>
+                        </Surface>
+
+                        {/* -----------------------------------------------------------------
+                         * WORKFLOW
+                         * ----------------------------------------------------------------- */}
+                        <Surface
+                            padding="lg"
+                            border="all"
+                            radius="lg"
+                        >
+                            <div className="space-y-5">
+                                <div>
+                                    <Typography
+                                        as="h2"
+                                        variant="sectionTitle"
+                                        className="text-xl"
+                                    >
+                                        Workflow
+                                    </Typography>
+
+                                    <Typography
+                                        variant="caption"
+                                        className="mt-1 block"
+                                    >
+                                        Current status:{" "}
+                                        <strong>
+                                            {
+                                                news.status
+                                            }
+                                        </strong>
+                                    </Typography>
+                                </div>
+
+                                <div className="flex flex-wrap gap-3">
+                                    {news.status ===
+                                        "DRAFT" && (
+                                            <>
+                                                <Button
+                                                    type="button"
+                                                    disabled={
+                                                        workflowLoading
+                                                    }
+                                                    leftIcon={
+                                                        <Send
+                                                            size={
+                                                                16
+                                                            }
+                                                        />
+                                                    }
+                                                    onClick={() =>
+                                                        void handleWorkflowAction(
+                                                            () =>
+                                                                submitNewsForReview(
+                                                                    news.id,
+                                                                    ADMIN_USER_ID,
+                                                                ),
+                                                            "News submitted for review successfully.",
+                                                        )
+                                                    }
+                                                >
+                                                    Submit for Review
+                                                </Button>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    disabled={
+                                                        workflowLoading
+                                                    }
+                                                    leftIcon={
+                                                        <Check
+                                                            size={
+                                                                16
+                                                            }
+                                                        />
+                                                    }
+                                                    onClick={() =>
+                                                        void handleWorkflowAction(
+                                                            () =>
+                                                                approveNews(
+                                                                    news.id,
+                                                                    ADMIN_USER_ID,
+                                                                ),
+                                                            "News approved successfully.",
+                                                        )
+                                                    }
+                                                >
+                                                    Approve
+                                                </Button>
+                                            </>
+                                        )}
+
+                                    {news.status ===
+                                        "IN_REVIEW" && (
+                                            <>
+                                                <Button
+                                                    type="button"
+                                                    disabled={
+                                                        workflowLoading
+                                                    }
+                                                    leftIcon={
+                                                        <Check
+                                                            size={
+                                                                16
+                                                            }
+                                                        />
+                                                    }
+                                                    onClick={() =>
+                                                        void handleWorkflowAction(
+                                                            () =>
+                                                                approveNews(
+                                                                    news.id,
+                                                                    ADMIN_USER_ID,
+                                                                ),
+                                                            "News approved successfully.",
+                                                        )
+                                                    }
+                                                >
+                                                    Approve
+                                                </Button>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    disabled={
+                                                        workflowLoading
+                                                    }
+                                                    leftIcon={
+                                                        <X
+                                                            size={
+                                                                16
+                                                            }
+                                                        />
+                                                    }
+                                                    onClick={() =>
+                                                        void handleWorkflowAction(
+                                                            () =>
+                                                                rejectNews(
+                                                                    news.id,
+                                                                    ADMIN_USER_ID,
+                                                                ),
+                                                            "News rejected successfully.",
+                                                        )
+                                                    }
+                                                >
+                                                    Reject
+                                                </Button>
+                                            </>
+                                        )}
+
+                                    {news.status ===
+                                        "APPROVED" && (
                                             <Button
                                                 type="button"
-                                                variant="outline"
                                                 disabled={
                                                     workflowLoading
                                                 }
                                                 leftIcon={
-                                                    <StarOff
-                                                        size={16}
+                                                    <Check
+                                                        size={
+                                                            16
+                                                        }
                                                     />
                                                 }
                                                 onClick={() =>
                                                     void handleWorkflowAction(
                                                         () =>
-                                                            removeNewsPromotion(
+                                                            publishNews(
                                                                 news.id,
                                                                 ADMIN_USER_ID,
                                                             ),
-                                                        "News promotion removed successfully.",
+                                                        "News published successfully.",
                                                     )
                                                 }
                                             >
-                                                Remove Promotion
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                disabled={
-                                                    workflowLoading
-                                                }
-                                                leftIcon={
-                                                    <Star
-                                                        size={16}
-                                                    />
-                                                }
-                                                onClick={() =>
-                                                    void handleWorkflowAction(
-                                                        () =>
-                                                            promoteNews(
-                                                                news.id,
-                                                                ADMIN_USER_ID,
-                                                            ),
-                                                        "News promoted for 3 days successfully.",
-                                                    )
-                                                }
-                                            >
-                                                Promote for 3 Days
+                                                Publish
                                             </Button>
                                         )}
 
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            disabled={
-                                                workflowLoading
-                                            }
-                                            leftIcon={
-                                                <Archive
-                                                    size={16}
+                                    {news.status ===
+                                        "PUBLISHED" && (
+                                            <>
+                                                {promotionActive ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        disabled={
+                                                            workflowLoading
+                                                        }
+                                                        leftIcon={
+                                                            <StarOff
+                                                                size={
+                                                                    16
+                                                                }
+                                                            />
+                                                        }
+                                                        onClick={() =>
+                                                            void handleWorkflowAction(
+                                                                () =>
+                                                                    removeNewsPromotion(
+                                                                        news.id,
+                                                                        ADMIN_USER_ID,
+                                                                    ),
+                                                                "News promotion removed successfully.",
+                                                            )
+                                                        }
+                                                    >
+                                                        Remove Promotion
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        disabled={
+                                                            workflowLoading
+                                                        }
+                                                        leftIcon={
+                                                            <Star
+                                                                size={
+                                                                    16
+                                                                }
+                                                            />
+                                                        }
+                                                        onClick={() =>
+                                                            void handleWorkflowAction(
+                                                                () =>
+                                                                    promoteNews(
+                                                                        news.id,
+                                                                        ADMIN_USER_ID,
+                                                                    ),
+                                                                "News promoted for 3 days successfully.",
+                                                            )
+                                                        }
+                                                    >
+                                                        Promote for 3 Days
+                                                    </Button>
+                                                )}
+
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    disabled={
+                                                        workflowLoading
+                                                    }
+                                                    leftIcon={
+                                                        <Archive
+                                                            size={
+                                                                16
+                                                            }
+                                                        />
+                                                    }
+                                                    onClick={() =>
+                                                        void handleWorkflowAction(
+                                                            () =>
+                                                                archiveNews(
+                                                                    news.id,
+                                                                    ADMIN_USER_ID,
+                                                                ),
+                                                            "News deactivated successfully.",
+                                                        )
+                                                    }
+                                                >
+                                                    Deactivate
+                                                </Button>
+                                            </>
+                                        )}
+
+                                    {news.status ===
+                                        "REJECTED" && (
+                                            <Button
+                                                type="button"
+                                                disabled={
+                                                    workflowLoading
+                                                }
+                                                leftIcon={
+                                                    <RotateCcw
+                                                        size={
+                                                            16
+                                                        }
+                                                    />
+                                                }
+                                                onClick={() =>
+                                                    void handleWorkflowAction(
+                                                        () =>
+                                                            moveNewsToDraft(
+                                                                news.id,
+                                                                ADMIN_USER_ID,
+                                                            ),
+                                                        "News moved back to draft successfully.",
+                                                    )
+                                                }
+                                            >
+                                                Move to Draft
+                                            </Button>
+                                        )}
+                                </div>
+
+                                {news.status ===
+                                    "PUBLISHED" &&
+                                    news.displayPriority >
+                                    0 && (
+                                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                            <div className="flex items-center gap-2">
+                                                <Star
+                                                    size={
+                                                        16
+                                                    }
+                                                    aria-hidden="true"
                                                 />
-                                            }
-                                            onClick={() =>
-                                                void handleWorkflowAction(
-                                                    () =>
-                                                        archiveNews(
-                                                            news.id,
-                                                            ADMIN_USER_ID,
-                                                        ),
-                                                    "News deactivated successfully.",
-                                                )
-                                            }
-                                        >
-                                            Deactivate
-                                        </Button>
-                                    </>
-                                )}
 
-                                {/* REJECTED */}
-                                {news.status === "REJECTED" && (
-                                    <Button
-                                        type="button"
-                                        disabled={
-                                            workflowLoading
-                                        }
-                                        leftIcon={
-                                            <RotateCcw
-                                                size={16}
-                                            />
-                                        }
-                                        onClick={() =>
-                                            void handleWorkflowAction(
-                                                () =>
-                                                    moveNewsToDraft(
-                                                        news.id,
-                                                        ADMIN_USER_ID,
-                                                    ),
-                                                "News moved back to draft successfully.",
-                                            )
-                                        }
-                                    >
-                                        Move to Draft
-                                    </Button>
-                                )}
+                                                <span className="font-semibold">
+                                                    Promoted Article
+                                                </span>
+                                            </div>
 
-                            </div>
-
-                            {/* Promotion information */}
-                            {news.status === "PUBLISHED" &&
-                                news.displayPriority > 0 && (
-                                    <div
-                                        className="
-                                            rounded-lg
-                                            border
-                                            border-amber-200
-                                            bg-amber-50
-                                            px-4
-                                            py-3
-                                            text-sm
-                                            text-amber-800
-                                        "
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Star
-                                                size={16}
-                                                aria-hidden="true"
-                                            />
-
-                                            <span className="font-semibold">
-                                                Promoted Article
-                                            </span>
+                                            {promotionUntil && (
+                                                <p className="mt-1 text-xs">
+                                                    Promotion
+                                                    active until{" "}
+                                                    {
+                                                        promotionUntil
+                                                    }
+                                                </p>
+                                            )}
                                         </div>
+                                    )}
+                            </div>
+                        </Surface>
 
-                                        {promotionUntil && (
-                                            <p className="mt-1 text-xs">
-                                                Promotion active
-                                                until{" "}
-                                                {promotionUntil}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
-                        </div>
-                    </Surface>
-
-                    {/* ----------------------------------------
-                     * Media
-                     * ---------------------------------------- */}
-                    <NewsMediaUploader
-                        newsId={news.id}
-                        media={media}
-                        onMediaChange={setMedia}
-                        disabled={
-                            saving ||
-                            workflowLoading
-                        }
-                    />
-
-                    {/* ----------------------------------------
-                     * Actions
-                     * ---------------------------------------- */}
-                    <div className="flex justify-end gap-3">
-
-                        <Link to="/admin/news">
-                            <Button
-                                type="button"
-                                variant="outline"
-                            >
-                                Cancel
-                            </Button>
-                        </Link>
-
-                        <Button
-                            type="submit"
-                            loading={saving}
+                        <NewsMediaUploader
+                            newsId={
+                                news.id
+                            }
+                            media={
+                                media
+                            }
+                            onMediaChange={
+                                setMedia
+                            }
                             disabled={
+                                saving ||
                                 workflowLoading
                             }
-                            leftIcon={
-                                <Save size={17} />
-                            }
-                        >
-                            Save Changes
-                        </Button>
+                        />
 
-                    </div>
+                        <div className="flex justify-end gap-3">
+                            <Link to="/admin/news">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    Cancel
+                                </Button>
+                            </Link>
 
-                </form>
-            </div>
-        </main>
+                            <Button
+                                type="submit"
+                                loading={
+                                    saving
+                                }
+                                disabled={
+                                    workflowLoading
+                                }
+                                leftIcon={
+                                    <Save
+                                        size={
+                                            17
+                                        }
+                                    />
+                                }
+                            >
+                                Save Changes
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </main>
+        </MainLayout>
     );
 }
 

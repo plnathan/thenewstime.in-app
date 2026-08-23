@@ -93,7 +93,7 @@ export default function Advertisement({
                         />
                     </svg>
 
-                    99444 90505
+                    86089 34064
                 </span>
             </div>
         </aside>

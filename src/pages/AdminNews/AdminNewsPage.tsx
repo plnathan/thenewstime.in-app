@@ -332,6 +332,27 @@ export default function AdminNewsPage() {
         }
     };
 
+    const getNewsScopeLabel = (
+        scope: News["newsScope"],
+    ) => {
+        switch (scope) {
+            case "WORLD":
+                return "World";
+
+            case "INDIA":
+                return "India";
+
+            case "STATE":
+                return "State";
+
+            case "DISTRICT":
+                return "District";
+
+            default:
+                return "-";
+        }
+    };
+
     /*
      * --------------------------------------------------
      * Loading
@@ -438,6 +459,10 @@ export default function AdminNewsPage() {
                                             </th>
 
                                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                News Scope
+                                            </th>
+
+                                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                                                 Category
                                             </th>
 
@@ -480,6 +505,11 @@ export default function AdminNewsPage() {
                                                         <div className="mt-1 text-xs text-gray-500">
                                                             #{article.newsNumber}
                                                         </div>
+                                                    </td>
+
+                                                    {/* News Scope */}
+                                                    <td className="px-5 py-4 text-sm text-gray-600">
+                                                        {getNewsScopeLabel(article.newsScope)}
                                                     </td>
 
                                                     {/* Category */}
@@ -719,7 +749,9 @@ export default function AdminNewsPage() {
                                                     " ",
                                                 )}
                                             </span>
-
+                                            <span className="text-xs text-gray-500">
+                                                {getNewsScopeLabel(article.newsScope)}
+                                            </span>
                                             <span className="text-xs text-gray-500">
                                                 {article.category?.displayName ??
                                                     "-"}

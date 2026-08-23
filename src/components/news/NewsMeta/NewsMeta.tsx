@@ -18,10 +18,12 @@ interface NewsMetaProps {
   className?: string;
 }
 
+const TEMP_COMMENTS_COUNT = 1;
+
 export default function NewsMeta({
   publishedAt,
   views = 0,
-  comments = 0,
+  //comments = 0,
   audioAvailable = false,
   compact = false,
   className = "",
@@ -76,7 +78,7 @@ export default function NewsMeta({
           as="span"
           variant="caption"
         >
-          {comments}
+          {TEMP_COMMENTS_COUNT}
         </Typography>
       </span>
 
