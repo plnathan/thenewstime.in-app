@@ -216,3 +216,9 @@ npm run
 ## If there is no typecheck script:(recommended for every phase implementation)
 
 npx tsc --noEmit
+
+npm install -D @vercel/node
+
+npx vercel --version
+
+npm install -g vercel
