@@ -1,6 +1,4 @@
-import {
-    useSyncExternalStore,
-} from "react";
+import { useSyncExternalStore } from "react";
 
 import PageLoader from "@/components/ui/PageLoader/PageLoader";
 
@@ -29,12 +27,11 @@ export default function NavigationLoader() {
         flex
         items-center
         justify-center
-        bg-white/95
-        backdrop-blur-sm
+        bg-white
       "
         >
             <PageLoader
-                message="பக்கம் ஏற்றப்படுகிறது..."
+                message="செய்தி ஏற்றப்படுகின்றன..."
                 variant="page"
             />
         </div>

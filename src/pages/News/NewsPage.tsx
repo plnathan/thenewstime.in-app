@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import AppContainer from "@/components/container/AppContainer";
 import MainContent from "@/components/container/MainContent";
 import HomeNewsSection from "@/components/home/HomeNewsSection";
+import PageLoader from "@/components/ui/PageLoader/PageLoader";
 
 import MainLayout from "@/layouts/MainLayout";
 
@@ -47,10 +48,17 @@ export default function NewsPage() {
             ? scopeParam
             : undefined;
 
-    const categoryIdParam = searchParams.get("categoryId");
-    const countryIdParam = searchParams.get("countryId");
-    const stateIdParam = searchParams.get("stateId");
-    const districtIdParam = searchParams.get("districtId");
+    const categoryIdParam =
+        searchParams.get("categoryId");
+
+    const countryIdParam =
+        searchParams.get("countryId");
+
+    const stateIdParam =
+        searchParams.get("stateId");
+
+    const districtIdParam =
+        searchParams.get("districtId");
 
     const categoryIdFromQuery = categoryIdParam
         ? Number(categoryIdParam)
@@ -120,7 +128,9 @@ export default function NewsPage() {
     });
 
     const loading =
-        categoriesLoading || !shouldLoadNews || newsLoading;
+        categoriesLoading ||
+        !shouldLoadNews ||
+        newsLoading;
 
     const error =
         categoriesError ||
@@ -135,19 +145,33 @@ export default function NewsPage() {
         category?.displayName ??
         getScopeTitle(scope ?? null);
 
+    /*
+     * --------------------------------------------------
+     * Loading
+     * --------------------------------------------------
+     *
+     * Use the same branded PageLoader as the Home page
+     * and News Details page.
+     * --------------------------------------------------
+     */
     if (loading) {
         return (
             <MainLayout>
                 <AppContainer>
-                    <div className="flex min-h-[300px] items-center justify-center">
-                        <p className="text-sm text-gray-500">
-                            Loading news...
-                        </p>
-                    </div>
+                    <PageLoader
+                        message="செய்திகள் ஏற்றப்படுகின்றன..."
+                        variant="page"
+                    />
                 </AppContainer>
             </MainLayout>
         );
     }
+
+    /*
+     * --------------------------------------------------
+     * Error
+     * --------------------------------------------------
+     */
 
     if (error) {
         return (
@@ -170,6 +194,12 @@ export default function NewsPage() {
             </MainLayout>
         );
     }
+
+    /*
+     * --------------------------------------------------
+     * Page
+     * --------------------------------------------------
+     */
 
     return (
         <MainLayout>

@@ -1,6 +1,13 @@
-import { NavLink, useLocation } from "react-router-dom";
+import {
+  NavLink,
+  useLocation,
+} from "react-router-dom";
 
 import { cn } from "@/lib";
+
+import {
+  startNavigationLoading,
+} from "@/utils/navigationLoader";
 
 import type { NavigationItem as Item } from "./Navigation.types";
 
@@ -8,10 +15,13 @@ interface Props {
   item: Item;
 }
 
-export default function NavigationItem({ item }: Props) {
+export default function NavigationItem({
+  item,
+}: Props) {
   const location = useLocation();
 
-  const [itemPath, itemQuery] = item.path.split("?");
+  const [itemPath, itemQuery] =
+    item.path.split("?");
 
   const currentParams = new URLSearchParams(
     location.search,
@@ -23,13 +33,27 @@ export default function NavigationItem({ item }: Props) {
 
   const isActive =
     location.pathname === itemPath &&
-    currentParams.toString() === itemParams.toString();
+    currentParams.toString() ===
+    itemParams.toString();
 
   const Icon = item.icon;
+
+  const handleClick = () => {
+    /*
+     * Do nothing when clicking the currently
+     * active navigation item.
+     */
+    if (isActive) {
+      return;
+    }
+
+    startNavigationLoading();
+  };
 
   return (
     <NavLink
       to={item.path}
+      onClick={handleClick}
       className={() =>
         cn(
           "relative",
