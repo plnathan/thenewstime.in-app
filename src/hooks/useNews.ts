@@ -10,11 +10,18 @@ import { toNewsViewList } from "@/utils/news";
 
 interface UseNewsOptions extends NewsQuery {
   /**
+   * Controls whether the public API should order
+   * news by most-read count.
+   */
+  popular?: boolean;
+
+  /**
    * Controls whether the news request should execute.
    *
    * Defaults to true.
    */
   enabled?: boolean;
+
   /**
    * When true, use the public API.
    *
@@ -49,6 +56,7 @@ export function useNews(options?: UseNewsOptions) {
     districtId,
     sortBy,
     sortOrder,
+    popular = false,
     publishedOnly = false,
     enabled = true,
   } = options ?? {};
@@ -58,6 +66,7 @@ export function useNews(options?: UseNewsOptions) {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
+
   /*
    * --------------------------------------------------
    * Load News
@@ -79,6 +88,7 @@ export function useNews(options?: UseNewsOptions) {
           districtId,
           sortBy,
           sortOrder,
+          popular,
         };
 
         const response = await getPublishedNewsList(query);
@@ -89,6 +99,7 @@ export function useNews(options?: UseNewsOptions) {
           page,
           pageSize,
           search,
+
           /*
            * Public API already guarantees PUBLISHED
            * articles, so do not send status when using
@@ -100,6 +111,7 @@ export function useNews(options?: UseNewsOptions) {
           scope,
           stateId,
           districtId,
+
           /*
            * IMPORTANT:
            * sortBy must use the backend-supported
@@ -138,6 +150,7 @@ export function useNews(options?: UseNewsOptions) {
     districtId,
     sortBy,
     sortOrder,
+    popular,
     publishedOnly,
   ]);
 
@@ -151,7 +164,7 @@ export function useNews(options?: UseNewsOptions) {
     };
 
     void fetchNews();
-  }, [enabled,loadNews]);
+  }, [enabled, loadNews]);
 
   return {
     news,

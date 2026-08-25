@@ -5,6 +5,7 @@ import NewsArticle from "@/components/news/NewsArticle";
 import PageLoader from "@/components/ui/PageLoader/PageLoader";
 
 import { useNewsDetail } from "@/hooks/useNewsDetail";
+import { useNewsRead } from "@/hooks/useNewsRead";
 
 import MainLayout from "@/layouts/MainLayout";
 
@@ -28,6 +29,11 @@ export default function NewsDetailPage() {
     error,
     refresh,
   } = useNewsDetail(decodedSlug);
+
+  useNewsRead({
+    newsId: news?.id,
+    status: news?.status,
+  });
 
   return (
     <MainLayout>

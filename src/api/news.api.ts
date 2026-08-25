@@ -44,7 +44,13 @@ export interface NewsQuery {
  * The public endpoint guarantees PUBLISHED news,
  * therefore status is intentionally not supported here.
  */
-export type PublicNewsQuery = Omit<NewsQuery, "status">;
+export type PublicNewsQuery = Omit<NewsQuery, "status"> & {
+  /**
+   * When true, the public API returns news ordered
+   * by most-read count.
+   */
+  popular?: boolean;
+};
 
 /**
  * Get News List.

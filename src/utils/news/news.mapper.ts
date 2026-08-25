@@ -105,7 +105,7 @@ export function toNewsView(news: News): NewsView {
 
     media: news.media ?? [],
 
-    views: 0,
+    views: news.views,
 
     comments: 0,
 

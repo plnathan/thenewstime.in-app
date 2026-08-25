@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import logo from "@/assets/logo/thenewstime_logo_2.png";
+import logo from "@/assets/logo/thenewstime_logo_2_new.png";
 
 export default function Logo() {
   return (

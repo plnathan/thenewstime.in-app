@@ -88,6 +88,8 @@ export interface News {
   state: NewsState | null;
   district: NewsDistrict | null;
 
+  views?: number;
+  
   status: NewsStatus;
 
   /**

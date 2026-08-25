@@ -33,6 +33,17 @@ export default function HomePage() {
     sortOrder: "DESC",
   });
 
+  const {
+    news: popularNews,
+    loading: popularLoading,
+    error: popularError,
+  } = useNews({
+    publishedOnly: true,
+    page: 1,
+    pageSize: 4,
+    popular: true,
+  });
+
   /*
    * --------------------------------------------------
    * Homepage News Distribution
@@ -108,8 +119,6 @@ export default function HomePage() {
    * --------------------------------------------------
    */
 
-  const popularNews = latestNews.slice(0, 4);
-
   /*
    * --------------------------------------------------
    * Loading
@@ -175,7 +184,15 @@ export default function HomePage() {
             sidebar={
               <Sidebar>
                 <Section title="பிரபலமானவை">
-                  {popularNews.length > 0 ? (
+                  {popularLoading ? (
+                    <div className="py-6 text-center text-sm text-gray-500">
+                      செய்திகள் ஏற்றப்படுகின்றன...
+                    </div>
+                  ) : popularError ? (
+                    <div className="py-6 text-center text-sm text-red-600">
+                      பிரபலமான செய்திகளை ஏற்ற முடியவில்லை.
+                    </div>
+                  ) : popularNews.length > 0 ? (
                     popularNews.map((item) => (
                       <NewsCard
                         key={item.id}
