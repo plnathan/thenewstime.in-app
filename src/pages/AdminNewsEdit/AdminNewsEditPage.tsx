@@ -1502,6 +1502,20 @@ export default function AdminNewsEditPage() {
 
                             <div className="space-y-5">
                                 <Field
+                                    label="Slug"
+                                    hint="Automatically generated from the selected classification and title."
+                                >
+                                    <input
+                                        value={slug}
+                                        onChange={(event) => {
+                                            setSlug(normalizeSlug(event.target.value));
+                                        }}
+                                        disabled={saving || workflowLoading}
+                                        className={inputClass}
+                                    />
+                                </Field>
+
+                                <Field
                                     label="Title"
                                     required
                                 >
@@ -1525,20 +1539,6 @@ export default function AdminNewsEditPage() {
                                             saving ||
                                             workflowLoading
                                         }
-                                    />
-                                </Field>
-
-                                <Field
-                                    label="Slug"
-                                    hint="Automatically generated from the selected classification and title."
-                                >
-                                    <input
-                                        value={slug}
-                                        onChange={(event) => {
-                                            setSlug(normalizeSlug(event.target.value));
-                                        }}
-                                        disabled={saving || workflowLoading}
-                                        className={inputClass}
                                     />
                                 </Field>
 

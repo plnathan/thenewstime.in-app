@@ -93,7 +93,7 @@ export default function Advertisement({
                         />
                     </svg>
 
-                    86089 34064
+                    86089 34064 (WhatsApp Only)
                 </span>
             </div>
         </aside>

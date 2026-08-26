@@ -1076,6 +1076,24 @@ export default function AdminNewsCreatePage() {
 
                             <div className="space-y-5">
                                 <Field
+                                    label="Slug"
+                                    hint="Automatically generated from the selected classification and title."
+                                >
+                                    <input
+                                        value={effectiveSlug}
+                                        onChange={(event) => {
+                                            setSlugManuallyEdited(true);
+                                            updateField(
+                                                "slug",
+                                                normalizeSlug(event.target.value),
+                                            );
+                                        }}
+                                        disabled={saving}
+                                        className={inputClass}
+                                    />
+                                </Field>
+
+                                <Field
                                     label="Title"
                                     required
                                 >
@@ -1100,24 +1118,6 @@ export default function AdminNewsCreatePage() {
                                         className={
                                             inputClass
                                         }
-                                    />
-                                </Field>
-
-                                <Field
-                                    label="Slug"
-                                    hint="Automatically generated from the selected classification and title."
-                                >
-                                    <input
-                                        value={effectiveSlug}
-                                        onChange={(event) => {
-                                            setSlugManuallyEdited(true);
-                                            updateField(
-                                                "slug",
-                                                normalizeSlug(event.target.value),
-                                            );
-                                        }}
-                                        disabled={saving}
-                                        className={inputClass}
                                     />
                                 </Field>
 

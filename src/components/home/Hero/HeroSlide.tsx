@@ -49,7 +49,7 @@ export default function HeroSlide({ news }: Props) {
         className="
           h-[340px]
           w-full
-          object-cover
+          object-contain
           sm:h-[360px]
           md:h-[400px]
           lg:h-[430px]
