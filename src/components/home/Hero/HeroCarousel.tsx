@@ -11,6 +11,7 @@ interface HeroCarouselProps {
 }
 
 const AUTO_PLAY_INTERVAL = 5000;
+const SWIPE_THRESHOLD = 70;
 
 export default function HeroCarousel({
   items,
@@ -46,9 +47,13 @@ export default function HeroCarousel({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft") previous();
+      if (event.key === "ArrowLeft") {
+        previous();
+      }
 
-      if (event.key === "ArrowRight") next();
+      if (event.key === "ArrowRight") {
+        next();
+      }
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -60,24 +65,49 @@ export default function HeroCarousel({
   function handleTouchStart(
     event: React.TouchEvent
   ) {
-    touchStart.current =
-      event.targetTouches[0].clientX;
+    const clientX = event.targetTouches[0]?.clientX ?? 0;
+
+    /*
+     * Initialize both values at touch start.
+     *
+     * This is important because a normal tap may not trigger
+     * touchmove. Without this, touchEnd would remain 0 and
+     * every tap could be interpreted as a swipe.
+     */
+    touchStart.current = clientX;
+    touchEnd.current = clientX;
   }
 
   function handleTouchMove(
     event: React.TouchEvent
   ) {
     touchEnd.current =
-      event.targetTouches[0].clientX;
+      event.targetTouches[0]?.clientX ??
+      touchStart.current;
   }
 
   function handleTouchEnd() {
     const distance =
       touchStart.current - touchEnd.current;
 
-    if (distance > 70) next();
+    /*
+     * Only change the slide when the user's finger actually
+     * moved beyond the swipe threshold.
+     *
+     * A normal tap produces distance === 0 and therefore does
+     * not change the active slide.
+     */
+    if (distance > SWIPE_THRESHOLD) {
+      next();
+    } else if (distance < -SWIPE_THRESHOLD) {
+      previous();
+    }
 
-    if (distance < -70) previous();
+    /*
+     * Reset the touch values after the gesture.
+     */
+    touchStart.current = 0;
+    touchEnd.current = 0;
   }
 
   if (!total) return null;
