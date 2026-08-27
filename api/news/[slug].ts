@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // "https://thenewstime-in-api-swart.vercel.app/api/v1";
+const API_BASE_URL = process.env.API_BASE_URL;
 
 const SITE_URL = "https://thenewstime.in";
 
@@ -9,6 +9,7 @@ interface NewsMedia {
   url?: string;
   mediaUrl?: string;
   secureUrl?: string;
+  displayOrder?: number;
 }
 
 interface NewsArticle {
@@ -34,7 +35,15 @@ function escapeHtml(value: string): string {
 }
 
 function getFirstImage(media: NewsMedia[] | undefined): string | null {
-  const firstMedia = media?.[0];
+  if (!media || media.length === 0) {
+    return null;
+  }
+
+  const orderedMedia = [...media].sort(
+    (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
+  );
+
+  const firstMedia = orderedMedia[0];
 
   if (!firstMedia) {
     return null;
@@ -59,13 +68,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  if (!API_BASE_URL) {
+    console.error("API_BASE_URL environment variable is not configured.");
+
+    res.status(500).send("News metadata configuration is missing.");
+    return;
+  }
+
   try {
-    const apiUrl = `${API_BASE_URL}/news/slug/${encodeURIComponent(slug)}`;
+    const apiUrl = `${API_BASE_URL}/news/slug/` + encodeURIComponent(slug);
 
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
-      res.status(response.status).send("Unable to load news article.");
+      if (response.status === 404) {
+        res.status(404).send("News article not found.");
+        return;
+      }
+
+      res.status(502).send("Unable to load news article.");
       return;
     }
 
@@ -84,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const image = getFirstImage(news.media);
 
-    const newsUrl = `${SITE_URL}/news/${encodeURIComponent(slug)}`;
+    const newsUrl = `${SITE_URL}/news/` + encodeURIComponent(slug);
 
     const safeTitle = escapeHtml(title);
 
@@ -100,10 +121,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           property="og:image"
           content="${safeImage}"
         />
+
         <meta
           property="og:image:secure_url"
           content="${safeImage}"
         />
+
+        <meta
+          property="og:image:type"
+          content="image/jpeg"
+        />
+
         <meta
           name="twitter:image"
           content="${safeImage}"
@@ -113,7 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const html = `
 <!doctype html>
-<html lang="en">
+<html lang="ta">
   <head>
     <meta charset="UTF-8" />
 
@@ -122,7 +150,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content="width=device-width, initial-scale=1.0"
     />
 
-    <title>${safeTitle} | thenewstime.in</title>
+    <title>
+      ${safeTitle} | thenewstime.in
+    </title>
 
     <meta
       name="description"
@@ -133,6 +163,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       rel="canonical"
       href="${safeUrl}"
     />
+
+    <!-- Open Graph -->
 
     <meta
       property="og:type"
@@ -162,6 +194,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ${imageMeta}
 
     <meta
+      property="og:locale"
+      content="ta_IN"
+    />
+
+    <!-- Twitter / X -->
+
+    <meta
       name="twitter:card"
       content="summary_large_image"
     />
@@ -176,34 +215,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content="${safeDescription}"
     />
 
+    ${
+      safeImage
+        ? `
     <meta
-      property="og:locale"
-      content="ta_IN"
+      name="twitter:image"
+      content="${safeImage}"
     />
-
-    <script>
-      window.location.replace(
-        ${JSON.stringify(newsUrl)}
-      );
-    </script>
+    `
+        : ""
+    }
   </head>
 
   <body>
-    <noscript>
+    <article>
+      <h1>${safeTitle}</h1>
+
+      <p>${safeDescription}</p>
+
+      ${
+        safeImage
+          ? `
+      <img
+        src="${safeImage}"
+        alt="${safeTitle}"
+      />
+      `
+          : ""
+      }
+
       <p>
         <a href="${safeUrl}">
-          ${safeTitle}
+          Read the full article on thenewstime.in
         </a>
       </p>
-    </noscript>
+    </article>
   </body>
 </html>
     `;
+
+    /*
+     * The same /news/:slug URL can be requested by
+     * both crawlers and normal browsers.
+     *
+     * Keep this response cacheable, but tell caches
+     * that the response varies by User-Agent.
+     */
+    res.setHeader("Vary", "User-Agent");
 
     res.setHeader(
       "Cache-Control",
       "public, s-maxage=300, stale-while-revalidate=600",
     );
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
 
     res.status(200).send(html);
   } catch (error) {
