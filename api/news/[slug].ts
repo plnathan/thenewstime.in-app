@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
-const SITE_URL = "https://thenewstime.in";
+const SITE_URL = "https://www.thenewstime.in/";
 
 interface NewsMedia {
   id?: number;
