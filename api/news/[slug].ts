@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const API_BASE_URL = process.env.API_BASE_URL;
+const API_BASE_URL = process.env.VITE_API_BASE_URL;
 
 const SITE_URL = "https://thenewstime.in";
 
