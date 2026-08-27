@@ -1,17 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/news/:slug",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|TelegramBot|Pinterest|Slackbot|Discordbot|Googlebot|bingbot).*"
-        }
-      ],
-      "destination": "/api/news/:slug"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
