@@ -295,38 +295,170 @@ Published API
 └───────────────► Remaining
 geographical sections
 
--------------------------
+---
+
 Home
 │
 ├── Hero
-│   └── 5 articles
+│ └── 5 articles
 │
 ├── சமீபத்திய செய்திகள்
-│   └── articles 6–15
-│       └── அனைத்தையும் பார்க்க
-│             ↓
-│           /news
+│ └── articles 6–15
+│ └── அனைத்தையும் பார்க்க
+│ ↓
+│ /news
 │
 ├── தமிழ்நாடு
-│   └── STATE + Tamil Nadu
-│       └── மேலும்
-│             ↓
-│           /news?scope=STATE&stateId=<TN_ID>
+│ └── STATE + Tamil Nadu
+│ └── மேலும்
+│ ↓
+│ /news?scope=STATE&stateId=<TN_ID>
 │
 ├── இந்தியா
-│   └── INDIA
-│       └── மேலும்
-│             ↓
-│           /news?scope=INDIA
+│ └── INDIA
+│ └── மேலும்
+│ ↓
+│ /news?scope=INDIA
 │
 ├── உலகம்
-│   └── WORLD
-│       └── மேலும்
-│             ↓
-│           /news?scope=WORLD
+│ └── WORLD
+│ └── மேலும்
+│ ↓
+│ /news?scope=WORLD
 │
 └── மாவட்ட செய்திகள்
-    └── DISTRICT
-        └── மேலும்
-              ↓
-            /news?scope=DISTRICT
+└── DISTRICT
+└── மேலும்
+↓
+/news?scope=DISTRICT
+
+---
+
+## Whats app crawler implementation architects:
+
+User shares:
+https://www.thenewstime.in/news/my-slug
+│
+▼
+Vercel
+│
+┌───────┴────────┐
+│ │
+Social crawler Normal browser
+│ │
+▼ ▼
+/api/news/:slug /index.html
+│ │
+▼ ▼
+OG HTML React Router
+│ │
+▼ ▼
+Social preview NewsDetailPage
+
+Now the testing sequence
+
+After deploying this [slug].ts:
+
+1. Open the Function
+   https://www.thenewstime.in/api/news/government-india-tamil-nadu-chennai-appointment-of-ministers-zone-wise-for-disaster-relief-work-in-chennai
+2. View source
+
+You should now see:
+
+og:title
+og:description
+og:url
+og:image
+og:image:secure_url
+
+and no double slash in og:url.
+
+Specifically:
+
+og:url
+https://www.thenewstime.in/news/government-india-tamil-nadu-chennai-appointment-of-ministers-zone-wise-for-disaster-relief-work-in-chennai
+
+and:
+
+og:image
+https://res.cloudinary.com/xcsauyzw/image/upload/... 3. Test the normal article URL
+https://www.thenewstime.in/news/government-india-tamil-nadu-chennai-appointment-of-ministers-zone-wise-for-disaster-relief-work-in-chennai
+
+It must still open your normal React NewsDetailPage.
+
+4. Then test crawler routing
+
+Once those are confirmed, test the public URL with the WhatsApp User-Agent.
+
+5. Finally test WhatsApp
+
+Share the same /news/<slug> URL, not /api/news/<slug>.
+
+One architectural point
+
+At this point we have established:
+
+                         ┌── Normal browser
+                         │       ↓
+
+/news/:slug ─────────────┤ React SPA
+│ ↓
+│ NewsDetailPage
+│
+└── WhatsApp crawler
+↓
+OG HTML
+↓
+Preview
+
+That's the correct architecture for thenewstime.in.
+
+## Testing whatsapp crawler:
+
+Step 1 — Keep your public article URL
+
+Use your actual article URL:
+
+https://www.thenewstime.in/news/government-india-tamil-nadu-chennai-appointment-of-ministers-zone-wise-for-disaster-relief-work-in-chennai
+
+Step 2 — Open PowerShell
+
+In Windows:
+
+Start → PowerShell
+
+Then run:
+curl.exe -A "WhatsApp/2.23.20.0" -L "https://www.thenewstime.in/news/government-india-tamil-nadu-chennai-appointment-of-ministers-zone-wise-for-disaster-relief-work-in-chennai"
+
+save the response to a file
+curl.exe -A "WhatsApp/2.23.20.0" -L "https://www.thenewstime.in/news/government-india-tamil-nadu-chennai-appointment-of-ministers-zone-wise-for-disaster-relief-work-in-chennai" -o whatsapp-test.html
+
+## Overall
+
+                 News Details Page
+                        │
+              ┌─────────┼─────────┐
+              │         │         │
+           WhatsApp  Facebook     X
+              │         │         │
+              └─────────┼─────────┘
+                        │
+                        ▼
+              www.thenewstime.in
+                   /news/:slug
+                        │
+                        ▼
+                  Vercel routing
+                        │
+              ┌─────────┴─────────┐
+              │                   │
+       Normal browser       Social crawler
+              │                   │
+              ▼                   ▼
+         React page         OG HTML Function
+                                  │
+                                  ▼
+                         og:title
+                         og:description
+                         og:image
+                         og:url

@@ -1,6 +1,7 @@
 import { CalendarDays, MapPin, BookOpen } from "lucide-react";
 
 import NewsMeta from "@/components/news/NewsMeta";
+import NewsSocialShare from "@/components/news/NewsSocialShare/NewsSocialShare";
 import Typography from "@/components/ui/Typography";
 import { formatDate } from "@/utils/format/formatDate";
 import { calculateReadingTime } from "@/utils/news";
@@ -226,6 +227,11 @@ export default function NewsArticle({
                   </span>
                 )}
               </div>
+
+              <NewsSocialShare
+                title={news.title}
+                slug={news.slug}
+              />
             </div>
           </header>
 
