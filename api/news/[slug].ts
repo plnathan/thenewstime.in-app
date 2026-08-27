@@ -2,14 +2,15 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 
-const SITE_URL = "https://www.thenewstime.in/";
+const SITE_URL = "https://www.thenewstime.in";
 
 interface NewsMedia {
   id?: number;
-  url?: string;
-  mediaUrl?: string;
-  secureUrl?: string;
+  fileUrl?: string;
+  thumbnailUrl?: string;
   displayOrder?: number;
+  altText?: string | null;
+  originalFileName?: string;
 }
 
 interface NewsArticle {
@@ -49,7 +50,7 @@ function getFirstImage(media: NewsMedia[] | undefined): string | null {
     return null;
   }
 
-  return firstMedia.secureUrl ?? firstMedia.mediaUrl ?? firstMedia.url ?? null;
+  return firstMedia.fileUrl ?? null;
 }
 
 function getDescription(news: NewsArticle): string {
@@ -105,7 +106,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const image = getFirstImage(news.media);
 
-    const newsUrl = `${SITE_URL}/news/` + encodeURIComponent(slug);
+    /*
+     * Always construct the public URL from
+     * the normalized SITE_URL without a trailing slash.
+     */
+    const newsUrl = `${SITE_URL}/news/${encodeURIComponent(slug)}`;
 
     const safeTitle = escapeHtml(title);
 
@@ -133,6 +138,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         />
 
         <meta
+          property="og:image:width"
+          content="768"
+        />
+
+        <meta
+          property="og:image:height"
+          content="432"
+        />
+
+        <meta
           name="twitter:image"
           content="${safeImage}"
         />
@@ -150,9 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content="width=device-width, initial-scale=1.0"
     />
 
-    <title>
-      ${safeTitle} | thenewstime.in
-    </title>
+    <title>${safeTitle} | thenewstime.in</title>
 
     <meta
       name="description"
@@ -254,13 +267,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 </html>
     `;
 
-    /*
-     * The same /news/:slug URL can be requested by
-     * both crawlers and normal browsers.
-     *
-     * Keep this response cacheable, but tell caches
-     * that the response varies by User-Agent.
-     */
     res.setHeader("Vary", "User-Agent");
 
     res.setHeader(
