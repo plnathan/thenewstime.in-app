@@ -243,7 +243,7 @@ export default function HomePage() {
                 onActionClick={() =>
                   navigate("/news?scope=INDIA")
                 }
-                layout="grid"
+                layout="list"
               />
 
               {/* World */}
@@ -254,7 +254,7 @@ export default function HomePage() {
                 onActionClick={() =>
                   navigate("/news?scope=WORLD")
                 }
-                layout="grid"
+                layout="list"
               />
 
               {/* District */}

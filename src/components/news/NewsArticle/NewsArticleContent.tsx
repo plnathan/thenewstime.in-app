@@ -27,6 +27,25 @@ interface RenderableContentBlock {
   media?: NewsMedia;
 }
 
+function renderInlineFormatting(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  return parts.map((part, index) => {
+    if (
+      part.startsWith("**") &&
+      part.endsWith("**")
+    ) {
+      return (
+        <strong key={index}>
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    return <span key={index}>{part}</span>;
+  });
+}
+
 function parseNewsContent(content: string): ContentBlock[] {
   const lines = content.replace(/\r\n/g, "\n").split("\n");
 
@@ -286,7 +305,7 @@ export default function NewsArticleContent({
                     key={`bullet-${index}-${itemIndex}`}
                     className="pl-1"
                   >
-                    {item}
+                    {renderInlineFormatting(item)}
                   </li>
                 ))}
               </ul>
@@ -315,7 +334,7 @@ export default function NewsArticleContent({
                   paragraphNumber > 1 ? "mt-7 sm:mt-8" : "",
                 ].join(" ")}
               >
-                {block.text}
+                {renderInlineFormatting(block.text)}
               </p>
 
               {inlineImage && (

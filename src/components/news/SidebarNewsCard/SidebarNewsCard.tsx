@@ -43,12 +43,14 @@ export default function SidebarNewsCard({
             src={news.thumbnailUrl}
             alt={news.title}
             className="
-              h-20
-              w-28
-              shrink-0
-              rounded
-              object-cover
-            "
+                  h-full
+                  min-h-24
+                  w-32
+                  shrink-0
+                  self-stretch
+                  rounded
+                  object-cover
+                "
           />
         )}
 
