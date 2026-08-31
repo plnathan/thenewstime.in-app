@@ -18,5 +18,6 @@ export interface NewsCardProps {
    * - Related news
    */
   compact?: boolean;
-  onClick?: () => void;
+  showSummary?: boolean;
+  onClick?: (news: NewsView) => void;
 }

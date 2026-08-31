@@ -1,12 +1,17 @@
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
- * Package     : News Components
+ * Component   : News Components
  * Component   : NewsCard
  * -----------------------------------------------------------------------------
  */
 
-import { Volume2 } from "lucide-react";
+import {
+  Clock3,
+  Eye,
+  MessageSquare,
+  Volume2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import NewsMeta from "@/components/news/NewsMeta/NewsMeta";
@@ -14,18 +19,21 @@ import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
 import { ROUTES } from "@/constants";
 
+import { formatRelativeTime } from "@/utils/date/formatRelativeTime";
+
 import type { NewsCardProps } from "./NewsCard.types";
 
 export default function NewsCard({
   news,
   compact = false,
+  showSummary = false,
   onClick,
 }: NewsCardProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
     if (onClick) {
-      onClick();
+      onClick(news);
       return;
     }
 
@@ -41,6 +49,8 @@ export default function NewsCard({
     comments,
     audioAvailable,
   } = news;
+
+  const relativeTime = formatRelativeTime(publishedAt);
 
   return (
     <Surface
@@ -62,6 +72,11 @@ export default function NewsCard({
           gap-4
         "
       >
+        {/* -----------------------------------------------------------------
+         * Thumbnail
+         *
+         * Keep the existing image size.
+         * ----------------------------------------------------------------- */}
         {thumbnailUrl && (
           <div
             className={`
@@ -90,6 +105,9 @@ export default function NewsCard({
           </div>
         )}
 
+        {/* -----------------------------------------------------------------
+         * News content
+         * ----------------------------------------------------------------- */}
         <div className="min-w-0">
           <Typography
             variant="body"
@@ -108,7 +126,8 @@ export default function NewsCard({
             {title}
           </Typography>
 
-          {!compact && summary && (
+          {/* Summary */}
+          {(showSummary || !compact) && summary && (
             <Typography
               variant="summary"
               className="
@@ -123,24 +142,99 @@ export default function NewsCard({
           )}
         </div>
 
-        <div
-          className="
-            col-span-2
-            md:col-span-1
-            md:col-start-2
-          "
-        >
-          <NewsMeta
-            publishedAt={publishedAt}
-            views={views}
-            comments={comments}
-            audioAvailable={audioAvailable}
-            compact={compact}
-          />
-        </div>
+        {/* -----------------------------------------------------------------
+         * Metadata
+         *
+         * IMPORTANT:
+         *
+         * This is intentionally OUTSIDE the right-side content column.
+         *
+         * col-span-2 makes the metadata occupy the full width of the card.
+         *
+         * For compact + showSummary (பிரபலமானவை):
+         *   Time      -> left
+         *   Views     -> right
+         *   Comments  -> right
+         *
+         * This prevents the metadata from wrapping because of the
+         * narrow news-content column.
+         * ----------------------------------------------------------------- */}
+        {compact && showSummary ? (
+          <div
+            className="
+              col-span-2
+              flex
+              w-full
+              items-center
+              justify-between
+              gap-2
+              text-xs
+              text-gray-500
+            "
+          >
+            {/* Time - left aligned */}
+            <span
+              className="
+                inline-flex
+                min-w-0
+                items-center
+                gap-1
+                truncate
+              "
+            >
+              <Clock3
+                size={13}
+                className="shrink-0"
+              />
 
+              <span className="truncate">
+                {relativeTime}
+              </span>
+            </span>
+
+            {/* Views + Comments - right aligned */}
+            <div
+              className="
+                flex
+                shrink-0
+                items-center
+                gap-4
+              "
+            >
+              <span className="inline-flex items-center gap-1">
+                <Eye size={13} />
+
+                {(views ?? 0).toLocaleString()}
+              </span>
+
+              <span className="inline-flex items-center gap-1">
+                <MessageSquare size={13} />
+
+                {comments ?? 1}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="
+              col-span-2
+            "
+          >
+            <NewsMeta
+              publishedAt={publishedAt}
+              views={views}
+              comments={comments}
+              audioAvailable={audioAvailable}
+              compact={compact}
+            />
+          </div>
+        )}
+
+        {/* -----------------------------------------------------------------
+         * Audio indicator
+         * ----------------------------------------------------------------- */}
         {audioAvailable && compact && (
-          <div className="col-span-2 md:col-start-2 md:col-span-1">
+          <div className="col-span-2">
             <Volume2
               size={15}
               className="text-green-600"

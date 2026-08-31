@@ -23,7 +23,7 @@ const TEMP_COMMENTS_COUNT = 1;
 export default function NewsMeta({
   publishedAt,
   views = 0,
-  //comments = 0,
+  // comments = 0,
   audioAvailable = false,
   compact = false,
   className = "",
@@ -33,14 +33,34 @@ export default function NewsMeta({
   return (
     <div
       className={[
-        "flex flex-wrap items-center gap-x-4 gap-y-2",
+        "flex w-full items-center justify-between",
         compact ? "text-xs" : "text-sm",
         className,
       ].join(" ")}
     >
-      {relativeTime && (
+      {/* LEFT: Published time */}
+      <div className="flex items-center">
+        {relativeTime && (
+          <span className="inline-flex items-center gap-1.5">
+            <Clock3
+              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+              aria-hidden="true"
+            />
+
+            <Typography
+              as="span"
+              variant="caption"
+            >
+              {relativeTime}
+            </Typography>
+          </span>
+        )}
+      </div>
+
+      {/* RIGHT: Views + Comments + Audio */}
+      <div className="flex items-center gap-x-4">
         <span className="inline-flex items-center gap-1.5">
-          <Clock3
+          <Eye
             className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
             aria-hidden="true"
           />
@@ -49,45 +69,12 @@ export default function NewsMeta({
             as="span"
             variant="caption"
           >
-            {relativeTime}
+            {views}
           </Typography>
         </span>
-      )}
 
-      <span className="inline-flex items-center gap-1.5">
-        <Eye
-          className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-          aria-hidden="true"
-        />
-
-        <Typography
-          as="span"
-          variant="caption"
-        >
-          {views}
-        </Typography>
-      </span>
-
-      <span className="inline-flex items-center gap-1.5">
-        <MessageSquare
-          className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-          aria-hidden="true"
-        />
-
-        <Typography
-          as="span"
-          variant="caption"
-        >
-          {TEMP_COMMENTS_COUNT}
-        </Typography>
-      </span>
-
-      {audioAvailable && (
-        <span
-          className="inline-flex items-center gap-1.5"
-          title="Audio available"
-        >
-          <Volume2
+        <span className="inline-flex items-center gap-1.5">
+          <MessageSquare
             className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
             aria-hidden="true"
           />
@@ -96,10 +83,29 @@ export default function NewsMeta({
             as="span"
             variant="caption"
           >
-            Audio
+            {TEMP_COMMENTS_COUNT}
           </Typography>
         </span>
-      )}
+
+        {audioAvailable && (
+          <span
+            className="inline-flex items-center gap-1.5"
+            title="Audio available"
+          >
+            <Volume2
+              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+              aria-hidden="true"
+            />
+
+            <Typography
+              as="span"
+              variant="caption"
+            >
+              Audio
+            </Typography>
+          </span>
+        )}
+      </div>
     </div>
   );
 }

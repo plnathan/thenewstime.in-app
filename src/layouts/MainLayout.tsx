@@ -10,6 +10,7 @@ import type { MainLayoutProps } from "./MainLayout.types";
 
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import ScrollToTopBottom from "@/components/ui/ScrollToTopBottom/ScrollToTopBottom";
 
 export default function MainLayout({
   children,
@@ -23,6 +24,7 @@ export default function MainLayout({
       </main>
 
       <Footer />
+      <ScrollToTopBottom />
     </div>
   );
 }

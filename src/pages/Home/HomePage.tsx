@@ -197,7 +197,7 @@ export default function HomePage() {
                       <NewsCard
                         key={item.id}
                         news={item}
-                        compact
+
                       />
                     ))
                   ) : (
