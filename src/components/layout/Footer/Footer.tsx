@@ -11,6 +11,14 @@ import { Link } from "react-router-dom";
 import { navigationItems } from "@/components/layout/Navigation/navigation.data";
 
 export default function Footer() {
+    const handleLinkClick = () => {
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: "auto",
+        });
+    };
+
     return (
         <footer className="mt-12 border-t border-gray-200 bg-gray-50">
             <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6">
@@ -20,6 +28,7 @@ export default function Footer() {
                     <div>
                         <Link
                             to="/"
+                            onClick={handleLinkClick}
                             className="inline-block text-xl font-bold text-green-700"
                         >
                             thenewstime.in
@@ -45,6 +54,7 @@ export default function Footer() {
                                     <Link
                                         key={item.id}
                                         to={item.path}
+                                        onClick={handleLinkClick}
                                         className="text-sm text-gray-600 transition hover:text-green-700"
                                     >
                                         {item.label}

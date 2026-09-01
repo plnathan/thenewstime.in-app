@@ -5,15 +5,22 @@
  * -----------------------------------------------------------------------------
  */
 
+import {
+  Clock3,
+  Eye,
+  MessageSquare,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
 
-import NewsMeta from "../NewsMeta";
-
 import type { SidebarNewsCardProps } from "./SidebarNewsCard.types";
 import { ROUTES } from "@/constants";
+
+import { formatRelativeTime } from "@/utils/date/formatRelativeTime";
+
+const TEMP_COMMENTS_COUNT = 1;
 
 export default function SidebarNewsCard({
   news,
@@ -30,6 +37,8 @@ export default function SidebarNewsCard({
     navigate(ROUTES.NEWSDETAIL(news.slug));
   };
 
+  const relativeTime = formatRelativeTime(news.publishedAt);
+
   return (
     <Surface
       layout="newspaper"
@@ -38,23 +47,61 @@ export default function SidebarNewsCard({
       onClick={handleClick}
     >
       <div className="flex gap-3">
-        {news.thumbnailUrl && (
-          <img
-            src={news.thumbnailUrl}
-            alt={news.title}
-            className="
-                  h-full
-                  min-h-24
-                  w-32
-                  shrink-0
-                  self-stretch
-                  rounded
-                  object-cover
-                "
-          />
-        )}
+        {/* --------------------------------------------------
+         * Left column
+         *
+         * Image + published time
+         * -------------------------------------------------- */}
+        <div className="w-32 shrink-0">
+          {news.thumbnailUrl && (
+            <img
+              src={news.thumbnailUrl}
+              alt={news.title}
+              className="
+                h-24
+                w-32
+                rounded
+                object-cover
+              "
+            />
+          )}
 
-        <div className="min-w-0 flex-1">
+          {/* Published time directly below image */}
+          {relativeTime && (
+            <div
+              className="
+                mt-1
+                flex
+                shrink-0
+                items-center
+                gap-1
+                text-xs
+                text-gray-500
+              "
+            >
+              <Clock3
+                className="h-3.5 w-3.5 shrink-0"
+                aria-hidden="true"
+              />
+
+              <Typography
+                as="span"
+                variant="caption"
+                className="whitespace-nowrap"
+              >
+                {relativeTime}
+              </Typography>
+            </div>
+          )}
+        </div>
+
+        {/* --------------------------------------------------
+         * Right column
+         *
+         * Title + one-line summary + views/comments
+         * -------------------------------------------------- */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Title */}
           <Typography
             variant="articleTitle"
             className="line-clamp-2"
@@ -62,12 +109,62 @@ export default function SidebarNewsCard({
             {news.title}
           </Typography>
 
-          <NewsMeta
-            compact
-            className="mt-2"
-            publishedAt={news.publishedAt}
-            views={news.views}
-          />
+          {/* Summary - single line ONLY for SidebarNewsCard */}
+          {news.summary && (
+            <p
+              className="
+                mt-1
+                truncate
+                text-sm
+                leading-snug
+                text-gray-600
+              "
+            >
+              {news.summary}
+            </p>
+          )}
+
+          {/* Views + Comments */}
+          <div
+            className="
+              mt-auto
+              flex
+              items-center
+              justify-end
+              gap-4
+              pt-2
+              text-xs
+              text-gray-500
+            "
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Eye
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              />
+
+              <Typography
+                as="span"
+                variant="caption"
+              >
+                {(news.views ?? 0).toLocaleString()}
+              </Typography>
+            </span>
+
+            <span className="inline-flex items-center gap-1.5">
+              <MessageSquare
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              />
+
+              <Typography
+                as="span"
+                variant="caption"
+              >
+                {TEMP_COMMENTS_COUNT}
+              </Typography>
+            </span>
+          </div>
         </div>
       </div>
     </Surface>

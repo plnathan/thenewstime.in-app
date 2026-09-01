@@ -7,6 +7,10 @@ import App from "./App.tsx";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import ScrollToTop from "./components/common/ScrollToTop.tsx";
 
+if ("scrollRestoration" in window.history) {
+  window.history.scrollRestoration = "manual";
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
