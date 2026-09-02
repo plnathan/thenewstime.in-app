@@ -46,13 +46,13 @@ export default function SidebarNewsCard({
       clickable
       onClick={handleClick}
     >
-      <div className="flex gap-3">
+      <div className="flex min-w-0 max-w-full gap-3">
         {/* --------------------------------------------------
          * Left column
          *
          * Image + published time
          * -------------------------------------------------- */}
-        <div className="w-32 shrink-0">
+        <div className="w-32 min-w-0 shrink-0">
           {news.thumbnailUrl && (
             <img
               src={news.thumbnailUrl}
@@ -100,11 +100,16 @@ export default function SidebarNewsCard({
          *
          * Title + one-line summary + views/comments
          * -------------------------------------------------- */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 max-w-full flex-1 flex-col">
           {/* Title */}
           <Typography
             variant="articleTitle"
-            className="line-clamp-2"
+            className="
+              min-w-0
+              max-w-full
+              wrap-break-word
+              line-clamp-2
+            "
           >
             {news.title}
           </Typography>
@@ -114,6 +119,8 @@ export default function SidebarNewsCard({
             <p
               className="
                 mt-1
+                min-w-0
+                max-w-full
                 truncate
                 text-sm
                 leading-snug
