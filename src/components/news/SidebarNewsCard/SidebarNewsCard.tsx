@@ -37,20 +37,19 @@ export default function SidebarNewsCard({
       clickable
       onClick={handleClick}
     >
+      {/* Image + Title + Summary */}
       <div className="flex gap-3">
         {news.thumbnailUrl && (
           <img
             src={news.thumbnailUrl}
             alt={news.title}
             className="
-                  h-full
-                  min-h-24
-                  w-32
-                  shrink-0
-                  self-stretch
-                  rounded
-                  object-cover
-                "
+              h-20
+              w-28
+              shrink-0
+              rounded
+              object-cover
+            "
           />
         )}
 
@@ -62,14 +61,24 @@ export default function SidebarNewsCard({
             {news.title}
           </Typography>
 
-          <NewsMeta
-            compact
-            className="mt-2"
-            publishedAt={news.publishedAt}
-            views={news.views}
-          />
+          {news.summary && (
+            <Typography
+              variant="body"
+              className="mt-1 line-clamp-1"
+            >
+              {news.summary}
+            </Typography>
+          )}
         </div>
       </div>
+
+      {/* Metadata - Full Width Bottom Row */}
+      <NewsMeta
+        compact
+        className="mt-3"
+        publishedAt={news.publishedAt}
+        views={news.views}
+      />
     </Surface>
   );
 }
