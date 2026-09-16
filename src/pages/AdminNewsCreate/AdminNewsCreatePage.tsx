@@ -3,6 +3,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
+import { useAuth } from "@/auth/AuthContext";
 
 import { createNews } from "@/api/news.api";
 import {
@@ -31,8 +32,6 @@ import MainLayout from "@/layouts/MainLayout";
 import type { CreateNewsInput } from "@/types/news.types";
 
 import { normalizeSlug } from "@/utils/news/slug";
-
-const ADMIN_USER_ID = 1;
 
 type NewsScopeValue =
     | ""
@@ -132,6 +131,7 @@ const getApiErrorMessage = (
 };
 
 export default function AdminNewsCreatePage() {
+    const { user } = useAuth();
     const [form, setForm] =
         useState<FormState>(INITIAL_FORM);
 
@@ -650,10 +650,10 @@ export default function AdminNewsCreatePage() {
                 ),
 
             draftedBy:
-                ADMIN_USER_ID,
+                Number(user?.id ?? 0),
 
             createdBy:
-                ADMIN_USER_ID,
+                Number(user?.id ?? 0),
 
             countryId:
                 Number(
@@ -693,6 +693,13 @@ export default function AdminNewsCreatePage() {
             );
         } catch (err) {
             console.error(err);
+
+            if (isAxiosError(err)) {
+                console.error(
+                    "CREATE NEWS VALIDATION RESPONSE:",
+                    err.response?.data,
+                );
+            }
 
             const apiMessage =
                 getApiErrorMessage(

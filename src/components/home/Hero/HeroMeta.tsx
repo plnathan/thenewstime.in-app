@@ -1,3 +1,5 @@
+import { isAdminUser } from "@/auth/auth.utils";
+import { useAuth } from "@/auth/AuthContext";
 import { Eye, MessageSquare } from "lucide-react";
 
 interface Props {
@@ -13,6 +15,10 @@ export default function HeroMeta({
   views = 0,
   // comments = 0,
 }: Props) {
+  const { user } = useAuth();
+
+  const showAdminMeta = isAdminUser(user);
+
   const formattedDate = publishedAt
     ? new Date(publishedAt).toLocaleDateString("ta-IN", {
       day: "numeric",
@@ -28,17 +34,20 @@ export default function HeroMeta({
           {formattedDate}
         </span>
       )}
+      {showAdminMeta && (
+        <>
+          <span className="inline-flex items-center gap-1">
+            <Eye size={14} />
+            {views.toLocaleString()}
+          </span>
 
-      <span className="inline-flex items-center gap-1">
-        <Eye size={14} />
-        {views.toLocaleString()}
-      </span>
-
-      <span className="inline-flex items-center gap-1">
-        <MessageSquare size={14} />
-        {/* {comments.toLocaleString()} */}
-        {TEMP_COMMENTS_COUNT}
-      </span>
+          <span className="inline-flex items-center gap-1">
+            <MessageSquare size={14} />
+            {/* {comments.toLocaleString()} */}
+            {TEMP_COMMENTS_COUNT}
+          </span>
+        </>
+      )}
     </div>
   );
 }

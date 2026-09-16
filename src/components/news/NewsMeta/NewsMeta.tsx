@@ -1,3 +1,12 @@
+/**
+ * -----------------------------------------------------------------------------
+ * Project     : thenewstime.in
+ * Component   : NewsMeta
+ * -----------------------------------------------------------------------------
+ */
+
+import type { HTMLAttributes } from "react";
+
 import {
   Clock3,
   Eye,
@@ -5,107 +14,190 @@ import {
   Volume2,
 } from "lucide-react";
 
-import Typography from "@/components/ui/Typography";
+import { useAuth } from "@/auth/AuthContext";
+import { isAdminUser } from "@/auth/auth.utils";
 
-import { formatRelativeTime } from "@/utils/date/formatRelativeTime";
+import { cn } from "@/lib";
 
-interface NewsMetaProps {
-  publishedAt?: string | Date | null;
+export interface NewsMetaProps
+  extends HTMLAttributes<HTMLDivElement> {
+  publishedAt: string | null;
   views?: number;
   comments?: number;
+  readingTime?: string;
   audioAvailable?: boolean;
+  live?: boolean;
   compact?: boolean;
-  className?: string;
 }
 
-const TEMP_COMMENTS_COUNT = 1;
+function formatRelativeTime(
+  publishedAt: string | null,
+): string {
+  if (!publishedAt) {
+    return "";
+  }
+
+  const publishedDate = new Date(publishedAt);
+
+  if (Number.isNaN(publishedDate.getTime())) {
+    return "";
+  }
+
+  const now = new Date();
+  const diffMs = now.getTime() - publishedDate.getTime();
+
+  if (diffMs < 0) {
+    return "";
+  }
+
+  const diffMinutes = Math.floor(
+    diffMs / (1000 * 60),
+  );
+
+  if (diffMinutes < 1) {
+    return "இப்போது";
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} நிமிடங்களுக்கு முன்`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `${diffHours} மணி நேரத்திற்கு முன்`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays < 7) {
+    return `${diffDays} நாட்களுக்கு முன்`;
+  }
+
+  return publishedDate.toLocaleDateString(
+    "ta-IN",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    },
+  );
+}
 
 export default function NewsMeta({
   publishedAt,
-  views = 0,
-  // comments = 0,
-  audioAvailable = false,
+  views,
+  comments,
+  readingTime,
+  audioAvailable,
+  live = false,
   compact = false,
-  className = "",
+  className,
+  ...props
 }: NewsMetaProps) {
-  const relativeTime = formatRelativeTime(publishedAt);
+  const { user } = useAuth();
+  const showAdminMeta = isAdminUser(user);
+  /*
+   * Engagement information is intentionally visible only
+   * to authenticated ADMIN / SUPER_ADMIN users.
+   *
+   * Public visitors should not see views/comments for now.
+   */
+  //const showEngagement = isAdminUser(user);
+
+  const relativeTime = formatRelativeTime(
+    publishedAt,
+  );
 
   return (
     <div
-      className={[
-        "flex w-full items-center justify-between",
+      className={cn(
+        "flex flex-wrap items-center gap-4 text-gray-500",
         compact ? "text-xs" : "text-sm",
         className,
-      ].join(" ")}
+      )}
+      {...props}
     >
-      {/* LEFT: Published time */}
-      <div className="flex items-center">
-        {relativeTime && (
-          <span className="inline-flex items-center gap-1.5">
-            <Clock3
-              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-              aria-hidden="true"
-            />
-
-            <Typography
-              as="span"
-              variant="caption"
-            >
-              {relativeTime}
-            </Typography>
-          </span>
-        )}
-      </div>
-
-      {/* RIGHT: Views + Comments + Audio */}
-      <div className="flex items-center gap-x-4">
-        <span className="inline-flex items-center gap-1.5">
-          <Eye
-            className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+      {/* Published time */}
+      {relativeTime && (
+        <div className="flex items-center gap-1.5">
+          <Clock3
+            size={compact ? 13 : 15}
             aria-hidden="true"
           />
 
-          <Typography
-            as="span"
-            variant="caption"
-          >
-            {views}
-          </Typography>
-        </span>
+          <span>{relativeTime}</span>
+        </div>
+      )}
 
-        <span className="inline-flex items-center gap-1.5">
-          <MessageSquare
-            className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-            aria-hidden="true"
-          />
-
-          <Typography
-            as="span"
-            variant="caption"
-          >
-            {TEMP_COMMENTS_COUNT}
-          </Typography>
-        </span>
-
-        {audioAvailable && (
+      {/* Live indicator */}
+      {live && (
+        <div
+          className="
+            flex
+            items-center
+            gap-1.5
+            font-medium
+            text-red-600
+          "
+        >
           <span
-            className="inline-flex items-center gap-1.5"
-            title="Audio available"
-          >
-            <Volume2
-              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
-              aria-hidden="true"
-            />
+            className="
+              h-1.5
+              w-1.5
+              rounded-full
+              bg-red-600
+            "
+            aria-hidden="true"
+          />
 
-            <Typography
-              as="span"
-              variant="caption"
-            >
-              Audio
-            </Typography>
-          </span>
-        )}
-      </div>
+          <span>LIVE</span>
+        </div>
+      )}
+
+      {/* Admin-only engagement information */}
+      {showAdminMeta && (
+        <>
+          {typeof views === "number" && (
+            <div className="flex items-center gap-1.5">
+              <Eye
+                size={compact ? 13 : 15}
+                aria-hidden="true"
+              />
+
+              <span>{views}</span>
+            </div>
+          )}
+
+          {typeof comments === "number" && (
+            <div className="flex items-center gap-1.5">
+              <MessageSquare
+                size={compact ? 13 : 15}
+                aria-hidden="true"
+              />
+
+              <span>{comments}</span>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Reading time */}
+      {readingTime && (
+        <span>{readingTime}</span>
+      )}
+
+      {/* Audio availability */}
+      {audioAvailable && (
+        <div className="flex items-center gap-1.5">
+          <Volume2
+            size={compact ? 13 : 15}
+            aria-hidden="true"
+          />
+
+          <span>Audio</span>
+        </div>
+      )}
     </div>
   );
 }

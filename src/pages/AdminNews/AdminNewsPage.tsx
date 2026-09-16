@@ -8,6 +8,11 @@ import {
     X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/auth/AuthContext";
+import {
+    isAdminUser,
+    isReporterUser,
+} from "@/auth/auth.utils";
 import { Link } from "react-router-dom";
 
 import {
@@ -24,11 +29,19 @@ import MainLayout from "@/layouts/MainLayout";
 
 import type { News, NewsStatus } from "@/types/news.types";
 
-const ADMIN_USER_ID = 1;
-
 type StatusFilter = "ALL" | NewsStatus;
 
 export default function AdminNewsPage() {
+    const { user, isAuthenticated } = useAuth();
+
+    const canManageNews =
+        isAuthenticated &&
+        isAdminUser(user);
+
+    const canReporterEdit =
+        isAuthenticated &&
+        isReporterUser(user);
+
     const [news, setNews] = useState<News[]>([]);
 
     const [loading, setLoading] = useState(true);
@@ -156,7 +169,7 @@ export default function AdminNewsPage() {
 
             await activateNews(
                 article.id,
-                ADMIN_USER_ID,
+                user?.id ?? 0,
             );
 
             await loadNews();
@@ -180,7 +193,7 @@ export default function AdminNewsPage() {
 
             await archiveNews(
                 article.id,
-                ADMIN_USER_ID,
+                user?.id ?? 0,
             );
 
             await loadNews();
@@ -205,7 +218,7 @@ export default function AdminNewsPage() {
             await changeNewsStatus(
                 article.id,
                 "APPROVED",
-                ADMIN_USER_ID,
+                user?.id ?? 0,
             );
 
             await loadNews();
@@ -237,7 +250,7 @@ export default function AdminNewsPage() {
             await changeNewsStatus(
                 article.id,
                 "REJECTED",
-                ADMIN_USER_ID,
+                user?.id ?? 0,
             );
 
             await loadNews();
@@ -261,7 +274,7 @@ export default function AdminNewsPage() {
 
             await promoteNews(
                 article.id,
-                ADMIN_USER_ID,
+                user?.id ?? 0,
             );
 
             await loadNews();
@@ -287,7 +300,7 @@ export default function AdminNewsPage() {
 
             await removeNewsPromotion(
                 article.id,
-                ADMIN_USER_ID,
+                user?.id ?? 0,
             );
 
             await loadNews();
@@ -491,6 +504,19 @@ export default function AdminNewsPage() {
                                             const busy =
                                                 actionId === article.id;
 
+                                            const canEditArticle =
+                                                !archived &&
+                                                (
+                                                    canManageNews ||
+                                                    (
+                                                        canReporterEdit &&
+                                                        (
+                                                            article.status === "DRAFT" ||
+                                                            article.status === "REJECTED"
+                                                        )
+                                                    )
+                                                );
+
                                             return (
                                                 <tr
                                                     key={article.id}
@@ -521,9 +547,10 @@ export default function AdminNewsPage() {
                                                     {/* Status */}
                                                     <td className="px-5 py-4">
                                                         <span
-                                                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(
+                                                            className={`inline - flex rounded - full px - 3 py - 1 text - xs font - semibold ${getStatusClassName(
                                                                 article.status,
-                                                            )}`}
+                                                            )
+                                                                } `}
                                                         >
                                                             {article.status.replace(
                                                                 "_",
@@ -545,380 +572,416 @@ export default function AdminNewsPage() {
 
                                                     {/* Actions */}
                                                     <td className="px-5 py-4">
-                                                        <div className="flex flex-wrap justify-end gap-2">
-                                                            {/* Edit
-                               *
-                               * ARCHIVED articles must not
-                               * expose Edit.
-                               */}
-                                                            {!archived && (
-                                                                <Link
-                                                                    to={`/admin/news/${article.id}/edit`}
-                                                                >
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        leftIcon={
-                                                                            <Edit3 size={15} />
-                                                                        }
+                                                        {(canManageNews || canReporterEdit) && (
+                                                            <div className="flex flex-wrap justify-end gap-2">
+                                                                {/* Edit
+                                                                 *
+                                                                 * Admin / Super Admin:
+                                                                 * All non-archived articles.
+                                                                 *
+                                                                 * Reporter:
+                                                                 * DRAFT and REJECTED only.
+                                                                 */}
+                                                                {canEditArticle && (
+                                                                    <Link
+                                                                        to={`/admin/news/${article.id}/edit`}
                                                                     >
-                                                                        Edit
-                                                                    </Button>
-                                                                </Link>
-                                                            )}
-
-                                                            {/* IN_REVIEW actions */}
-                                                            {article.status ===
-                                                                "IN_REVIEW" && (
-                                                                    <>
-                                                                        <Button
-                                                                            type="button"
-                                                                            size="sm"
-                                                                            loading={
-                                                                                busy
-                                                                            }
-                                                                            onClick={() =>
-                                                                                void handleApprove(
-                                                                                    article,
-                                                                                )
-                                                                            }
-                                                                            leftIcon={
-                                                                                <Check size={15} />
-                                                                            }
-                                                                        >
-                                                                            Approve
-                                                                        </Button>
-
                                                                         <Button
                                                                             type="button"
                                                                             variant="outline"
                                                                             size="sm"
-                                                                            loading={
-                                                                                busy
+                                                                            leftIcon={
+                                                                                <Edit3 size={15} />
                                                                             }
+                                                                        >
+                                                                            Edit
+                                                                        </Button>
+                                                                    </Link >
+                                                                )}
+
+                                                                {/* IN_REVIEW actions */}
+                                                                {
+                                                                    canManageNews &&
+                                                                    article.status === "IN_REVIEW" && (
+                                                                        <>
+                                                                            <Button
+                                                                                type="button"
+                                                                                size="sm"
+                                                                                loading={
+                                                                                    busy
+                                                                                }
+                                                                                onClick={() =>
+                                                                                    void handleApprove(
+                                                                                        article,
+                                                                                    )
+                                                                                }
+                                                                                leftIcon={
+                                                                                    <Check size={15} />
+                                                                                }
+                                                                            >
+                                                                                Approve
+                                                                            </Button>
+
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                loading={
+                                                                                    busy
+                                                                                }
+                                                                                onClick={() =>
+                                                                                    void handleReject(
+                                                                                        article,
+                                                                                    )
+                                                                                }
+                                                                                leftIcon={
+                                                                                    <X size={15} />
+                                                                                }
+                                                                            >
+                                                                                Reject
+                                                                            </Button>
+                                                                        </>
+                                                                    )
+                                                                }
+
+                                                                {/* Archived -> Activate */}
+                                                                {
+                                                                    canManageNews &&
+                                                                    archived && (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            loading={busy}
                                                                             onClick={() =>
-                                                                                void handleReject(
+                                                                                void handleActivate(
                                                                                     article,
                                                                                 )
                                                                             }
                                                                             leftIcon={
-                                                                                <X size={15} />
+                                                                                <RotateCcw
+                                                                                    size={15}
+                                                                                />
                                                                             }
                                                                         >
-                                                                            Reject
+                                                                            Activate
                                                                         </Button>
-                                                                    </>
-                                                                )}
+                                                                    )
+                                                                }
 
-                                                            {/* Archived -> Activate */}
-                                                            {archived && (
+                                                                {/* Non-archived -> Deactivate */}
+                                                                {
+                                                                    canManageNews &&
+                                                                    !archived &&
+                                                                    article.status !==
+                                                                    "DRAFT" && (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            loading={busy}
+                                                                            onClick={() =>
+                                                                                void handleArchive(
+                                                                                    article,
+                                                                                )
+                                                                            }
+                                                                            leftIcon={
+                                                                                <Archive
+                                                                                    size={15}
+                                                                                />
+                                                                            }
+                                                                        >
+                                                                            Deactivate
+                                                                        </Button>
+                                                                    )
+                                                                }
+
+                                                                {/* Promotion */}
+                                                                {
+                                                                    canManageNews &&
+                                                                    article.status === "PUBLISHED" &&
+                                                                    (promotionActive ? (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            loading={busy}
+                                                                            onClick={() =>
+                                                                                void handleRemovePromotion(
+                                                                                    article,
+                                                                                )
+                                                                            }
+                                                                            leftIcon={
+                                                                                <StarOff
+                                                                                    size={15}
+                                                                                />
+                                                                            }
+                                                                        >
+                                                                            Remove Promotion
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            loading={busy}
+                                                                            onClick={() =>
+                                                                                void handlePromote(
+                                                                                    article,
+                                                                                )
+                                                                            }
+                                                                            leftIcon={
+                                                                                <Star
+                                                                                    size={15}
+                                                                                />
+                                                                            }
+                                                                        >
+                                                                            Promote
+                                                                        </Button>
+                                                                    ))
+                                                                }
+                                                            </div >
+                                                        )}
+                                                    </td >
+                                                </tr >
+                                            );
+                                        })}
+                                    </tbody >
+                                </table >
+                            </div >
+                        </div >
+
+                        {/* Mobile */}
+                        < div className="space-y-4 md:hidden" >
+                            {
+                                filteredNews.map((article) => {
+                                    const archived =
+                                        article.status === "ARCHIVED";
+
+                                    const promotionActive =
+                                        isPromotionActive(article);
+
+                                    const busy =
+                                        actionId === article.id;
+
+                                    const canEditArticle =
+                                        !archived &&
+                                        (
+                                            canManageNews ||
+                                            (
+                                                canReporterEdit &&
+                                                (
+                                                    article.status === "DRAFT" ||
+                                                    article.status === "REJECTED"
+                                                )
+                                            )
+                                        );
+
+                                    return (
+                                        <article
+                                            key={article.id}
+                                            className="rounded-xl border border-gray-200 bg-white p-4"
+                                        >
+                                            {/* Title */}
+                                            <div>
+                                                <div className="font-semibold text-gray-900">
+                                                    {article.title}
+                                                </div>
+
+                                                <div className="mt-1 text-xs text-gray-500">
+                                                    #{article.newsNumber}
+                                                </div>
+                                            </div>
+
+                                            {/* Metadata */}
+                                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                <span
+                                                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(
+                                                        article.status,
+                                                    )}`}
+                                                >
+                                                    {article.status.replace(
+                                                        "_",
+                                                        " ",
+                                                    )}
+                                                </span>
+
+                                                <span className="text-xs text-gray-500">
+                                                    {getNewsScopeLabel(article.newsScope)}
+                                                </span>
+
+                                                <span className="text-xs text-gray-500">
+                                                    {article.category?.displayName ??
+                                                        "-"}
+                                                </span>
+                                            </div>
+
+                                            {/* Published */}
+                                            <div className="mt-3 text-xs text-gray-500">
+                                                Published:{" "}
+                                                {article.publishedAt
+                                                    ? new Date(
+                                                        article.publishedAt,
+                                                    ).toLocaleDateString(
+                                                        "en-GB",
+                                                    )
+                                                    : "-"}
+                                            </div>
+
+                                            {/* Actions */}
+                                            {(canManageNews || canReporterEdit) && (
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    {/* Edit */}
+                                                    {canEditArticle && (
+                                                        <Link
+                                                            to={`/admin/news/${article.id}/edit`}
+                                                        >
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                leftIcon={
+                                                                    <Edit3 size={15} />
+                                                                }
+                                                            >
+                                                                Edit
+                                                            </Button>
+                                                        </Link>
+                                                    )}
+
+                                                    {/* IN_REVIEW */}
+                                                    {canManageNews &&
+                                                        article.status === "IN_REVIEW" && (
+                                                            <>
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    loading={busy}
+                                                                    onClick={() =>
+                                                                        void handleApprove(
+                                                                            article,
+                                                                        )
+                                                                    }
+                                                                    leftIcon={
+                                                                        <Check size={15} />
+                                                                    }
+                                                                >
+                                                                    Approve
+                                                                </Button>
+
                                                                 <Button
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="sm"
                                                                     loading={busy}
                                                                     onClick={() =>
-                                                                        void handleActivate(
+                                                                        void handleReject(
                                                                             article,
                                                                         )
                                                                     }
                                                                     leftIcon={
-                                                                        <RotateCcw
-                                                                            size={15}
-                                                                        />
+                                                                        <X size={15} />
                                                                     }
                                                                 >
-                                                                    Activate
+                                                                    Reject
                                                                 </Button>
-                                                            )}
+                                                            </>
+                                                        )}
 
-                                                            {/* Non-archived -> Deactivate */}
-                                                            {!archived &&
-                                                                article.status !==
-                                                                "DRAFT" && (
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        loading={busy}
-                                                                        onClick={() =>
-                                                                            void handleArchive(
-                                                                                article,
-                                                                            )
-                                                                        }
-                                                                        leftIcon={
-                                                                            <Archive
-                                                                                size={15}
-                                                                            />
-                                                                        }
-                                                                    >
-                                                                        Deactivate
-                                                                    </Button>
-                                                                )}
+                                                    {/* Archived -> Activate */}
+                                                    {canManageNews &&
+                                                        archived && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                loading={busy}
+                                                                onClick={() =>
+                                                                    void handleActivate(
+                                                                        article,
+                                                                    )
+                                                                }
+                                                                leftIcon={
+                                                                    <RotateCcw size={15} />
+                                                                }
+                                                            >
+                                                                Activate
+                                                            </Button>
+                                                        )}
 
-                                                            {/* Promotion */}
-                                                            {article.status ===
-                                                                "PUBLISHED" &&
-                                                                (promotionActive ? (
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        loading={busy}
-                                                                        onClick={() =>
-                                                                            void handleRemovePromotion(
-                                                                                article,
-                                                                            )
-                                                                        }
-                                                                        leftIcon={
-                                                                            <StarOff
-                                                                                size={15}
-                                                                            />
-                                                                        }
-                                                                    >
-                                                                        Remove Promotion
-                                                                    </Button>
-                                                                ) : (
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        loading={busy}
-                                                                        onClick={() =>
-                                                                            void handlePromote(
-                                                                                article,
-                                                                            )
-                                                                        }
-                                                                        leftIcon={
-                                                                            <Star
-                                                                                size={15}
-                                                                            />
-                                                                        }
-                                                                    >
-                                                                        Promote
-                                                                    </Button>
-                                                                ))}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                                    {/* Active -> Deactivate */}
+                                                    {canManageNews &&
+                                                        !archived &&
+                                                        article.status !==
+                                                        "DRAFT" && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                loading={busy}
+                                                                onClick={() =>
+                                                                    void handleArchive(
+                                                                        article,
+                                                                    )
+                                                                }
+                                                                leftIcon={
+                                                                    <Archive size={15} />
+                                                                }
+                                                            >
+                                                                Deactivate
+                                                            </Button>
+                                                        )}
 
-                        {/* Mobile */}
-                        <div className="space-y-4 md:hidden">
-                            {filteredNews.map((article) => {
-                                const archived =
-                                    article.status === "ARCHIVED";
-
-                                const promotionActive =
-                                    isPromotionActive(article);
-
-                                const busy =
-                                    actionId === article.id;
-
-                                return (
-                                    <article
-                                        key={article.id}
-                                        className="rounded-xl border border-gray-200 bg-white p-4"
-                                    >
-                                        {/* Title */}
-                                        <div>
-                                            <div className="font-semibold text-gray-900">
-                                                {article.title}
-                                            </div>
-
-                                            <div className="mt-1 text-xs text-gray-500">
-                                                #{article.newsNumber}
-                                            </div>
-                                        </div>
-
-                                        {/* Metadata */}
-                                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                                            <span
-                                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClassName(
-                                                    article.status,
-                                                )}`}
-                                            >
-                                                {article.status.replace(
-                                                    "_",
-                                                    " ",
-                                                )}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {getNewsScopeLabel(article.newsScope)}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {article.category?.displayName ??
-                                                    "-"}
-                                            </span>
-                                        </div>
-
-                                        {/* Published */}
-                                        <div className="mt-3 text-xs text-gray-500">
-                                            Published:{" "}
-                                            {article.publishedAt
-                                                ? new Date(
-                                                    article.publishedAt,
-                                                ).toLocaleDateString(
-                                                    "en-GB",
-                                                )
-                                                : "-"}
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            {/* Edit */}
-                                            {!archived && (
-                                                <Link
-                                                    to={`/admin/news/${article.id}/edit`}
-                                                >
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        leftIcon={
-                                                            <Edit3 size={15} />
-                                                        }
-                                                    >
-                                                        Edit
-                                                    </Button>
-                                                </Link>
+                                                    {/* Promotion */}
+                                                    {canManageNews &&
+                                                        article.status === "PUBLISHED" &&
+                                                        (promotionActive ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                loading={busy}
+                                                                onClick={() =>
+                                                                    void handleRemovePromotion(
+                                                                        article,
+                                                                    )
+                                                                }
+                                                                leftIcon={
+                                                                    <StarOff
+                                                                        size={15}
+                                                                    />
+                                                                }
+                                                            >
+                                                                Remove Promotion
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                loading={busy}
+                                                                onClick={() =>
+                                                                    void handlePromote(
+                                                                        article,
+                                                                    )
+                                                                }
+                                                                leftIcon={
+                                                                    <Star size={15} />
+                                                                }
+                                                            >
+                                                                Promote
+                                                            </Button>
+                                                        ))}
+                                                </div>
                                             )}
-
-                                            {/* IN_REVIEW */}
-                                            {article.status ===
-                                                "IN_REVIEW" && (
-                                                    <>
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            loading={busy}
-                                                            onClick={() =>
-                                                                void handleApprove(
-                                                                    article,
-                                                                )
-                                                            }
-                                                            leftIcon={
-                                                                <Check size={15} />
-                                                            }
-                                                        >
-                                                            Approve
-                                                        </Button>
-
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            loading={busy}
-                                                            onClick={() =>
-                                                                void handleReject(
-                                                                    article,
-                                                                )
-                                                            }
-                                                            leftIcon={
-                                                                <X size={15} />
-                                                            }
-                                                        >
-                                                            Reject
-                                                        </Button>
-                                                    </>
-                                                )}
-
-                                            {/* Archived -> Activate */}
-                                            {archived && (
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    loading={busy}
-                                                    onClick={() =>
-                                                        void handleActivate(
-                                                            article,
-                                                        )
-                                                    }
-                                                    leftIcon={
-                                                        <RotateCcw size={15} />
-                                                    }
-                                                >
-                                                    Activate
-                                                </Button>
-                                            )}
-
-                                            {/* Active -> Deactivate */}
-                                            {!archived &&
-                                                article.status !==
-                                                "DRAFT" && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        loading={busy}
-                                                        onClick={() =>
-                                                            void handleArchive(
-                                                                article,
-                                                            )
-                                                        }
-                                                        leftIcon={
-                                                            <Archive size={15} />
-                                                        }
-                                                    >
-                                                        Deactivate
-                                                    </Button>
-                                                )}
-
-                                            {/* Promotion */}
-                                            {article.status ===
-                                                "PUBLISHED" &&
-                                                (promotionActive ? (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        loading={busy}
-                                                        onClick={() =>
-                                                            void handleRemovePromotion(
-                                                                article,
-                                                            )
-                                                        }
-                                                        leftIcon={
-                                                            <StarOff
-                                                                size={15}
-                                                            />
-                                                        }
-                                                    >
-                                                        Remove Promotion
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        loading={busy}
-                                                        onClick={() =>
-                                                            void handlePromote(
-                                                                article,
-                                                            )
-                                                        }
-                                                        leftIcon={
-                                                            <Star size={15} />
-                                                        }
-                                                    >
-                                                        Promote
-                                                    </Button>
-                                                ))}
-                                        </div>
-                                    </article>
-                                );
-                            })}
-                        </div>
+                                        </article>
+                                    );
+                                })
+                            }
+                        </div >
                     </>
                 )}
-            </div>
-        </MainLayout>
+            </div >
+        </MainLayout >
     );
 }

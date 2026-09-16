@@ -462,3 +462,26 @@ curl.exe -A "WhatsApp/2.23.20.0" -L "https://www.thenewstime.in/news/government-
                          og:description
                          og:image
                          og:url
+
+## Rerporter workflow
+
+DRAFT
+│
+├── Edit
+│
+├── Save
+│
+└── Submit for Review
+│
+▼
+IN_REVIEW
+│
+▼
+Approver
+│
+├── Approve → APPROVED
+│ │
+│ ▼
+│ Publish
+│
+└── Reject → REJECTED

@@ -222,3 +222,9 @@ npm install -D @vercel/node
 npx vercel --version
 
 npm install -g vercel
+
+---
+
+## To get the data from localstorage:
+
+JSON.parse(localStorage.getItem("thenewstime.auth.session"))

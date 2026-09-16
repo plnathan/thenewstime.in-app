@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 import { isAxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/auth/AuthContext";
+import {
+    isAdminUser,
+    isReporterUser,
+} from "@/auth/auth.utils";
 import type {
     FormEvent,
     ReactNode,
@@ -63,8 +68,6 @@ import type {
 } from "@/types/news.types";
 
 import { normalizeSlug } from "@/utils/news/slug";
-
-const ADMIN_USER_ID = 1;
 
 type NewsScopeValue =
     | ""
@@ -163,7 +166,11 @@ const formatPromotionUntil = (
 };
 
 export default function AdminNewsEditPage() {
+    const { user } = useAuth();
     const { id } = useParams();
+
+    const canManageNews = isAdminUser(user);
+    const canReporterEdit = isReporterUser(user);
 
     const newsId = Number(id);
 
@@ -760,12 +767,9 @@ export default function AdminNewsEditPage() {
             return;
         }
 
-        if (
-            news.status ===
-            "ARCHIVED"
-        ) {
+        if (!canEditArticle) {
             setError(
-                "Archived news articles cannot be edited. Activate the article first.",
+                "This news article cannot be edited in its current status or with your current access.",
             );
             return;
         }
@@ -826,7 +830,7 @@ export default function AdminNewsEditPage() {
                     : null,
 
             updatedBy:
-                ADMIN_USER_ID,
+                Number(user?.id ?? 0),
         };
 
         try {
@@ -1037,6 +1041,16 @@ export default function AdminNewsEditPage() {
         );
     }
 
+    const canEditArticle =
+        news.status !== "ARCHIVED" &&
+        (
+            canManageNews ||
+            (
+                canReporterEdit &&
+                news.status === "DRAFT"
+            )
+        );
+
     if (
         news.status ===
         "ARCHIVED"
@@ -1089,34 +1103,36 @@ export default function AdminNewsEditPage() {
                                 )}
 
                                 <div className="flex flex-wrap gap-3 pt-2">
-                                    <Button
-                                        type="button"
-                                        loading={
-                                            workflowLoading
-                                        }
-                                        disabled={
-                                            workflowLoading
-                                        }
-                                        leftIcon={
-                                            <RotateCcw
-                                                size={
-                                                    16
-                                                }
-                                            />
-                                        }
-                                        onClick={() =>
-                                            void handleWorkflowAction(
-                                                () =>
-                                                    activateNews(
-                                                        news.id,
-                                                        ADMIN_USER_ID,
-                                                    ),
-                                                "News activated successfully and moved back to draft.",
-                                            )
-                                        }
-                                    >
-                                        Activate News
-                                    </Button>
+                                    {canManageNews && (
+                                        <Button
+                                            type="button"
+                                            loading={
+                                                workflowLoading
+                                            }
+                                            disabled={
+                                                workflowLoading
+                                            }
+                                            leftIcon={
+                                                <RotateCcw
+                                                    size={
+                                                        16
+                                                    }
+                                                />
+                                            }
+                                            onClick={() =>
+                                                void handleWorkflowAction(
+                                                    () =>
+                                                        activateNews(
+                                                            news.id,
+                                                            Number(user?.id ?? 0),
+                                                        ),
+                                                    "News activated successfully and moved back to draft.",
+                                                )
+                                            }
+                                        >
+                                            Activate News
+                                        </Button>
+                                    )}
 
                                     <Link to="/admin/news">
                                         <Button
@@ -1179,6 +1195,14 @@ export default function AdminNewsEditPage() {
                         </div>
                     )}
 
+                    {!canEditArticle && (
+                        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            {canManageNews
+                                ? `This article is ${news.status.toLowerCase().replace("_", " ")}. It is not editable in this status.`
+                                : "This article is currently locked for editing. Only the permitted workflow role can edit it in this status."}
+                        </div>
+                    )}
+
                     <form
                         onSubmit={
                             handleSubmit
@@ -1221,6 +1245,7 @@ export default function AdminNewsEditPage() {
                                             )
                                         }
                                         disabled={
+                                            !canEditArticle ||
                                             saving ||
                                             workflowLoading
                                         }
@@ -1267,6 +1292,7 @@ export default function AdminNewsEditPage() {
                                             );
                                         }}
                                         disabled={
+                                            !canEditArticle ||
                                             loadingMasterData ||
                                             saving ||
                                             workflowLoading
@@ -1325,6 +1351,7 @@ export default function AdminNewsEditPage() {
                                                 )
                                             }
                                             disabled={
+                                                !canEditArticle ||
                                                 loadingMasterData ||
                                                 saving ||
                                                 workflowLoading ||
@@ -1379,6 +1406,7 @@ export default function AdminNewsEditPage() {
                                                     )
                                                 }
                                                 disabled={
+                                                    !canEditArticle ||
                                                     !selectedCountryId ||
                                                     states.length === 0 ||
                                                     saving ||
@@ -1434,6 +1462,7 @@ export default function AdminNewsEditPage() {
                                                     );
                                                 }}
                                                 disabled={
+                                                    !canEditArticle ||
                                                     !selectedStateId ||
                                                     districts.length ===
                                                     0 ||
@@ -1510,7 +1539,7 @@ export default function AdminNewsEditPage() {
                                         onChange={(event) => {
                                             setSlug(normalizeSlug(event.target.value));
                                         }}
-                                        disabled={saving || workflowLoading}
+                                        disabled={!canEditArticle || saving || workflowLoading}
                                         className={inputClass}
                                     />
                                 </Field>
@@ -1536,6 +1565,7 @@ export default function AdminNewsEditPage() {
                                             inputClass
                                         }
                                         disabled={
+                                            !canEditArticle ||
                                             saving ||
                                             workflowLoading
                                         }
@@ -1561,6 +1591,7 @@ export default function AdminNewsEditPage() {
                                             textareaClass
                                         }
                                         disabled={
+                                            !canEditArticle ||
                                             saving ||
                                             workflowLoading
                                         }
@@ -1587,6 +1618,7 @@ export default function AdminNewsEditPage() {
                                         rows={18}
                                         className={`${textareaClass} leading-7`}
                                         disabled={
+                                            !canEditArticle ||
                                             saving ||
                                             workflowLoading
                                         }
@@ -1630,63 +1662,68 @@ export default function AdminNewsEditPage() {
                                     {news.status ===
                                         "DRAFT" && (
                                             <>
-                                                <Button
-                                                    type="button"
-                                                    disabled={
-                                                        workflowLoading
-                                                    }
-                                                    leftIcon={
-                                                        <Send
-                                                            size={
-                                                                16
-                                                            }
-                                                        />
-                                                    }
-                                                    onClick={() =>
-                                                        void handleWorkflowAction(
-                                                            () =>
-                                                                submitNewsForReview(
-                                                                    news.id,
-                                                                    ADMIN_USER_ID,
-                                                                ),
-                                                            "News submitted for review successfully.",
-                                                        )
-                                                    }
-                                                >
-                                                    Submit for Review
-                                                </Button>
+                                                {(canManageNews || canReporterEdit) && (
+                                                    <Button
+                                                        type="button"
+                                                        disabled={
+                                                            workflowLoading
+                                                        }
+                                                        leftIcon={
+                                                            <Send
+                                                                size={
+                                                                    16
+                                                                }
+                                                            />
+                                                        }
+                                                        onClick={() =>
+                                                            void handleWorkflowAction(
+                                                                () =>
+                                                                    submitNewsForReview(
+                                                                        news.id,
+                                                                        Number(user?.id ?? 0),
+                                                                    ),
+                                                                "News submitted for review successfully.",
+                                                            )
+                                                        }
+                                                    >
+                                                        Submit for Review
+                                                    </Button>
+                                                )}
 
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    disabled={
-                                                        workflowLoading
-                                                    }
-                                                    leftIcon={
-                                                        <Check
-                                                            size={
-                                                                16
-                                                            }
-                                                        />
-                                                    }
-                                                    onClick={() =>
-                                                        void handleWorkflowAction(
-                                                            () =>
-                                                                approveNews(
-                                                                    news.id,
-                                                                    ADMIN_USER_ID,
-                                                                ),
-                                                            "News approved successfully.",
-                                                        )
-                                                    }
-                                                >
-                                                    Approve
-                                                </Button>
+                                                {canManageNews && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        disabled={
+                                                            workflowLoading
+                                                        }
+                                                        leftIcon={
+                                                            <Check
+                                                                size={
+                                                                    16
+                                                                }
+                                                            />
+                                                        }
+                                                        onClick={() =>
+                                                            void handleWorkflowAction(
+                                                                () =>
+                                                                    approveNews(
+                                                                        news.id,
+                                                                        Number(user?.id ?? 0),
+                                                                    ),
+                                                                "News approved successfully.",
+                                                            )
+                                                        }
+                                                    >
+                                                        Approve
+                                                    </Button>
+                                                )}
                                             </>
                                         )}
 
                                     {news.status ===
-                                        "IN_REVIEW" && (
+                                        "IN_REVIEW" &&
+                                        canManageNews && (
                                             <>
                                                 <Button
                                                     type="button"
@@ -1705,7 +1742,7 @@ export default function AdminNewsEditPage() {
                                                             () =>
                                                                 approveNews(
                                                                     news.id,
-                                                                    ADMIN_USER_ID,
+                                                                    Number(user?.id ?? 0),
                                                                 ),
                                                             "News approved successfully.",
                                                         )
@@ -1732,7 +1769,7 @@ export default function AdminNewsEditPage() {
                                                             () =>
                                                                 rejectNews(
                                                                     news.id,
-                                                                    ADMIN_USER_ID,
+                                                                    Number(user?.id ?? 0),
                                                                 ),
                                                             "News rejected successfully.",
                                                         )
@@ -1744,7 +1781,8 @@ export default function AdminNewsEditPage() {
                                         )}
 
                                     {news.status ===
-                                        "APPROVED" && (
+                                        "APPROVED" &&
+                                        canManageNews && (
                                             <Button
                                                 type="button"
                                                 disabled={
@@ -1762,7 +1800,7 @@ export default function AdminNewsEditPage() {
                                                         () =>
                                                             publishNews(
                                                                 news.id,
-                                                                ADMIN_USER_ID,
+                                                                Number(user?.id ?? 0),
                                                             ),
                                                         "News published successfully.",
                                                     )
@@ -1773,7 +1811,8 @@ export default function AdminNewsEditPage() {
                                         )}
 
                                     {news.status ===
-                                        "PUBLISHED" && (
+                                        "PUBLISHED" &&
+                                        canManageNews && (
                                             <>
                                                 {promotionActive ? (
                                                     <Button
@@ -1794,7 +1833,7 @@ export default function AdminNewsEditPage() {
                                                                 () =>
                                                                     removeNewsPromotion(
                                                                         news.id,
-                                                                        ADMIN_USER_ID,
+                                                                        Number(user?.id ?? 0),
                                                                     ),
                                                                 "News promotion removed successfully.",
                                                             )
@@ -1821,7 +1860,7 @@ export default function AdminNewsEditPage() {
                                                                 () =>
                                                                     promoteNews(
                                                                         news.id,
-                                                                        ADMIN_USER_ID,
+                                                                        Number(user?.id ?? 0),
                                                                     ),
                                                                 "News promoted for 3 days successfully.",
                                                             )
@@ -1849,7 +1888,7 @@ export default function AdminNewsEditPage() {
                                                             () =>
                                                                 archiveNews(
                                                                     news.id,
-                                                                    ADMIN_USER_ID,
+                                                                    Number(user?.id ?? 0),
                                                                 ),
                                                             "News deactivated successfully.",
                                                         )
@@ -1861,7 +1900,8 @@ export default function AdminNewsEditPage() {
                                         )}
 
                                     {news.status ===
-                                        "REJECTED" && (
+                                        "REJECTED" &&
+                                        canManageNews && (
                                             <Button
                                                 type="button"
                                                 disabled={
@@ -1879,7 +1919,7 @@ export default function AdminNewsEditPage() {
                                                         () =>
                                                             moveNewsToDraft(
                                                                 news.id,
-                                                                ADMIN_USER_ID,
+                                                                Number(user?.id ?? 0),
                                                             ),
                                                         "News moved back to draft successfully.",
                                                     )
@@ -1933,6 +1973,7 @@ export default function AdminNewsEditPage() {
                                 setMedia
                             }
                             disabled={
+                                !canEditArticle ||
                                 saving ||
                                 workflowLoading
                             }
@@ -1954,6 +1995,7 @@ export default function AdminNewsEditPage() {
                                     saving
                                 }
                                 disabled={
+                                    !canEditArticle ||
                                     workflowLoading
                                 }
                                 leftIcon={
