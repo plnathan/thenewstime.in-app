@@ -42,7 +42,7 @@ export default function NewsDetailPage() {
 
           {/* Loading */}
           {loading && (
-            <PageLoader message="செய்தி ஏற்றப்படுகிறது..." />
+            <PageLoader message="செய்தி பெறப்படுகிறது..." />
           )}
 
           {/* Error / Not Found */}
@@ -55,7 +55,7 @@ export default function NewsDetailPage() {
                 </div>
 
                 <h1 className="mt-5 text-2xl font-bold text-gray-900">
-                  செய்தி கிடைக்கவில்லை
+                  செய்திகள் இல்லை
                 </h1>
 
                 <p className="mt-3 text-sm leading-7 text-gray-500">

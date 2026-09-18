@@ -31,7 +31,7 @@ export default function NavigationLoader() {
       "
         >
             <PageLoader
-                message="செய்தி ஏற்றப்படுகின்றன..."
+                message="செய்தி பெறப்படுகின்றன..."
                 variant="page"
             />
         </div>

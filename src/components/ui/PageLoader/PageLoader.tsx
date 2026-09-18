@@ -1,7 +1,7 @@
 import type { PageLoaderProps } from "./PageLoader.types";
 
 export default function PageLoader({
-    message = "செய்தி ஏற்றப்படுகிறது...",
+    message = "செய்தி பெறப்படுகிறது...",
     variant = "page",
 }: PageLoaderProps) {
     const isPage = variant === "page";

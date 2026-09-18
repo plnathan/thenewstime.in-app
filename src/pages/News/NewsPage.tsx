@@ -159,7 +159,7 @@ export default function NewsPage() {
             <MainLayout>
                 <AppContainer>
                     <PageLoader
-                        message="செய்திகள் ஏற்றப்படுகின்றன..."
+                        message="செய்திகள் பெறப்படுகின்றன..."
                         variant="page"
                     />
                 </AppContainer>

@@ -143,7 +143,7 @@ export default function Header() {
     "
             >
                 {/* Menu */}
-                <div className="relative">
+                <div className="relative z-[100]">
                     <button
                         type="button"
                         className="
@@ -186,6 +186,7 @@ export default function Header() {
             absolute
             left-0
             top-full
+            z-[110]
             mt-2
             w-64
             overflow-hidden

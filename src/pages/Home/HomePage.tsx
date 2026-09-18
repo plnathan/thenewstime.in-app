@@ -129,7 +129,7 @@ export default function HomePage() {
     return (
       <MainLayout>
         <AppContainer>
-          <PageLoader message="செய்திகள் ஏற்றப்படுகின்றன..." />
+          <PageLoader message="செய்திகள் பெறப்படுகின்றன..." />
         </AppContainer>
       </MainLayout>
     );
@@ -186,11 +186,11 @@ export default function HomePage() {
                 <Section title="பிரபலமானவை">
                   {popularLoading ? (
                     <div className="py-6 text-center text-sm text-gray-500">
-                      செய்திகள் ஏற்றப்படுகின்றன...
+                      செய்திகள் பெறப்படுகின்றன...
                     </div>
                   ) : popularError ? (
                     <div className="py-6 text-center text-sm text-red-600">
-                      பிரபலமான செய்திகளை ஏற்ற முடியவில்லை.
+                      பிரபலமான செய்திகளை பெற முடியவில்லை.
                     </div>
                   ) : popularNews.length > 0 ? (
                     popularNews.map((item) => (

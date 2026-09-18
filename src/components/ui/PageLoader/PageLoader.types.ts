@@ -2,7 +2,7 @@ export interface PageLoaderProps {
   /**
    * Loading message displayed below the animation.
    *
-   * Defaults to "செய்தி ஏற்றப்படுகிறது..."
+   * Defaults to "செய்தி பெறப்படுகிறது..."
    */
   message?: string;
 
