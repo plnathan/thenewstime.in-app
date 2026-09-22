@@ -21,8 +21,10 @@ export default function NewsSocialShare({
     title,
     slug,
 }: NewsSocialShareProps) {
-    const articleUrl =
-        `${window.location.origin}/news/${encodeURIComponent(slug)}`;
+    // const articleUrl =
+    //     `${window.location.origin}/news/${encodeURIComponent(slug)}`;
+
+    const articleUrl = `https://www.thenewstime.in/news/${slug}`;
 
     const encodedUrl = encodeURIComponent(articleUrl);
     const encodedTitle = encodeURIComponent(title);
