@@ -100,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const title = news.title?.trim() || "thenewstime.in";
+    const title = news.title?.trim() || "www.thenewstime.in";
 
     const description = getDescription(news);
 
@@ -165,7 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content="width=device-width, initial-scale=1.0"
     />
 
-    <title>${safeTitle} | thenewstime.in</title>
+    <title>${safeTitle} | www.thenewstime.in</title>
 
     <meta
       name="description"
@@ -186,7 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     <meta
       property="og:site_name"
-      content="thenewstime.in"
+      content="www.thenewstime.in"
     />
 
     <meta
