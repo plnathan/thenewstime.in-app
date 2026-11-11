@@ -1,38 +1,93 @@
+import AdminListPagination from "@/components/ui/AdminListPagination";
 import {
+    History,
     Archive,
     Check,
     Edit3,
+    Trash2,
     RotateCcw,
+    RefreshCw,
     Star,
     StarOff,
     X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import {
     isAdminUser,
     isReporterUser,
 } from "@/auth/auth.utils";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import {
     activateNews,
     archiveNews,
     changeNewsStatus,
+    deleteNews,
     getNewsList,
+    getNewsById,
     promoteNews,
     removeNewsPromotion,
 } from "@/api/news.api";
 
 import Button from "@/components/ui/Button";
+import { getApiErrorMessage } from "@/helpers/advertisementManagement.helpers";
 import MainLayout from "@/layouts/MainLayout";
 
 import type { News, NewsStatus } from "@/types/news.types";
 
 type StatusFilter = "ALL" | NewsStatus;
 
+const DEFAULT_NEWS_PAGE_SIZE = 5;
+const NEWS_PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+
+const formatPublishedDateTime = (value: string | null): string => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: true,
+    }).format(date);
+};
+
 export default function AdminNewsPage() {
     const { user, isAuthenticated } = useAuth();
+    const [auditArticle, setAuditArticle] = useState<News | null>(null);
+    const [auditLoading, setAuditLoading] = useState(false);
+    const [auditError, setAuditError] = useState<string | null>(null);
+    const openAudit = async (article: News): Promise<void> => {
+        setAuditArticle(article);
+        setAuditError(null);
+        setAuditLoading(true);
+        try {
+            const response = await getNewsById(article.id);
+            if (response.data) setAuditArticle(response.data);
+        } catch (error) {
+            setAuditError(getApiErrorMessage(error));
+        } finally { setAuditLoading(false); }
+    };
+    const [searchParams, setSearchParams] = useSearchParams();
+    const pageSizeValue = Number(searchParams.get("pageSize") ?? String(DEFAULT_NEWS_PAGE_SIZE));
+    const pageSize = NEWS_PAGE_SIZE_OPTIONS.find((size) => size === pageSizeValue) ?? DEFAULT_NEWS_PAGE_SIZE;
+    const pageValue = Number(searchParams.get("page") ?? "1");
+    const currentPage = Number.isSafeInteger(pageValue) && pageValue > 0 ? pageValue : 1;
+    const updatePage = (page: number) => {
+        const next = new URLSearchParams(searchParams);
+        if (page <= 1) next.delete("page");
+        else next.set("page", String(page));
+        setSearchParams(next, { replace: true, preventScrollReset: true });
+    };
+    const updatePageSize = (size: number) => {
+        if (!NEWS_PAGE_SIZE_OPTIONS.some((option) => option === size)) return;
+        const next = new URLSearchParams(searchParams);
+        if (size === DEFAULT_NEWS_PAGE_SIZE) next.delete("pageSize");
+        else next.set("pageSize", String(size));
+        next.delete("page");
+        setSearchParams(next, { replace: true, preventScrollReset: true });
+    };
+    const editReturnUrl = `/admin/news/list${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
     const canManageNews =
         isAuthenticated &&
@@ -45,11 +100,29 @@ export default function AdminNewsPage() {
     const [news, setNews] = useState<News[]>([]);
 
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const hasLoadedNews = useRef(false);
 
     const [error, setError] = useState<string | null>(null);
 
-    const [statusFilter, setStatusFilter] =
-        useState<StatusFilter>("ALL");
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => (searchParams.get("status") || "ALL") as StatusFilter);
+
+    const [newsIdFilter, setNewsIdFilter] = useState(() => (searchParams.get("newsId") || ""));
+    const [slugFilter, setSlugFilter] = useState(() => (searchParams.get("slug") || ""));
+    const [scopeFilter, setScopeFilter] = useState(() => (searchParams.get("scope") || ""));
+    const [categoryFilter, setCategoryFilter] = useState(() => (searchParams.get("category") || ""));
+    const [publishedFrom, setPublishedFrom] = useState(() => (searchParams.get("from") || ""));
+    const [publishedTo, setPublishedTo] = useState(() => (searchParams.get("to") || ""));
+
+
+
+    const changeFilter = (key: string, value: string) => {
+        const next = new URLSearchParams(searchParams);
+        if (!value || (key === "status" && value === "ALL")) next.delete(key);
+        else next.set(key, value);
+        next.delete("page");
+        setSearchParams(next, { replace: true, preventScrollReset: true });
+    };
 
     /**
      * ID of the article currently performing an action.
@@ -58,6 +131,7 @@ export default function AdminNewsPage() {
      * on the same article while an API request is running.
      */
     const [actionId, setActionId] = useState<number | null>(null);
+    const [newsPendingDeletion, setNewsPendingDeletion] = useState<News | null>(null);
 
     /**
      * Current time is kept in state instead of calling
@@ -92,7 +166,11 @@ export default function AdminNewsPage() {
      */
     const loadNews = useCallback(async () => {
         try {
-            setLoading(true);
+            if (hasLoadedNews.current) {
+                setRefreshing(true);
+            } else {
+                setLoading(true);
+            }
             setError(null);
 
             const response = await getNewsList({
@@ -108,7 +186,9 @@ export default function AdminNewsPage() {
 
             setError("Unable to load news.");
         } finally {
+            hasLoadedNews.current = true;
             setLoading(false);
+            setRefreshing(false);
         }
     }, []);
 
@@ -125,15 +205,37 @@ export default function AdminNewsPage() {
      * Filtered News
      * --------------------------------------------------
      */
-    const filteredNews = useMemo(() => {
-        if (statusFilter === "ALL") {
-            return news;
-        }
+    const availableCategories = useMemo(() => {
+        const categories = new Map<number, string>();
+        news.forEach((article) => {
+            if (article.category?.displayName) {
+                categories.set(article.categoryId, article.category.displayName);
+            }
+        });
+        return [...categories.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+    }, [news]);
 
-        return news.filter(
-            (article) => article.status === statusFilter,
-        );
-    }, [news, statusFilter]);
+    const filteredNews = useMemo(() => news.filter((article) => {
+        if (statusFilter !== "ALL" && article.status !== statusFilter) return false;
+        if (newsIdFilter.trim() && String(article.newsNumber) !== newsIdFilter.trim() && String(article.id) !== newsIdFilter.trim()) return false;
+        if (slugFilter.trim() && !article.slug?.toLocaleLowerCase().includes(slugFilter.trim().toLocaleLowerCase())) return false;
+        if (scopeFilter && article.newsScope !== scopeFilter) return false;
+        if (categoryFilter && article.categoryId !== Number(categoryFilter)) return false;
+        if (publishedFrom || publishedTo) {
+            if (!article.publishedAt) return false;
+            const date = new Date(article.publishedAt);
+            if (Number.isNaN(date.getTime())) return false;
+            const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+            if (publishedFrom && day < publishedFrom) return false;
+            if (publishedTo && day > publishedTo) return false;
+        }
+        return true;
+    }), [news, statusFilter, newsIdFilter, slugFilter, scopeFilter, categoryFilter, publishedFrom, publishedTo]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredNews.length / pageSize));
+    const visiblePage = Math.min(currentPage, totalPages);
+    const paginatedNews = filteredNews.slice((visiblePage - 1) * pageSize, visiblePage * pageSize);
+
 
     /*
      * --------------------------------------------------
@@ -163,13 +265,29 @@ export default function AdminNewsPage() {
      * ARCHIVED -> DRAFT
      * --------------------------------------------------
      */
+    const handlePermanentDelete = async () => {
+        const article = newsPendingDeletion;
+        if (!article || !canManageNews || actionId !== null) return;
+        setActionId(article.id);
+        setError(null);
+        try {
+            await deleteNews(article.id);
+            setNewsPendingDeletion(null);
+            await loadNews();
+        } catch (error: unknown) {
+            setError(getApiErrorMessage(error));
+        } finally {
+            setActionId(null);
+        }
+    };
+
     const handleActivate = async (article: News) => {
         try {
             setActionId(article.id);
 
             await activateNews(
                 article.id,
-                user?.id ?? 0,
+                Number(user?.id ?? 0),
             );
 
             await loadNews();
@@ -193,7 +311,7 @@ export default function AdminNewsPage() {
 
             await archiveNews(
                 article.id,
-                user?.id ?? 0,
+                Number(user?.id ?? 0),
             );
 
             await loadNews();
@@ -218,7 +336,7 @@ export default function AdminNewsPage() {
             await changeNewsStatus(
                 article.id,
                 "APPROVED",
-                user?.id ?? 0,
+                Number(user?.id ?? 0),
             );
 
             await loadNews();
@@ -250,7 +368,7 @@ export default function AdminNewsPage() {
             await changeNewsStatus(
                 article.id,
                 "REJECTED",
-                user?.id ?? 0,
+                Number(user?.id ?? 0),
             );
 
             await loadNews();
@@ -274,14 +392,14 @@ export default function AdminNewsPage() {
 
             await promoteNews(
                 article.id,
-                user?.id ?? 0,
+                Number(user?.id ?? 0),
             );
 
             await loadNews();
         } catch (err) {
             console.error(err);
 
-            setError("Unable to promote the news article.");
+            setError(`Unable to promote the news article: ${getApiErrorMessage(err)}`);
         } finally {
             setActionId(null);
         }
@@ -300,7 +418,7 @@ export default function AdminNewsPage() {
 
             await removeNewsPromotion(
                 article.id,
-                user?.id ?? 0,
+                Number(user?.id ?? 0),
             );
 
             await loadNews();
@@ -308,7 +426,7 @@ export default function AdminNewsPage() {
             console.error(err);
 
             setError(
-                "Unable to remove the news promotion.",
+                `Unable to remove the news promotion: ${getApiErrorMessage(err)}`,
             );
         } finally {
             setActionId(null);
@@ -394,10 +512,10 @@ export default function AdminNewsPage() {
         <MainLayout>
             <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
                 {/* Header */}
-                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="admin-unified-header mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
-                            News Management
+                            News List
                         </h1>
 
                         <p className="mt-1 text-sm text-gray-500">
@@ -405,11 +523,17 @@ export default function AdminNewsPage() {
                         </p>
                     </div>
 
-                    <Link to="/admin/news/create">
-                        <Button>
-                            Create News
-                        </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <Link to="/admin/news" className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">Back to News Administration</Link>
+                        <button type="button" onClick={() => void loadNews()} disabled={loading || refreshing || actionId !== null} className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} aria-hidden="true" /> {refreshing ? "Refreshing..." : "Refresh"}
+                        </button>
+                        <Link to="/admin/news/create">
+                            <Button>
+                                Create News
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Error */}
@@ -436,7 +560,7 @@ export default function AdminNewsPage() {
                             key={status}
                             type="button"
                             onClick={() =>
-                                setStatusFilter(status)
+                                (setStatusFilter(status), changeFilter("status", status))
                             }
                             className={[
                                 "whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition",
@@ -451,6 +575,46 @@ export default function AdminNewsPage() {
                         </button>
                     ))}
                 </div>
+
+                {/* Advanced filters — applied to the currently loaded news records. */}
+                <section className="mb-5 rounded-xl border border-gray-200 bg-white p-4" aria-label="News filters">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h2 className="text-sm font-semibold text-gray-800">Filter News</h2>
+                        <button type="button" className="text-xs font-medium text-green-700 hover:underline" onClick={() => {
+                            setNewsIdFilter(""); setSlugFilter(""); setScopeFilter(""); setCategoryFilter(""); setPublishedFrom(""); setPublishedTo("");
+                            const next = new URLSearchParams(searchParams);
+                            ["newsId", "slug", "scope", "category", "from", "to", "page"].forEach((key) => next.delete(key));
+                            setSearchParams(next, { replace: true, preventScrollReset: true });
+                        }}>Clear filters</button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <label className="text-xs font-medium text-gray-600">News ID
+                            <input type="text" inputMode="numeric" value={newsIdFilter} onChange={(event) => (setNewsIdFilter(event.target.value), changeFilter("newsId", event.target.value))} placeholder="News ID / number" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">Slug
+                            <input type="search" value={slugFilter} onChange={(event) => (setSlugFilter(event.target.value), changeFilter("slug", event.target.value))} placeholder="Search article slug" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">News Scope
+                            <select value={scopeFilter} onChange={(event) => (setScopeFilter(event.target.value), changeFilter("scope", event.target.value))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                                <option value="">All scopes</option>
+                                <option value="WORLD">World</option><option value="INDIA">India</option><option value="STATE">State</option><option value="DISTRICT">District</option>
+                            </select>
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">Category
+                            <select value={categoryFilter} onChange={(event) => (setCategoryFilter(event.target.value), changeFilter("category", event.target.value))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                                <option value="">All categories</option>
+                                {availableCategories.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                            </select>
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">Published From
+                            <input type="date" value={publishedFrom} max={publishedTo || undefined} onChange={(event) => (setPublishedFrom(event.target.value), changeFilter("from", event.target.value))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">Published To
+                            <input type="date" value={publishedTo} min={publishedFrom || undefined} onChange={(event) => (setPublishedTo(event.target.value), changeFilter("to", event.target.value))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                        </label>
+                    </div>
+                    <p className="mt-3 text-xs text-gray-500">Showing {filteredNews.length} of {news.length} loaded articles. Filters apply to the first 100 articles returned by the current API request.</p>
+                </section>
 
                 {/* Empty */}
                 {!filteredNews.length ? (
@@ -484,7 +648,7 @@ export default function AdminNewsPage() {
                                             </th>
 
                                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                                Published
+                                                Audit History
                                             </th>
 
                                             <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -494,7 +658,7 @@ export default function AdminNewsPage() {
                                     </thead>
 
                                     <tbody className="divide-y divide-gray-200">
-                                        {filteredNews.map((article) => {
+                                        {paginatedNews.map((article) => {
                                             const archived =
                                                 article.status === "ARCHIVED";
 
@@ -524,12 +688,15 @@ export default function AdminNewsPage() {
                                                 >
                                                     {/* News */}
                                                     <td className="max-w-md px-5 py-4">
-                                                        <div className="font-medium text-gray-900">
+                                                        <div className="line-clamp-2 break-words text-sm font-medium leading-[21px] text-gray-900" title={article.title}>
                                                             {article.title}
                                                         </div>
 
                                                         <div className="mt-1 text-xs text-gray-500">
                                                             #{article.newsNumber}
+                                                        </div>
+                                                        <div className="mt-1 text-xs text-gray-500">
+
                                                         </div>
                                                     </td>
 
@@ -545,7 +712,7 @@ export default function AdminNewsPage() {
                                                     </td>
 
                                                     {/* Status */}
-                                                    <td className="px-5 py-4">
+                                                    <td className="px-5 py-4 text-sm">
                                                         <span
                                                             className={`inline - flex rounded - full px - 3 py - 1 text - xs font - semibold ${getStatusClassName(
                                                                 article.status,
@@ -561,13 +728,7 @@ export default function AdminNewsPage() {
 
                                                     {/* Published */}
                                                     <td className="px-5 py-4 text-sm text-gray-600">
-                                                        {article.publishedAt
-                                                            ? new Date(
-                                                                article.publishedAt,
-                                                            ).toLocaleDateString(
-                                                                "en-GB",
-                                                            )
-                                                            : "-"}
+                                                        <button type="button" onClick={() => void openAudit(article)} className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-green-200 px-3 py-1.5 font-medium text-green-700 hover:bg-green-50"><History size={14} aria-hidden="true" className="shrink-0" /><span>History</span></button>
                                                     </td>
 
                                                     {/* Actions */}
@@ -584,7 +745,7 @@ export default function AdminNewsPage() {
                                                                  */}
                                                                 {canEditArticle && (
                                                                     <Link
-                                                                        to={`/admin/news/${article.id}/edit`}
+                                                                        to={`/admin/news/${article.id}/edit?returnTo=${encodeURIComponent(editReturnUrl)}`}
                                                                     >
                                                                         <Button
                                                                             type="button"
@@ -597,6 +758,19 @@ export default function AdminNewsPage() {
                                                                             Edit
                                                                         </Button>
                                                                     </Link >
+                                                                )}
+
+                                                                {canManageNews && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        disabled={actionId !== null}
+                                                                        onClick={() => setNewsPendingDeletion(article)}
+                                                                        leftIcon={<Trash2 size={15} />}
+                                                                    >
+                                                                        Delete
+                                                                    </Button>
                                                                 )}
 
                                                                 {/* IN_REVIEW actions */}
@@ -754,7 +928,7 @@ export default function AdminNewsPage() {
                         {/* Mobile */}
                         < div className="space-y-4 md:hidden" >
                             {
-                                filteredNews.map((article) => {
+                                paginatedNews.map((article) => {
                                     const archived =
                                         article.status === "ARCHIVED";
 
@@ -784,12 +958,15 @@ export default function AdminNewsPage() {
                                         >
                                             {/* Title */}
                                             <div>
-                                                <div className="font-semibold text-gray-900">
+                                                <div className="line-clamp-2 break-words text-sm font-medium leading-[21px] text-gray-900" title={article.title}>
                                                     {article.title}
                                                 </div>
 
                                                 <div className="mt-1 text-xs text-gray-500">
                                                     #{article.newsNumber}
+                                                </div>
+                                                <div className="mt-1 text-xs text-gray-500">
+
                                                 </div>
                                             </div>
 
@@ -818,14 +995,7 @@ export default function AdminNewsPage() {
 
                                             {/* Published */}
                                             <div className="mt-3 text-xs text-gray-500">
-                                                Published:{" "}
-                                                {article.publishedAt
-                                                    ? new Date(
-                                                        article.publishedAt,
-                                                    ).toLocaleDateString(
-                                                        "en-GB",
-                                                    )
-                                                    : "-"}
+                                                <button type="button" onClick={() => void openAudit(article)} className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-green-200 px-3 py-1.5 font-medium text-green-700 hover:bg-green-50"><History size={14} aria-hidden="true" className="shrink-0" /><span>History</span></button>
                                             </div>
 
                                             {/* Actions */}
@@ -834,7 +1004,7 @@ export default function AdminNewsPage() {
                                                     {/* Edit */}
                                                     {canEditArticle && (
                                                         <Link
-                                                            to={`/admin/news/${article.id}/edit`}
+                                                            to={`/admin/news/${article.id}/edit?returnTo=${encodeURIComponent(editReturnUrl)}`}
                                                         >
                                                             <Button
                                                                 type="button"
@@ -847,6 +1017,19 @@ export default function AdminNewsPage() {
                                                                 Edit
                                                             </Button>
                                                         </Link>
+                                                    )}
+
+                                                    {canManageNews && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={actionId !== null}
+                                                            onClick={() => setNewsPendingDeletion(article)}
+                                                            leftIcon={<Trash2 size={15} />}
+                                                        >
+                                                            Delete
+                                                        </Button>
                                                     )}
 
                                                     {/* IN_REVIEW */}
@@ -979,9 +1162,81 @@ export default function AdminNewsPage() {
                                 })
                             }
                         </div >
+                        <div className="mt-5 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                            <AdminListPagination page={visiblePage} pageSize={pageSize} total={filteredNews.length} onPageChange={updatePage} onPageSizeChange={updatePageSize} />
+                        </div>
                     </>
                 )}
             </div >
+            {auditArticle && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuditArticle(null); }}>
+                    <section role="dialog" aria-modal="true" aria-labelledby="news-audit-title" onKeyDown={(event) => { if (event.key === "Escape") setAuditArticle(null); }} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                        <h2 id="news-audit-title" className="text-lg font-semibold text-gray-900">Audit History — News #{auditArticle.newsNumber}</h2>
+                        {auditLoading && <p role="status" className="mt-4 text-sm text-gray-600">Loading complete audit details...</p>}
+                        {auditError && <p role="alert" className="mt-4 text-sm text-red-700">{auditError}</p>}
+                        {!auditLoading && <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-5 gap-y-3 text-sm">
+                            {([
+                                ["Drafted By", auditArticle.draftedByName || (auditArticle.draftedBy ? `User #${auditArticle.draftedBy}` : "-")],
+                                ["Drafted On", formatPublishedDateTime(auditArticle.draftedAt)],
+                                ["Approved By", auditArticle.approvedByName || (auditArticle.approvedBy ? `User #${auditArticle.approvedBy}` : "-")],
+                                ["Approved On", formatPublishedDateTime(auditArticle.approvedAt)],
+                                ["Published By", auditArticle.publishedByName || (auditArticle.publishedBy ? `User #${auditArticle.publishedBy}` : "-")],
+                                ["Published On", formatPublishedDateTime(auditArticle.publishedAt)],
+                            ] as const).map(([label, value]) => (
+                                <div key={label} className="contents"><dt className="font-medium text-gray-600">{label}:</dt><dd className="break-words text-gray-900">{value}</dd></div>
+                            ))}
+                        </dl>}
+                        <div className="mt-6 flex justify-end"><button type="button" autoFocus onClick={() => setAuditArticle(null)} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white">Close</button></div>
+                    </section>
+                </div>
+            )}
+            {newsPendingDeletion && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 py-6"
+                    role="presentation"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && actionId === null) {
+                            setNewsPendingDeletion(null);
+                        }
+                    }}
+                >
+                    <section
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-news-title"
+                        aria-describedby="delete-news-description"
+                        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+                        onKeyDown={(event) => {
+                            if (event.key === "Escape" && actionId === null) setNewsPendingDeletion(null);
+                        }}
+                    >
+                        <div className="mb-4 flex items-center gap-3 text-red-700">
+                            <span className="rounded-full bg-red-50 p-3"><Trash2 size={22} /></span>
+                            <h2 id="delete-news-title" className="text-lg font-semibold">Permanently delete news?</h2>
+                        </div>
+                        <div id="delete-news-description" className="space-y-3 text-sm text-gray-700">
+                            <p><strong>News ID:</strong> {newsPendingDeletion.id}</p>
+                            <p className="break-words"><strong>Title:</strong> {newsPendingDeletion.title}</p>
+                            <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">
+                                This cannot be undone. Unreferenced Cloudinary assets will also be removed.
+                            </p>
+                        </div>
+                        {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button type="button" autoFocus disabled={actionId !== null}
+                                onClick={() => setNewsPendingDeletion(null)}
+                                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50">
+                                Cancel
+                            </button>
+                            <button type="button" disabled={actionId !== null}
+                                onClick={() => void handlePermanentDelete()}
+                                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-50">
+                                {actionId !== null ? "Deleting..." : "Permanently Delete"}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </MainLayout >
     );
 }

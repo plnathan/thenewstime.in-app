@@ -1,10 +1,14 @@
+import { useState } from "react";
 import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
-import Advertisement from "@/components/advertisement/Advertisement";
+import LiveAdvertisementPlacement from "@/components/advertisements/Advertisement/LiveAdvertisementPlacement";
 
 interface NewsArticleContentProps {
   content: string;
   media?: NewsMedia[];
   showAdPlaceholder?: boolean;
+  newsId?: number;
+  fallbackThumbnailUrl?: string | null;
+  fallbackTitle?: string;
 }
 
 type ContentBlock =
@@ -156,33 +160,24 @@ export default function NewsArticleContent({
   content,
   media = [],
   showAdPlaceholder = true,
+  newsId,
+  fallbackThumbnailUrl,
+  fallbackTitle,
 }: NewsArticleContentProps) {
+  const [failedThumbnail, setFailedThumbnail] = useState<string | null>(null);
   const contentBlocks = parseNewsContent(content);
 
   const orderedMedia = [...media].sort(
     (a, b) => a.displayOrder - b.displayOrder,
   );
 
-  /*
-   * --------------------------------------------------
-   * INLINE MEDIA
-   *
-   * 0–1 images:
-   *   No inline images.
-   *
-   * 2–3 images:
-   *   Image #1 is displayed by NewsArticle.
-   *   Images #2/#3 are inserted between paragraphs.
-   *
-   * 4+ images:
-   *   All images are handled by
-   *   NewsArticleHeroCarousel.
-   * --------------------------------------------------
-   */
-  const inlineMedia =
-    orderedMedia.length >= 2 && orderedMedia.length <= 3
-      ? orderedMedia.slice(1)
-      : [];
+  // Up to four images are inline. With five or more, only the first
+  // three are inline and all remaining images go into the end carousel.
+  const inlineMedia = orderedMedia.slice(0, orderedMedia.length > 4 ? 3 : 4);
+
+  // Preserve the thumbnail for articles without any uploaded media.
+  const validThumbnail = fallbackThumbnailUrl?.trim() || null;
+  const showFallbackThumbnail = orderedMedia.length === 0 && Boolean(validThumbnail && validThumbnail !== failedThumbnail);
 
   /*
    * Count actual paragraph blocks.
@@ -193,27 +188,11 @@ export default function NewsArticleContent({
     (block) => block.type === "paragraph",
   ).length;
 
-  /*
-   * --------------------------------------------------
-   * Determine advertisement position.
-   *
-   * 0 inline images:
-   *   After paragraph 4.
-   *
-   * 2 inline images:
-   *   After paragraph 3.
-   *
-   * 3 inline images:
-   *   After paragraph 4.
-   *
-   * If there are fewer paragraphs, the ad appears
-   * after the final available paragraph.
-   * --------------------------------------------------
-   */
-  const advertisementParagraph =
-    inlineMedia.length > 0
-      ? Math.min(inlineMedia.length + 1, paragraphCount)
-      : Math.min(4, paragraphCount);
+  // Keep BETWEEN after a paragraph; it is not a footer placement.
+  const advertisementParagraph = Math.min(
+    inlineMedia.length > 0 ? inlineMedia.length + 1 : 4,
+    paragraphCount,
+  );
 
   /*
    * --------------------------------------------------
@@ -253,6 +232,13 @@ export default function NewsArticleContent({
 
   return (
     <div className="space-y-0">
+      {showFallbackThumbnail && (
+        <figure className="mb-8 overflow-hidden rounded-xl bg-gray-100">
+          <img src={validThumbnail ?? undefined} alt={fallbackTitle ?? "News image"}
+            className="aspect-[16/9] w-full object-contain bg-gray-100"
+            onError={() => setFailedThumbnail(validThumbnail)} />
+        </figure>
+      )}
       {renderableBlocks.map(
         ({ block, paragraphNumber, media: inlineImage }, index) => {
           /*
@@ -265,7 +251,7 @@ export default function NewsArticleContent({
               <h3
                 key={`heading-${index}`}
                 className={[
-                  "mt-7 sm:mt-8",
+                  "mt-5 sm:mt-6",
                   "font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif]",
                   "text-[1.15rem] sm:text-[1.25rem]",
                   "font-bold",
@@ -295,7 +281,7 @@ export default function NewsArticleContent({
                   "space-y-2",
                   "font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif]",
                   "text-[1rem] sm:text-[1rem]",
-                  "leading-[2] sm:leading-[2.05]",
+                  "leading-[1.75] sm:leading-[1.85]",
                   "tracking-[0.005em]",
                   "text-gray-800",
                 ].join(" ")}
@@ -323,20 +309,6 @@ export default function NewsArticleContent({
 
           return (
             <div key={`paragraph-${index}`}>
-              <p
-                className={[
-                  "indent-7 sm:indent-10",
-                  "font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif]",
-                  "text-[1rem] sm:text-[1rem]",
-                  "leading-[2] sm:leading-[2.05]",
-                  "tracking-[0.005em]",
-                  "text-gray-800",
-                  paragraphNumber > 1 ? "mt-7 sm:mt-8" : "",
-                ].join(" ")}
-              >
-                {renderInlineFormatting(block.text)}
-              </p>
-
               {inlineImage && (
                 <figure className="my-8 overflow-hidden rounded-xl bg-gray-100 sm:my-10">
                   <img
@@ -365,15 +337,43 @@ export default function NewsArticleContent({
                 </figure>
               )}
 
+              <p
+                className={[
+                  "indent-7 sm:indent-10",
+                  "font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif]",
+                  "text-[1rem] sm:text-[1rem]",
+                  "leading-[1.75] sm:leading-[1.85]",
+                  "tracking-[0.005em]",
+                  "text-gray-800",
+                  paragraphNumber > 1 ? "mt-4 sm:mt-5" : "",
+                ].join(" ")}
+              >
+                {renderInlineFormatting(block.text)}
+              </p>
+
               {shouldShowAdvertisement && (
                 <div className="my-10 sm:my-12">
-                  <Advertisement />
+                  <LiveAdvertisementPlacement
+                    placementCode="NEWS_DETAIL_BETWEEN"
+                    newsId={newsId}
+                  />
                 </div>
               )}
             </div>
           );
         },
       )}
+      {inlineMedia.slice(Math.min(paragraphCount, inlineMedia.length)).map((item, index) => (
+        <figure key={`trailing-media-${index}`} className="my-8 overflow-hidden rounded-xl bg-gray-100 sm:my-10">
+          <img src={item.fileUrl}
+            alt={item.altText ?? item.originalFileName ?? "News image"}
+            className="aspect-[16/9] w-full object-contain bg-gray-100"
+            onError={() => setFailedThumbnail(validThumbnail)} />
+          {item.caption && (
+            <figcaption className="px-3 py-2 text-xs text-gray-500 sm:px-4">{item.caption}</figcaption>
+          )}
+        </figure>
+      ))}
     </div>
   );
 }

@@ -1,2 +1,46 @@
 @import "tailwindcss";
 @import "./styles/index.css";
+
+/* Shared administration page title treatment: presentation only. */
+.admin-unified-header {
+  background: #008236 !important;
+  border-radius: 1rem;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, .10);
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.5rem;
+  min-width: 0;
+}
+.admin-unified-header h1 {
+  color: #fff !important;
+  font-size: clamp(1.5rem, 2.1vw, 1.875rem);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  line-height: 1.25;
+}
+.admin-unified-header p,
+.admin-unified-header [class*="text-gray-500"],
+.admin-unified-header [class*="text-gray-600"] {
+  color: #e9fff2 !important;
+}
+.admin-unified-header svg { color: #e9fff2; }
+.admin-unified-header a, .admin-unified-header button {
+  border-radius: .75rem;
+}
+.admin-unified-header a[class*="bg-green-"],
+.admin-unified-header button[class*="bg-green-"] {
+  background: #fff !important;
+  color: #008236 !important;
+}
+.admin-unified-header a[class*="bg-green-"] svg,
+.admin-unified-header button[class*="bg-green-"] svg { color: #008236; }
+.admin-unified-header a[class*="bg-white"],
+.admin-unified-header button[class*="bg-white"] { color: #008236; }
+.admin-unified-header a[class*="bg-white"] svg,
+.admin-unified-header button[class*="bg-white"] svg { color: #008236; }
+.admin-unified-header .bg-gray-100 { background: rgba(255,255,255,.15); }
+.admin-unified-header .text-gray-700 { color: #e9fff2; }
+.admin-unified-header .bg-white .text-gray-700,
+.admin-unified-header .bg-white .text-gray-900 { color: #1f2937; }
+@media (max-width: 640px) {
+  .admin-unified-header { padding: 1.25rem; }
+}

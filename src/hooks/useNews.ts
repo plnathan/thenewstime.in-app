@@ -1,49 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getNewsList, getPublishedNewsList } from "@/api/news.api";
-
 import type { NewsQuery, PublicNewsQuery } from "@/api/news.api";
-
 import type { NewsView } from "@/types";
-
 import { toNewsViewList } from "@/utils/news";
 
 interface UseNewsOptions extends NewsQuery {
-  /**
-   * Controls whether the public API should order
-   * news by most-read count.
-   */
+  /** Order public news by most-read count. */
   popular?: boolean;
-
-  /**
-   * Controls whether the news request should execute.
-   *
-   * Defaults to true.
-   */
+  /** Include only articles selected for homepage display on public requests. */
+  homepageOnly?: boolean;
+  /** Controls whether the request should execute. Defaults to true. */
   enabled?: boolean;
-
-  /**
-   * When true, use the public API.
-   *
-   * Public API guarantees PUBLISHED only.
-   */
+  /** Use the public endpoint, which returns published articles only. */
   publishedOnly?: boolean;
 }
 
 export function useNews(options?: UseNewsOptions) {
-  /*
-   * --------------------------------------------------
-   * Extract options individually.
-   *
-   * IMPORTANT:
-   * Do not use the complete `options` object as a
-   * dependency of loadNews().
-   *
-   * The parent component may create a new object on
-   * every render, which would cause loadNews() to be
-   * recreated and the effect to run again.
-   * --------------------------------------------------
-   */
   const {
     page = 1,
     pageSize = 20,
@@ -57,119 +30,164 @@ export function useNews(options?: UseNewsOptions) {
     sortBy,
     sortOrder,
     popular = false,
+    homepageOnly = false,
     publishedOnly = false,
     enabled = true,
   } = options ?? {};
 
   const [news, setNews] = useState<NewsView[]>([]);
-
-  const [loading, setLoading] = useState(true);
-
+  const [loading, setLoading] = useState(enabled);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [nextPage, setNextPage] = useState(page + 1);
+  const requestId = useRef(0);
+  const loadingMoreRef = useRef(false);
 
-  /*
-   * --------------------------------------------------
-   * Load News
-   * --------------------------------------------------
-   */
-  const loadNews = useCallback(async () => {
-    try {
-      setLoading(true);
+  const fetchPage = useCallback(
+    async (targetPage: number, append: boolean) => {
+      const currentRequestId = ++requestId.current;
 
-      if (publishedOnly) {
-        const query: PublicNewsQuery = {
-          page,
-          pageSize,
-          search,
-          categoryId,
-          countryId,
-          scope,
-          stateId,
-          districtId,
-          sortBy,
-          sortOrder,
-          popular,
-        };
-
-        const response = await getPublishedNewsList(query);
-
-        setNews(toNewsViewList(response.data));
+      if (append) {
+        setLoadingMore(true);
+        loadingMoreRef.current = true;
       } else {
-        const query: NewsQuery = {
-          page,
-          pageSize,
-          search,
-
-          /*
-           * Public API already guarantees PUBLISHED
-           * articles, so do not send status when using
-           * the public endpoint.
-           */
-          status,
-          categoryId,
-          countryId,
-          scope,
-          stateId,
-          districtId,
-
-          /*
-           * IMPORTANT:
-           * sortBy must use the backend-supported
-           * snake_case values, e.g.
-           *
-           * published_at
-           * created_at
-           * updated_at
-           */
-          sortBy,
-          sortOrder,
-        };
-
-        const response = await getNewsList(query);
-
-        setNews(toNewsViewList(response.data));
+        setLoading(true);
+        setNews([]);
+        setHasMore(true);
+        setNextPage(page + 1);
       }
 
-      setError(null);
-    } catch (err) {
-      console.error(err);
+      try {
+        let data: NewsView[];
+        let meta: { hasNext?: boolean; totalPages?: number } | null = null;
 
-      setError("Unable to load news.");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    page,
-    pageSize,
-    search,
-    status,
-    categoryId,
-    countryId,
-    scope,
-    stateId,
-    districtId,
-    sortBy,
-    sortOrder,
-    popular,
-    publishedOnly,
-  ]);
+        if (publishedOnly) {
+          const query: PublicNewsQuery = {
+            page: targetPage,
+            pageSize,
+            search,
+            categoryId,
+            countryId,
+            scope,
+            stateId,
+            districtId,
+            sortBy,
+            sortOrder,
+            popular,
+            homepageOnly,
+          };
+          const response = await getPublishedNewsList(query);
+          data = toNewsViewList(response.data);
+          meta = response.meta;
+        } else {
+          const query: NewsQuery = {
+            page: targetPage,
+            pageSize,
+            search,
+            status,
+            categoryId,
+            countryId,
+            scope,
+            stateId,
+            districtId,
+            sortBy,
+            sortOrder,
+          };
+          const response = await getNewsList(query);
+          data = toNewsViewList(response.data);
+          meta = response.meta;
+        }
+
+        if (currentRequestId !== requestId.current) return;
+
+        if (append) {
+          setNews((current) => {
+            const existingIds = new Set(current.map((item) => item.id));
+            return [
+              ...current,
+              ...data.filter((item) => !existingIds.has(item.id)),
+            ];
+          });
+        } else {
+          setNews(data);
+        }
+
+        const moreAvailable =
+          typeof meta?.hasNext === "boolean"
+            ? meta.hasNext
+            : typeof meta?.totalPages === "number"
+              ? targetPage < meta.totalPages
+              : data.length >= pageSize;
+
+        setHasMore(moreAvailable);
+        setNextPage(targetPage + 1);
+        setError(null);
+      } catch (err) {
+        if (currentRequestId !== requestId.current) return;
+        console.error(err);
+        setError("Unable to load news.");
+      } finally {
+        if (currentRequestId === requestId.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
+      }
+    },
+    [
+      page,
+      pageSize,
+      search,
+      status,
+      categoryId,
+      countryId,
+      scope,
+      stateId,
+      districtId,
+      sortBy,
+      sortOrder,
+      popular,
+      homepageOnly,
+      publishedOnly,
+    ],
+  );
+
+  const loadNews = useCallback(async () => {
+    if (!enabled) return;
+    await fetchPage(page, false);
+  }, [enabled, fetchPage, page]);
+
+  const loadMore = useCallback(async () => {
+    if (!enabled || !hasMore || loadingMoreRef.current || loading) return;
+    await fetchPage(nextPage, true);
+  }, [enabled, fetchPage, hasMore, loading, nextPage]);
 
   useEffect(() => {
     if (!enabled) {
       return;
     }
 
-    const fetchNews = async () => {
-      await loadNews();
-    };
+    let cancelled = false;
 
-    void fetchNews();
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        return loadNews();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [enabled, loadNews]);
 
   return {
     news,
     loading,
+    loadingMore,
     error,
+    hasMore,
     refresh: loadNews,
+    loadMore,
   };
 }

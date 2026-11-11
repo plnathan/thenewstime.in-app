@@ -1,11 +1,13 @@
+import { useRef as useValidationMessageRef, useEffect as useValidationMessageEffect } from "react";
+import { scrollToValidationMessage } from "@/utils/scrollToValidationMessage";
 import type { FormEvent, ReactNode } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Check, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { useAuth } from "@/auth/AuthContext";
 
-import { createNews } from "@/api/news.api";
+import { createNews, finalSaveNews } from "@/api/news.api";
 import {
     getCategories,
     getCountries,
@@ -38,6 +40,7 @@ type NewsScopeValue =
     | CreateNewsInput["newsScope"];
 
 interface FormState {
+    showOnHomepage: boolean;
     title: string;
     summary: string;
     content: string;
@@ -50,6 +53,7 @@ interface FormState {
 }
 
 const INITIAL_FORM: FormState = {
+    showOnHomepage: true,
     title: "",
     summary: "",
     content: "",
@@ -138,11 +142,24 @@ export default function AdminNewsCreatePage() {
     const [saving, setSaving] =
         useState(false);
 
+    const validationMessageRef = useValidationMessageRef<HTMLDivElement>(null);
+
     const [error, setError] =
         useState<string | null>(null);
 
+    useValidationMessageEffect(() => {
+        if (error) scrollToValidationMessage(validationMessageRef.current);
+    }, [error]);
+
     const [success, setSuccess] =
         useState<string | null>(null);
+
+    const [finalSaved, setFinalSaved] = useState(false);
+
+    const successMessageRef = useValidationMessageRef<HTMLDivElement>(null);
+    useValidationMessageEffect(() => {
+        if (success) scrollToValidationMessage(successMessageRef.current);
+    }, [success]);
 
     const [createdNewsId, setCreatedNewsId] =
         useState<number | null>(null);
@@ -176,13 +193,13 @@ export default function AdminNewsCreatePage() {
         [countries],
     );
 
-    const tamilNadu = useMemo(
-        () => states.find((state) => {
-            const value = state as MasterDataWithOptionalCode;
-            return value.code?.trim().toUpperCase() === "TN" || value.displayName.trim().toLowerCase() === "tamil nadu";
-        }),
-        [states],
-    );
+    // const tamilNadu = useMemo(
+    //     () => states.find((state) => {
+    //         const value = state as MasterDataWithOptionalCode;
+    //         return value.code?.trim().toUpperCase() === "TN" || value.displayName.trim().toLowerCase() === "tamil nadu";
+    //     }),
+    //     [states],
+    // );
 
     /*
      * For INDIA / STATE / DISTRICT the classification always uses India.
@@ -197,11 +214,7 @@ export default function AdminNewsCreatePage() {
                 : form.countryId;
 
     const selectedStateId =
-        form.newsScope === "DISTRICT"
-            ? tamilNadu
-                ? String(tamilNadu.id)
-                : form.stateId
-            : form.stateId;
+        form.stateId;
 
 
     /*
@@ -446,13 +459,8 @@ export default function AdminNewsCreatePage() {
             selectedStateId, form.districtId,
         ]);
 
-    const generatedSlug = useMemo(() => {
-        if (!generatedSlugPrefix) return "";
-        const titleSlug = normalizeSlug(form.title);
-        return titleSlug
-            ? `${generatedSlugPrefix}-${titleSlug}`
-            : `${generatedSlugPrefix}-`;
-    }, [generatedSlugPrefix, form.title]);
+    // The Tamil title must never be used for an English URL slug.
+    const generatedSlug = generatedSlugPrefix;
 
     const effectiveSlug =
         slugManuallyEdited
@@ -479,7 +487,7 @@ export default function AdminNewsCreatePage() {
             ...current,
             newsScope: value,
             countryId: value === "WORLD" ? "" : india ? String(india.id) : "",
-            stateId: value === "DISTRICT" && tamilNadu ? String(tamilNadu.id) : "",
+            stateId: "",
             districtId: "",
         }));
 
@@ -628,6 +636,7 @@ export default function AdminNewsCreatePage() {
         }
 
         const payload: CreateNewsInput = {
+            showOnHomepage: form.showOnHomepage,
             title:
                 form.title.trim(),
 
@@ -635,8 +644,7 @@ export default function AdminNewsCreatePage() {
                 effectiveSlug.trim(),
 
             summary:
-                form.summary.trim() ||
-                undefined,
+                form.summary.trim(),
 
             content:
                 form.content.trim(),
@@ -688,8 +696,7 @@ export default function AdminNewsCreatePage() {
             );
 
             setSuccess(
-                response.message ||
-                "News article created successfully. You can now upload images.",
+                "Draft saved successfully. You can now upload images or click Save Changes without images.",
             );
         } catch (err) {
             console.error(err);
@@ -719,20 +726,20 @@ export default function AdminNewsCreatePage() {
     return (
         <MainLayout>
             <main className="min-h-screen bg-gray-50">
-                <div className="mx-auto max-w-5xl px-4 py-8 lg:px-6">
+                <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-6">
                     <div className="mb-6">
                         <Link
-                            to="/admin/news"
+                            to="/admin/news/list"
                             className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-green-700"
                         >
                             <ArrowLeft
                                 size={16}
                             />
-                            Back to News Management
+                            Back to News List
                         </Link>
                     </div>
 
-                    <div className="mb-6">
+                    <div className="admin-unified-header mb-6">
                         <Typography
                             as="h1"
                             variant="headline"
@@ -750,13 +757,13 @@ export default function AdminNewsCreatePage() {
                     </div>
 
                     {error && (
-                        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <div ref={validationMessageRef} tabIndex={-1} role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                             {error}
                         </div>
                     )}
 
                     {success && (
-                        <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                        <div ref={successMessageRef} tabIndex={-1} role="status" className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                             {success}
                         </div>
                     )}
@@ -784,53 +791,11 @@ export default function AdminNewsCreatePage() {
                             </Typography>
 
                             <div className="grid gap-5 md:grid-cols-2">
-                                {/* News Scope */}
-                                <Field
-                                    label="News Scope"
-                                    required
-                                >
-                                    <select
-                                        value={
-                                            form.newsScope
-                                        }
-                                        onChange={(
-                                            event,
-                                        ) =>
-                                            handleScopeChange(
-                                                event
-                                                    .target
-                                                    .value as NewsScopeValue,
-                                            )
-                                        }
-                                        disabled={
-                                            saving
-                                        }
-                                        className={
-                                            inputClass
-                                        }
-                                    >
-                                        <option value="">
-                                            Select News Scope
-                                        </option>
-
-                                        <option value="WORLD">
-                                            World
-                                        </option>
-
-                                        <option value="INDIA">
-                                            India
-                                        </option>
-
-                                        <option value="STATE">
-                                            State
-                                        </option>
-
-                                        <option value="DISTRICT">
-                                            District
-                                        </option>
-                                    </select>
-                                </Field>
-
+                                <label className="flex items-center gap-3 text-sm md:col-span-2">
+                                    <input type="checkbox" checked={form.showOnHomepage}
+                                        onChange={(event) => setForm((current) => ({ ...current, showOnHomepage: event.target.checked }))} />
+                                    <span>Show on Homepage (Hot News)</span>
+                                </label>
                                 {/* Category */}
                                 <Field
                                     label="Category"
@@ -879,6 +844,53 @@ export default function AdminNewsCreatePage() {
                                                 </option>
                                             ),
                                         )}
+                                    </select>
+                                </Field>
+
+                                {/* News Scope */}
+                                <Field
+                                    label="News Scope"
+                                    required
+                                >
+                                    <select
+                                        value={
+                                            form.newsScope
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            handleScopeChange(
+                                                event
+                                                    .target
+                                                    .value as NewsScopeValue,
+                                            )
+                                        }
+                                        disabled={
+                                            saving
+                                        }
+                                        className={
+                                            inputClass
+                                        }
+                                    >
+                                        <option value="">
+                                            Select News Scope
+                                        </option>
+
+                                        <option value="WORLD">
+                                            World
+                                        </option>
+
+                                        <option value="INDIA">
+                                            India
+                                        </option>
+
+                                        <option value="STATE">
+                                            State
+                                        </option>
+
+                                        <option value="DISTRICT">
+                                            District
+                                        </option>
                                     </select>
                                 </Field>
 
@@ -962,8 +974,7 @@ export default function AdminNewsCreatePage() {
                                                 disabled={
                                                     !selectedCountryId ||
                                                     states.length === 0 ||
-                                                    saving ||
-                                                    form.newsScope === "DISTRICT"
+                                                    saving
                                                 }
                                                 className={
                                                     inputClass
@@ -1060,7 +1071,7 @@ export default function AdminNewsCreatePage() {
 
                                 <p className="mt-1 break-all text-sm font-medium text-gray-800">
                                     {effectiveSlug ||
-                                        "Select classification and enter a title"}
+                                        "Select classification or enter an English slug"}
                                 </p>
                             </div>
                         </Surface>
@@ -1084,20 +1095,24 @@ export default function AdminNewsCreatePage() {
                             <div className="space-y-5">
                                 <Field
                                     label="Slug"
-                                    hint="Automatically generated from the selected classification and title."
+                                    required
+                                    hint="Enter English slug text, then select Format Slug. Tamil article titles are not used to generate slugs."
                                 >
-                                    <input
-                                        value={effectiveSlug}
-                                        onChange={(event) => {
-                                            setSlugManuallyEdited(true);
-                                            updateField(
-                                                "slug",
-                                                normalizeSlug(event.target.value),
-                                            );
-                                        }}
-                                        disabled={saving}
-                                        className={inputClass}
-                                    />
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <input
+                                            value={effectiveSlug}
+                                            onChange={(event) => {
+                                                setSlugManuallyEdited(true);
+                                                updateField(
+                                                    "slug",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            disabled={saving}
+                                            className={inputClass}
+                                        />
+                                        <button type="button" disabled={saving} onClick={() => { setSlugManuallyEdited(true); updateField("slug", normalizeSlug(effectiveSlug).replace(/^-+|-+$/g, "")); }} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-green-700 px-3 text-sm font-medium text-green-800 hover:bg-green-50 disabled:opacity-50"><Check size={16} /> Format Slug</button>
+                                    </div>
                                 </Field>
 
                                 <Field
@@ -1130,6 +1145,12 @@ export default function AdminNewsCreatePage() {
 
                                 <Field label="Summary">
                                     <textarea
+                                        ref={(element) => {
+                                            if (element) resizeSummaryTextarea(element);
+                                        }}
+                                        onInput={(event) =>
+                                            resizeSummaryTextarea(event.currentTarget)
+                                        }
                                         value={
                                             form.summary
                                         }
@@ -1143,13 +1164,13 @@ export default function AdminNewsCreatePage() {
                                                     .value,
                                             )
                                         }
-                                        rows={4}
+                                        rows={1}
                                         placeholder="Short summary of the news..."
                                         disabled={
                                             saving
                                         }
                                         className={
-                                            textareaClass
+                                            `${textareaClass} min-h-11 resize-none overflow-hidden py-2`
                                         }
                                     />
                                 </Field>
@@ -1198,14 +1219,16 @@ export default function AdminNewsCreatePage() {
                                     onMediaChange={
                                         setMedia
                                     }
-                                    disabled={
-                                        saving
-                                    }
+                                    disabled={saving || finalSaved}
+                                    deferReorder
                                 />
                             )}
 
+                        {createdNewsId !== null && !finalSaved && (
+                            <p className="text-sm text-gray-600">Step 3: Click Save Changes to finish. Images are optional.</p>
+                        )}
                         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                            <Link to="/admin/news">
+                            <Link to="/admin/news/list">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -1217,15 +1240,24 @@ export default function AdminNewsCreatePage() {
                             </Link>
 
                             <Button
-                                type="submit"
-                                loading={
-                                    saving
-                                }
-                                disabled={
-                                    createdNewsId !==
-                                    null ||
-                                    saving
-                                }
+                                type={createdNewsId === null ? "submit" : "button"}
+                                onClick={createdNewsId === null ? undefined : () => {
+                                    if (finalSaved || saving || createdNewsId === null) return;
+                                    setSaving(true);
+                                    setError(null);
+                                    setSuccess(null);
+                                    void finalSaveNews(createdNewsId, media.map(item => item.id))
+                                        .then(() => {
+                                            setFinalSaved(true);
+                                            setSuccess("Changes saved successfully. Further changes can be made from Edit News.");
+                                        })
+                                        .catch((error: unknown) => {
+                                            setError(getApiErrorMessage(error) ?? "Unable to finalize news. Please retry.");
+                                        })
+                                        .finally(() => setSaving(false));
+                                }}
+                                loading={saving}
+                                disabled={saving || finalSaved}
                                 leftIcon={
                                     <Save
                                         size={17}
@@ -1234,10 +1266,7 @@ export default function AdminNewsCreatePage() {
                                 fullWidth
                                 className="sm:w-auto"
                             >
-                                {createdNewsId !==
-                                    null
-                                    ? "Draft Saved"
-                                    : "Save Draft"}
+                                {createdNewsId !== null ? "Save Changes" : "Save Draft"}
                             </Button>
                         </div>
                     </form>
@@ -1245,6 +1274,12 @@ export default function AdminNewsCreatePage() {
             </main>
         </MainLayout>
     );
+}
+
+function resizeSummaryTextarea(element: HTMLTextAreaElement): void {
+    // Reset first so the field also shrinks when text is deleted.
+    element.style.height = "44px";
+    element.style.height = `${Math.max(44, element.scrollHeight)}px`;
 }
 
 const inputClass =

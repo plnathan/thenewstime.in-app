@@ -25,10 +25,20 @@ export const getNewsMedia = async (
  *   uploadedBy
  *   metadata (optional)
  */
+export interface NewsImageProcessingOptions {
+  compress: boolean;
+  watermark: boolean;
+  watermarkText?: string;
+  watermarkFontSize?: number;
+  watermarkColor?: "BLACK" | "WHITE";
+  watermarkPosition?: "TOP" | "BOTTOM" | "LEFT" | "RIGHT" | "CENTER";
+}
+
 export const uploadNewsMedia = async (
   newsId: number,
   files: File[],
   uploadedBy: number,
+  processing?: NewsImageProcessingOptions,
 ): Promise<ApiResponse<NewsMedia[]>> => {
   const formData = new FormData();
 
@@ -37,6 +47,19 @@ export const uploadNewsMedia = async (
   }
 
   formData.append("uploadedBy", String(uploadedBy));
+  if (processing) {
+    formData.append("compress", String(processing.compress));
+    formData.append("watermark", String(processing.watermark));
+    if (processing.watermark) {
+      formData.append("watermarkText", processing.watermarkText ?? "");
+      formData.append(
+        "watermarkFontSize",
+        String(processing.watermarkFontSize ?? ""),
+      );
+      formData.append("watermarkColor", processing.watermarkColor ?? "");
+      formData.append("watermarkPosition", processing.watermarkPosition ?? "");
+    }
+  }
 
   const response = await apiClient.post<ApiResponse<NewsMedia[]>>(
     `/media/news/${newsId}`,

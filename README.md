@@ -228,3 +228,28 @@ npm install -g vercel
 ## To get the data from localstorage:
 
 JSON.parse(localStorage.getItem("thenewstime.auth.session"))
+
+## Powershell
+
+Get-Content src/components/ui/Typography/Typography.types.ts
+
+Get-Content "src\components\advertisements\Advertisement\AdvertisementWorkspace\Workspace\WorkspaceTargeting.tsx"
+
+Get-ChildItem src -Recurse -File | Select-String -Pattern 'rate.card|rate_card|rateCard|standard_amount|pricing_placement_id'
+
+Get-ChildItem src -Recurse -File | Select-String -Pattern 'rateCard|rate-card|rate_card|standardAmount|standard_amount'
+
+Get-ChildItem src -Recurse -File | Select-String -Pattern 'standard_amount|standardAmount|pricing_placement_id'
+
+Get-ChildItem src -Recurse -File | Select-String -Pattern 'rate.?card|pricing.?rate|placement.?rate|rate.?configuration'
+
+Search for Rate Card Configuration screens and labels
+Get-ChildItem src -Recurse -File -Include *.tsx,*.ts | Select-String -Pattern 'Rate Card|Rate Cards|rate-card|rateCard|rate_card|Pricing Configuration'
+
+Check whether a page or route exists for configuring rates
+Get-ChildItem src -Recurse -File -Include *.tsx,*.ts | Select-String -Pattern 'rate-card|rate-cards|rateCard|RateCard|pricing-rates'
+
+Check navigation and menu entries
+Get-ChildItem src -Recurse -File -Include *.tsx,*.ts | Select-String -Pattern 'Advertisement Management|Advertisements|Settings|Configuration|Rate Card'
+
+npx tsc -p tsconfig.vercel.json

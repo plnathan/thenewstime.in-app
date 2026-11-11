@@ -9,6 +9,11 @@ export const navigationItems: NavigationItem[] = [
     icon: House,
   },
   {
+    id: 10,
+    label: "அனைத்துச் செய்திகள்",
+    path: "/news",
+  },
+  {
     id: 2,
     label: "தமிழ்நாடு",
     path: "/news?scope=STATE&state=tamil-nadu",
@@ -22,6 +27,11 @@ export const navigationItems: NavigationItem[] = [
     id: 4,
     label: "உலகம்",
     path: "/news?scope=WORLD",
+  },
+  {
+    id: 11,
+    label: "மாவட்டம்",
+    path: "/news?scope=DISTRICT",
   },
   {
     id: 5,

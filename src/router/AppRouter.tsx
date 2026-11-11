@@ -1,13 +1,17 @@
 import {
+  useEffect,
+} from "react";
+
+import {
   Route,
   Routes,
   useLocation,
 } from "react-router-dom";
 
-import {
-  useEffect,
-} from "react";
-
+import AdminDashboardPage from "@/pages/Dashboard/AdminDashboardPage";
+import SecurityAdministrationHomePage from "@/pages/Security/SecurityAdministrationHomePage";
+import NewsAdministrationHomePage from "@/pages/NewsAdministration/NewsAdministrationHomePage";
+import NewsCategoryConfigurationPage from "@/pages/NewsAdministration/NewsCategoryConfigurationPage";
 import HomePage from "@/pages/Home/HomePage";
 import NewsDetailPage from "@/pages/NewsDetail/NewsDetailPage";
 
@@ -45,14 +49,32 @@ import {
   SecurityPermissionsPage,
 } from "@/pages/Security/Permissions";
 
+import AdvertisementEnquiriesPage from "@/pages/Advertisements/Advertisement/AdvertisementEnquiriesPage";
+import AdvertisementManagementHomePage from "@/pages/Advertisements/Advertisement/AdvertisementManagementHomePage";
+import AdvertisementManagementPage from "@/pages/Advertisements/Advertisement/AdvertisementManagement";
+import AdvertisementSearchPage from "@/pages/Advertisements/Advertisement/AdvertisementSearch";
+import AdvertisementCreatePage from "@/pages/Advertisements/Advertisement/AdvertisementCreate";
+import AdvertisementWorkspacePage from "@/pages/Advertisements/Advertisement/AdvertisementWorkspacePage";
+
+import ClientSearchPage from "@/pages/Advertisements/Clients/ClientSearchPage";
+import ClientConfigurationPage from "@/pages/Advertisements/Clients/ClientConfigurationPage";
+import BusinessTypeConfigurationPage from "@/pages/Advertisements/Clients/BusinessTypeConfigurationPage";
+
+import AdvertisementPlacementPage from "@/pages/Advertisements/Advertisement/AdvertisementPlacementPage";
+import AdvertisementFormatsPage from "@/pages/Advertisements/Formats/AdvertisementFormatsPage";
+import AdvertisementRateCardsPage from "@/pages/Advertisements/RateCards/AdvertisementRateCardsPage";
+import FinancialApprovalThresholdsPage from "@/pages/Advertisements/FinancialApprovals/FinancialApprovalThresholdsPage";
+
 const AppRouter = () => {
   return (
-    <> <NavigationRouteWatcher />
+    <>
+      <NavigationRouteWatcher />
+      <AdminPageTitleWatcher />
 
       <Routes>
         {/* ------------------------------------------------
-     * Public
-     * ------------------------------------------------ */}
+                 * Public website
+                 * ------------------------------------------------ */}
 
         <Route
           path="/"
@@ -70,12 +92,8 @@ const AppRouter = () => {
         />
 
         {/* ------------------------------------------------
-     * Admin Authentication
-     *
-     * Public login entry point:
-     *
-     * /admin/login
-     * ------------------------------------------------ */}
+                 * Admin authentication
+                 * ------------------------------------------------ */}
 
         <Route
           path="/admin/login"
@@ -83,19 +101,13 @@ const AppRouter = () => {
         />
 
         {/* ------------------------------------------------
-     * Protected Admin
-     *
-     * Every route inside this group requires
-     * successful authentication.
-     * ------------------------------------------------ */}
+                 * Protected admin routes
+                 * ------------------------------------------------ */}
 
         <Route element={<ProtectedRoute />}>
           {/* ----------------------------------------------
-       * Access Denied
-       *
-       * This page is authenticated but does not
-       * require an additional permission itself.
-       * ---------------------------------------------- */}
+                     * Access denied
+                     * ---------------------------------------------- */}
 
           <Route
             path="/admin/access-denied"
@@ -103,25 +115,21 @@ const AppRouter = () => {
           />
 
           {/* ----------------------------------------------
-       * News Management
-       *
-       * These routes currently remain protected by
-       * authentication only.
-       *
-       * We intentionally do NOT add an assumed
-       * news permission here until the backend
-       * News permission definitions are supplied.
-       * ---------------------------------------------- */}
+                     * News management
+                     * ---------------------------------------------- */}
 
           <Route
             path="/admin"
-            element={<AdminNewsPage />}
+            element={<AdminDashboardPage />}
           />
 
           <Route
             path="/admin/news"
-            element={<AdminNewsPage />}
+            element={<NewsAdministrationHomePage />}
           />
+
+          <Route path="/admin/news/list" element={<AdminNewsPage />} />
+          <Route path="/admin/news/categories" element={<NewsCategoryConfigurationPage />} />
 
           <Route
             path="/admin/news/create"
@@ -133,16 +141,16 @@ const AppRouter = () => {
             element={<AdminNewsEditPage />}
           />
 
+          <Route path="/admin/security" element={<SecurityAdministrationHomePage />} />
+
           {/* ----------------------------------------------
-       * Security - Users
-       * ---------------------------------------------- */}
+                     * Security - users
+                     * ---------------------------------------------- */}
 
           <Route
             path="/admin/security/users"
             element={
-              <PermissionRoute
-                permissionCode="users.read"
-              >
+              <PermissionRoute permissionCode="users.read">
                 <SecurityUsersPage />
               </PermissionRoute>
             }
@@ -151,9 +159,7 @@ const AppRouter = () => {
           <Route
             path="/admin/security/users/create"
             element={
-              <PermissionRoute
-                permissionCode="users.create"
-              >
+              <PermissionRoute permissionCode="users.create">
                 <SecurityUserFormPage />
               </PermissionRoute>
             }
@@ -162,24 +168,20 @@ const AppRouter = () => {
           <Route
             path="/admin/security/users/:id/edit"
             element={
-              <PermissionRoute
-                permissionCode="users.update"
-              >
+              <PermissionRoute permissionCode="users.update">
                 <SecurityUserFormPage />
               </PermissionRoute>
             }
           />
 
           {/* ----------------------------------------------
-       * Security - Roles
-       * ---------------------------------------------- */}
+                     * Security - roles
+                     * ---------------------------------------------- */}
 
           <Route
             path="/admin/security/roles"
             element={
-              <PermissionRoute
-                permissionCode="roles.read"
-              >
+              <PermissionRoute permissionCode="roles.read">
                 <SecurityRolesPage />
               </PermissionRoute>
             }
@@ -188,9 +190,7 @@ const AppRouter = () => {
           <Route
             path="/admin/security/roles/create"
             element={
-              <PermissionRoute
-                permissionCode="roles.create"
-              >
+              <PermissionRoute permissionCode="roles.create">
                 <SecurityRoleFormPage />
               </PermissionRoute>
             }
@@ -199,9 +199,7 @@ const AppRouter = () => {
           <Route
             path="/admin/security/roles/:id/edit"
             element={
-              <PermissionRoute
-                permissionCode="roles.update"
-              >
+              <PermissionRoute permissionCode="roles.update">
                 <SecurityRoleFormPage />
               </PermissionRoute>
             }
@@ -210,24 +208,20 @@ const AppRouter = () => {
           <Route
             path="/admin/security/roles/:id/permissions"
             element={
-              <PermissionRoute
-                permissionCode="roles.assign"
-              >
+              <PermissionRoute permissionCode="roles.assign">
                 <SecurityRolePermissionsPage />
               </PermissionRoute>
             }
           />
 
           {/* ----------------------------------------------
-       * Security - Permissions
-       * ---------------------------------------------- */}
+                     * Security - permissions
+                     * ---------------------------------------------- */}
 
           <Route
             path="/admin/security/permissions"
             element={
-              <PermissionRoute
-                permissionCode="permissions.read"
-              >
+              <PermissionRoute permissionCode="permissions.read">
                 <SecurityPermissionsPage />
               </PermissionRoute>
             }
@@ -236,9 +230,7 @@ const AppRouter = () => {
           <Route
             path="/admin/security/permissions/create"
             element={
-              <PermissionRoute
-                permissionCode="permissions.create"
-              >
+              <PermissionRoute permissionCode="permissions.create">
                 <SecurityPermissionFormPage />
               </PermissionRoute>
             }
@@ -247,18 +239,150 @@ const AppRouter = () => {
           <Route
             path="/admin/security/permissions/:id/edit"
             element={
-              <PermissionRoute
-                permissionCode="permissions.update"
-              >
+              <PermissionRoute permissionCode="permissions.update">
                 <SecurityPermissionFormPage />
               </PermissionRoute>
             }
           />
+
+          {/* ----------------------------------------------
+                     * Advertisement management home
+                     *
+                     * This is the new entry point for the module.
+                     * ---------------------------------------------- */}
+
+          <Route
+            path="/admin/advertisements"
+            element={
+              <PermissionRoute permissionCode="advertisements.read">
+                <AdvertisementManagementHomePage />
+              </PermissionRoute>
+            }
+          />
+
+          {/* ----------------------------------------------
+                     * Advertisement records
+                     * ---------------------------------------------- */}
+
+          <Route path="/admin/advertisements/enquiries" element={
+            <PermissionRoute permissionCode="advertisements.read"><AdvertisementEnquiriesPage /></PermissionRoute>
+          } />
+          <Route
+            path="/admin/advertisements/list"
+            element={
+              <PermissionRoute permissionCode="advertisements.read">
+                <AdvertisementManagementPage />
+              </PermissionRoute>
+            }
+          />
+
+          <Route
+            path="/admin/advertisements/search"
+            element={
+              <PermissionRoute permissionCode="advertisements.read">
+                <AdvertisementSearchPage />
+              </PermissionRoute>
+            }
+          />
+
+          <Route
+            path="/admin/advertisements/create"
+            element={<AdvertisementCreatePage />}
+          />
+
+          {/* ----------------------------------------------
+                     * Advertisement clients
+                     * ---------------------------------------------- */}
+
+          <Route
+            path="/admin/advertisements/clients"
+            element={
+              <PermissionRoute permissionCode="advertisements.read">
+                <ClientSearchPage />
+              </PermissionRoute>
+            }
+          />
+
+          <Route
+            path="/admin/advertisements/client-configuration"
+            element={
+              <PermissionRoute permissionCode="advertisements.clients.read">
+                <ClientConfigurationPage />
+              </PermissionRoute>
+            }
+          />
+
+          {/* ----------------------------------------------
+                     * Placement configuration
+                     * ---------------------------------------------- */}
+
+          <Route
+            path="/admin/advertisements/business-types"
+            element={<PermissionRoute permissionCode="advertisements.clients.read"><BusinessTypeConfigurationPage /></PermissionRoute>}
+          />
+
+          <Route
+            path="/admin/advertisements/placements"
+            element={
+              <PermissionRoute permissionCode="advertisements.read">
+                <AdvertisementPlacementPage />
+              </PermissionRoute>
+            }
+          />
+
+          <Route path="/admin/advertisements/formats" element={<PermissionRoute permissionCode="advertisements.formats.read"><AdvertisementFormatsPage /></PermissionRoute>} />
+
+          {/* ----------------------------------------------
+                     * Rate card configuration
+                     * ---------------------------------------------- */}
+
+          <Route
+            path="/admin/advertisements/rate-cards"
+            element={
+              <PermissionRoute permissionCode="advertisements.read">
+                <AdvertisementRateCardsPage />
+              </PermissionRoute>
+            }
+          />
+
+          <Route
+            path="/admin/advertisements/financial-approval-thresholds"
+            element={
+              <PermissionRoute permissionCode="advertisements.financial_approval_thresholds.read">
+                <FinancialApprovalThresholdsPage />
+              </PermissionRoute>
+            }
+          />
+
+          {/* ----------------------------------------------
+                     * Advertisement draft/edit workflow
+                     *
+                     * Keep these routes distinct from the workspace.
+                     * ---------------------------------------------- */}
+
+          <Route
+            path="/admin/advertisements/:id/edit"
+            element={<AdvertisementCreatePage />}
+          />
+
+          {/* ----------------------------------------------
+                     * Advertisement workspace
+                     * ---------------------------------------------- */}
+
+          <Route
+            path="/admin/advertisements/:id/workspace"
+            element={<AdvertisementWorkspacePage />}
+          />
+
+          <Route
+            path="/admin/advertisements/:id"
+            element={<AdvertisementWorkspacePage />}
+          />
         </Route>
 
         {/* ------------------------------------------------
-     * Not Found
-     * ------------------------------------------------ */}
+                 * Not found
+                 * ------------------------------------------------ */}
 
         <Route
           path="*"
@@ -268,6 +392,53 @@ const AppRouter = () => {
     </>
   );
 };
+
+/** Set admin tab titles without interfering with public article titles. */
+function AdminPageTitleWatcher() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const path = pathname.replace(/\/+$/, "") || "/";
+    const advertisementRoot = "/admin/advertisements";
+    let title: string | null = null;
+
+    if (path === "/admin") {
+      title = "Administration Dashboard";
+    } else if (path === "/admin/news") {
+      title = "News Administration";
+    } else if (path.startsWith("/admin/news/")) {
+      title = "News Management";
+    } else if (path === advertisementRoot || path === `${advertisementRoot}/list`) {
+      title = "Advertisement Management";
+    } else if (path === `${advertisementRoot}/search`) {
+      title = "Search Advertisement";
+    } else if (path === `${advertisementRoot}/client-configuration`) {
+      title = "Client Configuration";
+    } else if (path === `${advertisementRoot}/business-types`) {
+      title = "Business Type Configuration";
+    } else if (path === `${advertisementRoot}/formats`) {
+      title = "Format Configuration";
+    } else if (path === `${advertisementRoot}/placements`) {
+      title = "Placement Configuration";
+    } else if (path === `${advertisementRoot}/rate-cards`) {
+      title = "Rate Card Configuration";
+    } else if (path === `${advertisementRoot}/financial-approval-thresholds`) {
+      title = "Financial Approval Thresholds Configuration";
+    } else if (path === `${advertisementRoot}/create`) {
+      title = "Create Advertisement";
+    } else if (/^\/admin\/advertisements\/\d+(?:\/workspace)?$/.test(path)) {
+      title = "Advertisement Workspace";
+    } else if (/^\/admin\/advertisements\/\d+\/edit$/.test(path)) {
+      title = "Create Advertisement";
+    }
+
+    if (title !== null) {
+      document.title = `${title} | www.thenewstime.in`;
+    }
+  }, [pathname]);
+
+  return null;
+}
 
 function NavigationRouteWatcher() {
   const location = useLocation();

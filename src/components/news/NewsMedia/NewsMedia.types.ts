@@ -42,4 +42,6 @@ export interface NewsMediaManagerProps {
   onMediaChange: (media: NewsMedia[]) => void;
 
   disabled?: boolean;
+  deferDeletion?: boolean;
+  deferReorder?: boolean;
 }

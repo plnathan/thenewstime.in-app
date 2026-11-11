@@ -627,9 +627,9 @@ const SecurityUserFormPage = () => {
     return (
         <MainLayout>
             <main className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-3xl">
+                <div className="mx-auto w-full max-w-5xl">
                     {/* Header */}
-                    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="admin-unified-header mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 items-center gap-3">
                             <ShieldCheck
                                 className="h-6 w-6 shrink-0 text-green-700"

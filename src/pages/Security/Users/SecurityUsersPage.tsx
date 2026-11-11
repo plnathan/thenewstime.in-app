@@ -1,3 +1,6 @@
+import AdminListPagination from "@/components/ui/AdminListPagination";
+import { SecurityListFilters, SecurityStatCards } from "@/components/ui/SecurityListControls";
+import { confirmDialog } from "@/components/ui/Dialog/confirmDialog";
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
@@ -44,6 +47,21 @@ const SecurityUsersPage = () => {
   const canDelete = hasPermissionCode("users.delete");
 
   const [users, setUsers] = useState<SecurityUserListItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const filteredUsers = [...users].filter(user => {
+    const term = search.trim().toLowerCase();
+    return (statusFilter === "ALL" || user.status === statusFilter) &&
+      (!term || [user.username, user.displayName, user.email, String(user.id), ...user.roles.map(role => role.displayName ?? role.code)]
+        .some(value => String(value ?? "").toLowerCase().includes(term)));
+  });
+  filteredUsers.sort((a, b) => Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE") || Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id);
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleItems = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionUserId, setActionUserId] = useState<number | null>(null);
@@ -112,7 +130,7 @@ const SecurityUsersPage = () => {
       return;
     }
 
-    const confirmed = window.confirm(
+    const confirmed = await confirmDialog(
       `Are you sure you want to deactivate "${user.displayName || user.username}" ? `,
     );
 
@@ -132,9 +150,9 @@ const SecurityUsersPage = () => {
         current.map((item) =>
           item.id === updatedUser.id
             ? {
-                ...item,
-                ...updatedUser,
-              }
+              ...item,
+              ...updatedUser,
+            }
             : item,
         ),
       );
@@ -193,7 +211,7 @@ const SecurityUsersPage = () => {
       <main className="min-h-screen bg-gray-50">
         <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
           {/* Page Header */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="admin-unified-header mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <ShieldCheck
@@ -244,6 +262,15 @@ const SecurityUsersPage = () => {
             )}
           </div>
 
+          <SecurityStatCards items={[
+            { label: "Total Users", value: users.length },
+            { label: "Active Users", value: users.filter(user => user.status === "ACTIVE").length },
+            { label: "Inactive Users", value: users.filter(user => user.status === "INACTIVE").length },
+            { label: "Other Statuses", value: users.filter(user => !["ACTIVE", "INACTIVE"].includes(user.status)).length },
+          ]} />
+          <SecurityListFilters search={search} onSearch={value => { setSearch(value); setPage(1); }} status={statusFilter}
+            onStatus={value => { setStatusFilter(value); setPage(1); }} statuses={["ACTIVE", "INACTIVE", "SUSPENDED", "LOCKED"]}
+            placeholder="Search name, username, email, ID or role" />
           {/* Error */}
           {error && (
             <div
@@ -296,6 +323,7 @@ const SecurityUsersPage = () => {
             </div>
           ) : (
             <>
+
               {/* -----------------------------------------------------------------
                * Desktop Table
                * -----------------------------------------------------------------
@@ -343,7 +371,7 @@ const SecurityUsersPage = () => {
                     </thead>
 
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {users.map((user) => (
+                      {visibleItems.map((user) => (
                         <tr
                           key={user.id}
                           className="hover:bg-gray-50"
@@ -361,8 +389,8 @@ const SecurityUsersPage = () => {
                                 ) : (
                                   getInitials(
                                     user.displayName ||
-                                      user.fullName ||
-                                      user.username,
+                                    user.fullName ||
+                                    user.username,
                                   )
                                 )}
                               </div>
@@ -429,10 +457,10 @@ const SecurityUsersPage = () => {
                                   type="button"
                                   onClick={() =>
                                     navigate(
-                                      `/admin/security/users/${ user.id }/edit`,
+                                      `/admin/security/users/${user.id}/edit`,
                                     )
                                   }
-className="
+                                  className="
             inline-flex
             items-center
             gap-1.5
@@ -448,27 +476,27 @@ className="
             hover: bg-gray-50
             hover: text-green-700
         ">
-    <Edit
-        className="h-3.5 w-3.5"
-        aria-hidden="true"
-    />
+                                  <Edit
+                                    className="h-3.5 w-3.5"
+                                    aria-hidden="true"
+                                  />
 
-Edit
+                                  Edit
                                 </button >
                               )}
 
-{
-    canDelete &&
-    user.status !== "INACTIVE" && (
-        <button
-            type="button"
-            disabled={
-                actionUserId === user.id
-            }
-            onClick={() =>
-                void handleDeactivate(user)
-            }
-            className="
+                              {
+                                canDelete &&
+                                user.status !== "INACTIVE" && (
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      actionUserId === user.id
+                                    }
+                                    onClick={() =>
+                                      void handleDeactivate(user)
+                                    }
+                                    className="
                                       rounded-lg
                                       border
                                       border-red-200
@@ -482,13 +510,13 @@ Edit
                                       disabled:cursor-not-allowed
                                       disabled:opacity-50
                                     "
-        >
-            {actionUserId === user.id
-                ? "Deactivating..."
-                : "Deactivate"}
-        </button>
-    )
-}
+                                  >
+                                    {actionUserId === user.id
+                                      ? "Deactivating..."
+                                      : "Deactivate"}
+                                  </button>
+                                )
+                              }
                             </div >
                           </td >
                         </tr >
@@ -498,71 +526,71 @@ Edit
                 </div >
               </div >
 
-{/* -----------------------------------------------------------------
+              {/* -----------------------------------------------------------------
                * Mobile Cards
                * -----------------------------------------------------------------
                */}
-    < div className = "space-y-3 md:hidden" >
-    {
-        users.map((user) => (
-            <div
-                key={user.id}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-            >
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-green-50 text-sm font-semibold text-green-700">
+              < div className="space-y-3 md:hidden" >
+                {
+                  visibleItems.map((user) => (
+                    <div
+                      key={user.id}
+                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-green-50 text-sm font-semibold text-green-700">
                             {user.profileImageUrl ? (
-                                <img
-                                    src={user.profileImageUrl}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                />
+                              <img
+                                src={user.profileImageUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
-                                getInitials(
-                                    user.displayName ||
-                                    user.fullName ||
-                                    user.username,
-                                )
+                              getInitials(
+                                user.displayName ||
+                                user.fullName ||
+                                user.username,
+                              )
                             )}
-                        </div>
+                          </div>
 
-                        <div className="min-w-0">
+                          <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-gray-900">
-                                {user.displayName}
+                              {user.displayName}
                             </p>
 
                             <p className="truncate text-xs text-gray-500">
-                                @{user.username}
+                              @{user.username}
                             </p>
+                          </div>
                         </div>
-                    </div>
 
-                    <StatusBadge status={user.status} />
-                </div>
+                        <StatusBadge status={user.status} />
+                      </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
-                    <div>
-                        <p className="text-xs text-gray-400">
+                      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
+                        <div>
+                          <p className="text-xs text-gray-400">
                             Full Name
-                        </p>
+                          </p>
 
-                        <p className="mt-0.5 truncate text-sm text-gray-700">
+                          <p className="mt-0.5 truncate text-sm text-gray-700">
                             {user.fullName}
-                        </p>
-                    </div>
+                          </p>
+                        </div>
 
-                    <div>
-                        <p className="text-xs text-gray-400">
+                        <div>
+                          <p className="text-xs text-gray-400">
                             Roles
-                        </p>
+                          </p>
 
-                        {user.roles.length > 0 ? (
+                          {user.roles.length > 0 ? (
                             <div className="mt-1 flex flex-wrap gap-1">
-                                {user.roles.map((role) => (
-                                    <span
-                                        key={role.id}
-                                        className="
+                              {user.roles.map((role) => (
+                                <span
+                                  key={role.id}
+                                  className="
                                   inline-flex
                                   rounded-full
                                   border
@@ -574,52 +602,52 @@ Edit
                                   font-medium
                                   text-green-700
                                 "
-                                    >
-                                        {role.displayName}
-                                    </span>
-                                ))}
+                                >
+                                  {role.displayName}
+                                </span>
+                              ))}
                             </div>
-                        ) : (
+                          ) : (
                             <p className="mt-0.5 text-sm text-gray-500">
-                                No role
+                              No role
                             </p>
-                        )}
-                    </div>
+                          )}
+                        </div>
 
-                    <div>
-                        <p className="text-xs text-gray-400">
+                        <div>
+                          <p className="text-xs text-gray-400">
                             Email
-                        </p>
+                          </p>
 
-                        <p className="mt-0.5 truncate text-sm text-gray-700">
+                          <p className="mt-0.5 truncate text-sm text-gray-700">
                             {user.email || "—"}
-                        </p>
-                    </div>
+                          </p>
+                        </div>
 
-                    <div>
-                        <p className="text-xs text-gray-400">
+                        <div>
+                          <p className="text-xs text-gray-400">
                             Mobile
-                        </p>
+                          </p>
 
-                        <p className="mt-0.5 truncate text-sm text-gray-700">
+                          <p className="mt-0.5 truncate text-sm text-gray-700">
                             {user.mobile || "—"}
-                        </p>
-                    </div>
-                </div>
+                          </p>
+                        </div>
+                      </div>
 
-                {(canUpdate ||
-                    (canDelete &&
-                        user.status !== "INACTIVE")) && (
-                        <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                      {(canUpdate ||
+                        (canDelete &&
+                          user.status !== "INACTIVE")) && (
+                          <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
                             {canUpdate && (
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        navigate(
-                                            `/admin/security/users/${user.id}/edit`,
-                                        )
-                                    }
-                                    className="
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(
+                                    `/admin/security/users/${user.id}/edit`,
+                                  )
+                                }
+                                className="
                               inline-flex
                               items-center
                               gap-1.5
@@ -635,27 +663,27 @@ Edit
                               hover:bg-gray-50
                               hover:text-green-700
                             "
-                                >
-                                    <Edit
-                                        className="h-3.5 w-3.5"
-                                        aria-hidden="true"
-                                    />
+                              >
+                                <Edit
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden="true"
+                                />
 
-                                    Edit
-                                </button>
+                                Edit
+                              </button>
                             )}
 
                             {canDelete &&
-                                user.status !== "INACTIVE" && (
-                                    <button
-                                        type="button"
-                                        disabled={
-                                            actionUserId === user.id
-                                        }
-                                        onClick={() =>
-                                            void handleDeactivate(user)
-                                        }
-                                        className="
+                              user.status !== "INACTIVE" && (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    actionUserId === user.id
+                                  }
+                                  onClick={() =>
+                                    void handleDeactivate(user)
+                                  }
+                                  className="
                                 rounded-lg
                                 border
                                 border-red-200
@@ -669,18 +697,19 @@ Edit
                                 disabled:cursor-not-allowed
                                 disabled:opacity-50
                               "
-                                    >
-                                        {actionUserId === user.id
-                                            ? "Deactivating..."
-                                            : "Deactivate"}
-                                    </button>
-                                )}
-                        </div>
-                    )}
-            </div>
-        ))
-    }
+                                >
+                                  {actionUserId === user.id
+                                    ? "Deactivating..."
+                                    : "Deactivate"}
+                                </button>
+                              )}
+                          </div>
+                        )}
+                    </div>
+                  ))
+                }
               </div >
+              <div className="mt-4"><AdminListPagination page={currentPage} pageSize={pageSize} total={filteredUsers.length} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} /></div>
             </>
           )}
         </div >
@@ -690,49 +719,49 @@ Edit
 };
 
 function StatusBadge({
-    status,
+  status,
 }: {
-    status: UserStatus;
+  status: UserStatus;
 }) {
-    const className =
-        status === "ACTIVE"
-            ? "bg-green-50 text-green-700 border-green-200"
-            : status === "SUSPENDED"
-                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                : status === "LOCKED"
-                    ? "bg-red-50 text-red-700 border-red-200"
-                    : "bg-gray-50 text-gray-600 border-gray-200";
+  const className =
+    status === "ACTIVE"
+      ? "bg-green-50 text-green-700 border-green-200"
+      : status === "SUSPENDED"
+        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+        : status === "LOCKED"
+          ? "bg-red-50 text-red-700 border-red-200"
+          : "bg-gray-50 text-gray-600 border-gray-200";
 
-    return (
-        <span
-            className={[
-                "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                className,
-            ].join(" ")}
-        >
-            {status}
-        </span>
-    );
+  return (
+    <span
+      className={[
+        "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
+        className,
+      ].join(" ")}
+    >
+      {status}
+    </span>
+  );
 }
 
 function getInitials(value: string): string {
-    const words = value
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
+  const words = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-    if (!words.length) {
-        return "U";
-    }
+  if (!words.length) {
+    return "U";
+  }
 
-    if (words.length === 1) {
-        return words[0].slice(0, 2).toUpperCase();
-    }
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
 
-    return (
-        words[0][0] +
-        words[words.length - 1][0]
-    ).toUpperCase();
+  return (
+    words[0][0] +
+    words[words.length - 1][0]
+  ).toUpperCase();
 }
 
 export default SecurityUsersPage;

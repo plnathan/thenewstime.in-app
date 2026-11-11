@@ -1,3 +1,5 @@
+import AdminListPagination from "@/components/ui/AdminListPagination";
+import { SecurityListFilters, SecurityStatCards } from "@/components/ui/SecurityListControls";
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
@@ -24,6 +26,18 @@ const SecurityRolesPage = () => {
     const { hasPermissionCode } = useAuth();
 
     const [roles, setRoles] = useState<SecurityRole[]>([]);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+    const filteredRoles = [...roles].filter(role => (statusFilter === "ALL" || role.status === statusFilter) &&
+        (!search.trim() || [role.displayName, role.code, role.description, String(role.id)]
+            .some(value => String(value ?? "").toLowerCase().includes(search.trim().toLowerCase()))));
+    filteredRoles.sort((a, b) => Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE") || Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id);
+    const totalPages = Math.max(1, Math.ceil(filteredRoles.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const visibleItems = filteredRoles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
 
@@ -71,9 +85,9 @@ const SecurityRolesPage = () => {
 
     return (
         <MainLayout>
-            <div className="mx-auto w-full max-w-6xl">
+            <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
                 {/* Page Header */}
-                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="admin-unified-header mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div className="flex items-center gap-2">
                             <ShieldCheck
@@ -105,6 +119,15 @@ const SecurityRolesPage = () => {
                     )}
                 </div>
 
+                <SecurityStatCards items={[
+                    { label: "Total Roles", value: roles.length },
+                    { label: "Active Roles", value: roles.filter(role => role.status === "ACTIVE").length },
+                    { label: "Inactive Roles", value: roles.filter(role => role.status === "INACTIVE").length },
+                    { label: "Filtered Results", value: filteredRoles.length },
+                ]} />
+                <SecurityListFilters search={search} onSearch={value => { setSearch(value); setPage(1); }}
+                    status={statusFilter} onStatus={value => { setStatusFilter(value); setPage(1); }}
+                    statuses={["ACTIVE", "INACTIVE"]} placeholder="Search role name, code, description or ID" />
                 {/* Error */}
                 {errorMessage && (
                     <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -121,6 +144,7 @@ const SecurityRolesPage = () => {
                     </div>
                 ) : (
                     <>
+
                         {/* Desktop Table */}
                         <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm md:block">
                             <div className="overflow-x-auto">
@@ -196,7 +220,7 @@ const SecurityRolesPage = () => {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            roles.map(
+                                            visibleItems.map(
                                                 (
                                                     role,
                                                     index,
@@ -310,7 +334,7 @@ const SecurityRolesPage = () => {
                                     No roles found.
                                 </div>
                             ) : (
-                                roles.map((role) => (
+                                visibleItems.map((role) => (
                                     <div
                                         key={role.id}
                                         className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
@@ -396,6 +420,7 @@ const SecurityRolesPage = () => {
                                 ))
                             )}
                         </div>
+                        <div className="mt-4"><AdminListPagination page={currentPage} pageSize={pageSize} total={filteredRoles.length} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} /></div>
                     </>
                 )}
             </div>

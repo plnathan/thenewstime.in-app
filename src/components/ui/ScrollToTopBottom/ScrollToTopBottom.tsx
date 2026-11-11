@@ -58,8 +58,8 @@ export default function ScrollToTopBottom() {
       title={isNearBottom ? "Scroll to top" : "Scroll to bottom"}
       className={[
         "fixed",
-        "right-4",
-        "bottom-5",
+        "right-1",
+        "bottom-[75px]",
         "z-50",
         "flex",
         "h-11",
@@ -79,8 +79,8 @@ export default function ScrollToTopBottom() {
         "focus:ring-green-500",
         "focus:ring-offset-2",
         "active:scale-95",
-        "sm:right-6",
-        "sm:bottom-6",
+        "sm:right-2",
+        "sm:bottom-[79px]",
       ].join(" ")}
     >
       {isNearBottom ? (

@@ -50,7 +50,37 @@ export type PublicNewsQuery = Omit<NewsQuery, "status"> & {
    * by most-read count.
    */
   popular?: boolean;
+  homepageOnly?: boolean;
 };
+
+/** Share concurrent identical public reads and short-lived remounts.
+ * No background refresh, browser storage or polling. */
+const PUBLIC_READ_REUSE_MS = 8_000;
+type CachedPublicRead<T> = { createdAt: number; request: Promise<T> };
+const publicReadRequests = new Map<string, CachedPublicRead<unknown>>();
+
+function sharedPublicRead<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const cached = publicReadRequests.get(key);
+  if (cached && now - cached.createdAt < PUBLIC_READ_REUSE_MS) {
+    return cached.request as Promise<T>;
+  }
+  const request = load().catch((error: unknown) => {
+    if (publicReadRequests.get(key)?.request === request) {
+      publicReadRequests.delete(key);
+    }
+    throw error;
+  });
+  publicReadRequests.set(key, { createdAt: now, request });
+  // Keep this cache bounded without adding a polling/expiry timer.
+  if (publicReadRequests.size > 100) {
+    for (const [entryKey, entry] of publicReadRequests) {
+      if (now - entry.createdAt >= PUBLIC_READ_REUSE_MS)
+        publicReadRequests.delete(entryKey);
+    }
+  }
+  return request;
+}
 
 /**
  * Get News List.
@@ -80,11 +110,13 @@ export const getNewsList = async (
 export const getPublishedNewsList = async (
   params?: PublicNewsQuery,
 ): Promise<ApiResponse<News[]>> => {
-  const response = await apiClient.get<ApiResponse<News[]>>("/news/public", {
-    params,
+  const key = `list:${JSON.stringify(params ?? {})}`;
+  return sharedPublicRead(key, async () => {
+    const response = await apiClient.get<ApiResponse<News[]>>("/news/public", {
+      params,
+    });
+    return response.data;
   });
-
-  return response.data;
 };
 
 /**
@@ -104,11 +136,12 @@ export const getNewsById = async (id: number): Promise<ApiResponse<News>> => {
 export const getNewsBySlug = async (
   slug: string,
 ): Promise<ApiResponse<News>> => {
-  const response = await apiClient.get<ApiResponse<News>>(
-    `/news/slug/${encodeURIComponent(slug)}`,
-  );
-
-  return response.data;
+  return sharedPublicRead(`slug:${slug}`, async () => {
+    const response = await apiClient.get<ApiResponse<News>>(
+      `/news/slug/${encodeURIComponent(slug)}`,
+    );
+    return response.data;
+  });
 };
 
 /**
@@ -243,9 +276,9 @@ export const rejectNews = async (
  */
 export const moveNewsToDraft = async (
   id: number,
-  updatedBy: number,
+  updatedBy: number | string,
 ): Promise<ApiResponse<News>> => {
-  return changeNewsStatus(id, "DRAFT", updatedBy);
+  return changeNewsStatus(id, "DRAFT", Number(updatedBy));
 };
 
 /**
@@ -254,11 +287,13 @@ export const moveNewsToDraft = async (
 export const publishNews = async (
   id: number,
   publishedBy: number,
+  publishedAt?: string,
 ): Promise<ApiResponse<News>> => {
   const response = await apiClient.patch<ApiResponse<News>>(
     `/news/${id}/publish`,
     {
       publishedBy,
+      ...(publishedAt ? { publishedAt } : {}),
     },
   );
 
@@ -270,12 +305,12 @@ export const publishNews = async (
  */
 export const promoteNews = async (
   id: number,
-  promotedBy: number,
+  promotedBy: number | string,
 ): Promise<ApiResponse<News>> => {
   const response = await apiClient.post<ApiResponse<News>>(
     `/news/${id}/promote`,
     {
-      promotedBy,
+      promotedBy: Number(promotedBy),
       durationDays: 3,
     },
   );
@@ -288,16 +323,28 @@ export const promoteNews = async (
  */
 export const removeNewsPromotion = async (
   id: number,
-  updatedBy: number,
+  updatedBy: number | string,
 ): Promise<ApiResponse<News>> => {
   const response = await apiClient.delete<ApiResponse<News>>(
     `/news/${id}/promotion`,
     {
       data: {
-        updatedBy,
+        updatedBy: Number(updatedBy),
       },
     },
   );
 
+  return response.data;
+};
+
+/** Validate persisted images and commit their final display order. */
+export const finalSaveNews = async (
+  newsId: number,
+  mediaIds: number[],
+): Promise<ApiResponse<unknown>> => {
+  const response = await apiClient.post<ApiResponse<unknown>>(
+    `/news/${newsId}/final-save`,
+    { mediaIds },
+  );
   return response.data;
 };

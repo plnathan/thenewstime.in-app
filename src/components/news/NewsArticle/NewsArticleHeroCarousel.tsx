@@ -16,7 +16,7 @@ export default function NewsArticleHeroCarousel({
     media,
     title,
 }: Props) {
-    const orderedMedia = [...media].sort(
+    const orderedMedia = media.filter((item) => Boolean(item.fileUrl?.trim())).sort(
         (a, b) => a.displayOrder - b.displayOrder,
     );
 
@@ -120,8 +120,7 @@ export default function NewsArticleHeroCarousel({
                         object-contain
                         "
                 onError={(event) => {
-                    event.currentTarget.src =
-                        "/assets/hero.png";
+                    event.currentTarget.style.visibility = "hidden";
                 }}
             />
 

@@ -22,6 +22,7 @@ import { ROUTES } from "@/constants";
 import { formatRelativeTime } from "@/utils/date/formatRelativeTime";
 
 import type { NewsCardProps } from "./NewsCard.types";
+import { useState } from "react";
 
 export default function NewsCard({
   news,
@@ -50,6 +51,10 @@ export default function NewsCard({
     audioAvailable,
   } = news;
 
+  const imageUrl = typeof thumbnailUrl === "string" ? thumbnailUrl.trim() : "";
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const hasThumbnail = Boolean(imageUrl) && failedImageUrl !== imageUrl;
+
   const relativeTime = formatRelativeTime(publishedAt);
 
   return (
@@ -66,18 +71,18 @@ export default function NewsCard({
       `}
     >
       <div
-        className="
+        className={`
           grid
-          grid-cols-[auto_minmax(0,1fr)]
           gap-4
-        "
+          ${hasThumbnail ? "grid-cols-[auto_minmax(0,1fr)]" : "grid-cols-1"}
+        `}
       >
         {/* -----------------------------------------------------------------
          * Thumbnail
          *
          * Keep the existing image size.
          * ----------------------------------------------------------------- */}
-        {thumbnailUrl && (
+        {hasThumbnail && (
           <div
             className={`
               shrink-0
@@ -90,7 +95,8 @@ export default function NewsCard({
             `}
           >
             <img
-              src={thumbnailUrl}
+              src={imageUrl}
+              onError={() => setFailedImageUrl(imageUrl)}
               alt={title}
               loading="lazy"
               className="

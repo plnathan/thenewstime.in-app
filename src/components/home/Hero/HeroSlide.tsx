@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 import HeroBadge from "./HeroBadge";
 import HeroMeta from "./HeroMeta";
@@ -12,6 +13,9 @@ interface Props {
 
 export default function HeroSlide({ news }: Props) {
   const navigate = useNavigate();
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const imageUrl = news.thumbnailUrl?.trim() || null;
+  const showImage = Boolean(imageUrl && imageUrl !== failedUrl);
 
   const handleClick = () => {
     navigate(ROUTES.NEWSDETAIL(news.slug));
@@ -40,22 +44,17 @@ export default function HeroSlide({ news }: Props) {
         bg-black
       "
     >
-      <img
-        src={
-          news.thumbnailUrl ??
-          "https://placehold.co/1200x700?text=News"
-        }
-        alt={news.title}
-        className="
-          h-[340px]
-          w-full
-          object-contain
-          sm:h-[360px]
-          md:h-[400px]
-          lg:h-[430px]
-          xl:h-[450px]
-        "
-      />
+      {showImage && (
+        <img
+          src={imageUrl ?? undefined}
+          alt={news.title}
+          onError={() => setFailedUrl(imageUrl)}
+          className="h-[340px] w-full object-contain sm:h-[360px] md:h-[400px] lg:h-[430px] xl:h-[450px]"
+        />
+      )}
+      {!showImage && (
+        <div aria-hidden="true" className="h-[340px] w-full bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 sm:h-[360px] md:h-[400px] lg:h-[430px] xl:h-[450px]" />
+      )}
 
       <div
         className="

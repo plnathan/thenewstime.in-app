@@ -1,3 +1,4 @@
+import { confirmDialog } from "@/components/ui/Dialog/confirmDialog";
 import { useState } from "react";
 
 import {
@@ -21,6 +22,8 @@ interface Props {
     ) => void;
 
     disabled?: boolean;
+    deferDeletion?: boolean;
+    deferReorder?: boolean;
 }
 
 export default function NewsMediaPreview({
@@ -28,6 +31,8 @@ export default function NewsMediaPreview({
     media,
     onMediaChange,
     disabled = false,
+    deferDeletion = false,
+    deferReorder = false,
 }: Props) {
     const [busy, setBusy] =
         useState(false);
@@ -77,12 +82,12 @@ export default function NewsMediaPreview({
         try {
             setBusy(true);
 
-            await reorderNewsMedia(
-                newsId,
-                reordered.map(
-                    (item) => item.id,
-                ),
-            );
+            if (!deferDeletion && !deferReorder) {
+                await reorderNewsMedia(
+                    newsId,
+                    reordered.map((item) => item.id),
+                );
+            }
 
             onMediaChange(reordered);
         } catch (error) {
@@ -99,7 +104,7 @@ export default function NewsMediaPreview({
         item: NewsMedia,
     ) => {
         const confirmed =
-            window.confirm(
+            await confirmDialog(
                 "Are you sure you want to remove this image from the news article?",
             );
 
@@ -110,10 +115,9 @@ export default function NewsMediaPreview({
         try {
             setBusy(true);
 
-            await deleteNewsMedia(
-                newsId,
-                item.id,
-            );
+            if (!deferDeletion) {
+                await deleteNewsMedia(newsId, item.id);
+            }
 
             const remaining =
                 orderedMedia
@@ -134,7 +138,7 @@ export default function NewsMediaPreview({
              * Re-persist the order after deletion
              * so there are no gaps.
              */
-            if (remaining.length > 0) {
+            if (!deferDeletion && remaining.length > 0) {
                 await reorderNewsMedia(
                     newsId,
                     remaining.map(

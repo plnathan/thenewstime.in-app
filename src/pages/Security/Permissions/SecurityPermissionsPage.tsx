@@ -1,3 +1,5 @@
+import AdminListPagination from "@/components/ui/AdminListPagination";
+import { SecurityListFilters, SecurityStatCards } from "@/components/ui/SecurityListControls";
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
@@ -118,6 +120,20 @@ const SecurityPermissionsPage = () => {
         };
     }, []);
 
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+    const [moduleFilter, setModuleFilter] = useState("ALL");
+    const filteredPermissions = useMemo(() => permissions.filter(permission =>
+        (statusFilter === "ALL" || permission.status === statusFilter) &&
+        (moduleFilter === "ALL" || (permission.module?.trim() || "Other") === moduleFilter) &&
+        (!search.trim() || [permission.displayName, permission.code, permission.description, permission.module, String(permission.id)]
+            .some(value => String(value ?? "").toLowerCase().includes(search.trim().toLowerCase())))
+    ).sort((a, b) => Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE") || Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id), [permissions, search, statusFilter, moduleFilter]);
+    const totalPages = Math.max(1, Math.ceil(filteredPermissions.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+
     const permissionGroups =
         useMemo<PermissionGroup[]>(() => {
             const groups =
@@ -126,7 +142,7 @@ const SecurityPermissionsPage = () => {
                     SecurityPermission[]
                 >();
 
-            for (const permission of permissions) {
+            for (const permission of filteredPermissions) {
                 const moduleName =
                     permission.module?.trim() ||
                     "Other";
@@ -154,9 +170,9 @@ const SecurityPermissionsPage = () => {
                             ...modulePermissions,
                         ].sort(
                             (a, b) =>
-                                a.displayOrder -
-                                b.displayOrder ||
-                                a.id - b.id,
+                                Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE") ||
+                                Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
+                                b.id - a.id,
                         ),
                     }),
                 )
@@ -169,7 +185,16 @@ const SecurityPermissionsPage = () => {
                         },
                     ),
                 );
-        }, [permissions]);
+        }, [filteredPermissions]);
+
+    const visiblePermissionIds = useMemo(() => {
+        const sorted = permissionGroups.flatMap((group) => group.permissions);
+        return new Set(sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((permission) => permission.id));
+    }, [permissionGroups, currentPage, pageSize]);
+    const visibleGroups = useMemo(() => permissionGroups.map((group) => ({
+        ...group,
+        permissions: group.permissions.filter((permission) => visiblePermissionIds.has(permission.id)),
+    })).filter((group) => group.permissions.length > 0), [permissionGroups, visiblePermissionIds]);
 
     /**
      * Open the status confirmation dialog.
@@ -295,9 +320,9 @@ const SecurityPermissionsPage = () => {
 
     return (
         <MainLayout>
-            <div className="mx-auto w-full max-w-6xl">
+            <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
                 {/* Page Header */}
-                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="admin-unified-header mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
                         <KeyRound
                             className="h-5 w-5 text-green-600"
@@ -351,6 +376,22 @@ const SecurityPermissionsPage = () => {
                     </div>
                 )}
 
+                <SecurityStatCards items={[
+                    { label: "Total Permissions", value: permissions.length },
+                    { label: "Active Permissions", value: permissions.filter(p => p.status === "ACTIVE").length },
+                    { label: "Inactive Permissions", value: permissions.filter(p => p.status === "INACTIVE").length },
+                    { label: "Filtered Results", value: filteredPermissions.length },
+                ]} />
+                <SecurityListFilters search={search} onSearch={value => { setSearch(value); setPage(1); }}
+                    status={statusFilter} onStatus={value => { setStatusFilter(value); setPage(1); }} statuses={["ACTIVE", "INACTIVE"]}
+                    placeholder="Search permission name, code, module or ID"
+                    extra={<label className="min-w-[160px] text-xs font-semibold text-gray-600">Module
+                        <select value={moduleFilter} onChange={event => { setModuleFilter(event.target.value); setPage(1); }}
+                            className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900">
+                            <option value="ALL">All modules</option>
+                            {[...new Set(permissions.map(p => p.module?.trim() || "Other"))].sort().map(module => <option key={module} value={module}>{module}</option>)}
+                        </select>
+                    </label>} />
                 {/* Loading */}
                 {loading ? (
                     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
@@ -367,7 +408,8 @@ const SecurityPermissionsPage = () => {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {permissionGroups.map(
+
+                        {visibleGroups.map(
                             (group) => (
                                 <section
                                     key={group.module}
@@ -494,9 +536,9 @@ const SecurityPermissionsPage = () => {
                                                             <td className="px-5 py-3">
                                                                 <span
                                                                     className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${permission.status ===
-                                                                            "ACTIVE"
-                                                                            ? "bg-green-50 text-green-700"
-                                                                            : "bg-gray-100 text-gray-600"
+                                                                        "ACTIVE"
+                                                                        ? "bg-green-50 text-green-700"
+                                                                        : "bg-gray-100 text-gray-600"
                                                                         }`}
                                                                 >
                                                                     {
@@ -600,9 +642,9 @@ const SecurityPermissionsPage = () => {
 
                                                         <span
                                                             className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${permission.status ===
-                                                                    "ACTIVE"
-                                                                    ? "bg-green-50 text-green-700"
-                                                                    : "bg-gray-100 text-gray-600"
+                                                                "ACTIVE"
+                                                                ? "bg-green-50 text-green-700"
+                                                                : "bg-gray-100 text-gray-600"
                                                                 }`}
                                                         >
                                                             {
@@ -715,6 +757,8 @@ const SecurityPermissionsPage = () => {
                                 </section>
                             ),
                         )}
+                        <AdminListPagination page={currentPage} pageSize={pageSize} total={filteredPermissions.length}
+                            onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} />
                     </div>
                 )}
             </div>
@@ -811,9 +855,9 @@ const SecurityPermissionsPage = () => {
                                 }
                                 disabled={changingStatus}
                                 className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${permissionAction ===
-                                        "DEACTIVATE"
-                                        ? "bg-red-600 hover:bg-red-700"
-                                        : "bg-green-600 hover:bg-green-700"
+                                    "DEACTIVATE"
+                                    ? "bg-red-600 hover:bg-red-700"
+                                    : "bg-green-600 hover:bg-green-700"
                                     }`}
                             >
                                 {changingStatus

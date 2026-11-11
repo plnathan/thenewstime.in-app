@@ -1,3 +1,5 @@
+import { useRef as useValidationMessageRef, useEffect as useValidationMessageEffect } from "react";
+import { scrollToValidationMessage } from "@/utils/scrollToValidationMessage";
 import {
     Archive,
     ArrowLeft,
@@ -22,6 +24,7 @@ import type {
 } from "react";
 import {
     Link,
+    useLocation,
     useParams,
 } from "react-router-dom";
 
@@ -57,6 +60,8 @@ import Button from "@/components/ui/Button";
 import Surface from "@/components/ui/Surface";
 import Typography from "@/components/ui/Typography";
 
+import { deleteNewsMedia } from "@/api/media.api";
+import { finalSaveNews } from "@/api/news.api";
 import NewsMediaUploader from "@/components/news/NewsMedia/NewsMediaUploader";
 import type { NewsMedia } from "@/components/news/NewsMedia/NewsMedia.types";
 
@@ -68,6 +73,19 @@ import type {
 } from "@/types/news.types";
 
 import { normalizeSlug } from "@/utils/news/slug";
+
+const getNewsListReturnUrl = (search: string): string => {
+    const requested = new URLSearchParams(search).get("returnTo");
+    return requested === "/admin/news/list" || requested?.startsWith("/admin/news/list?")
+        ? requested
+        : "/admin/news/list";
+};
+
+const getLocalPublicationInputValue = (): string => {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 16);
+};
 
 type NewsScopeValue =
     | ""
@@ -166,6 +184,8 @@ const formatPromotionUntil = (
 };
 
 export default function AdminNewsEditPage() {
+    const location = useLocation();
+    const newsListReturnUrl = getNewsListReturnUrl(location.search);
     const { user } = useAuth();
     const { id } = useParams();
 
@@ -180,6 +200,11 @@ export default function AdminNewsEditPage() {
 
     const [news, setNews] =
         useState<News | null>(null);
+
+    const [schedulePublication, setSchedulePublication] = useState(false);
+    const [publicationLocalTime, setPublicationLocalTime] = useState("");
+
+    const [showOnHomepage, setShowOnHomepage] = useState(false);
 
     const [title, setTitle] =
         useState("");
@@ -232,6 +257,8 @@ export default function AdminNewsEditPage() {
     const [workflowLoading, setWorkflowLoading] =
         useState(false);
 
+    const validationMessageRef = useValidationMessageRef<HTMLDivElement>(null);
+
     const [error, setError] =
         useState<string | null>(
             isValidNewsId
@@ -239,11 +266,25 @@ export default function AdminNewsEditPage() {
                 : "Invalid news article ID.",
         );
 
+    useValidationMessageEffect(() => {
+        if (error) scrollToValidationMessage(validationMessageRef.current);
+    }, [error]);
+
     const [success, setSuccess] =
         useState<string | null>(null);
 
     const [media, setMedia] =
         useState<NewsMedia[]>([]);
+    const [pendingMediaRemoval, setPendingMediaRemoval] = useState<number[]>([]);
+    const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+    const successMessageRef = useValidationMessageRef<HTMLDivElement>(null);
+
+    useValidationMessageEffect(() => {
+        if (success) scrollToValidationMessage(successMessageRef.current);
+    }, [success]);
+
+    const currentSnapshot = JSON.stringify({ title, slug, summary, content, newsScope, categoryId, countryId, stateId, districtId, showOnHomepage, mediaIds: media.map(item => item.id) });
+    const savedWithoutChanges = savedSnapshot !== null && savedSnapshot === currentSnapshot;
 
     const [currentTime] =
         useState(() => Date.now());
@@ -256,13 +297,13 @@ export default function AdminNewsEditPage() {
         [countries],
     );
 
-    const tamilNadu = useMemo(
-        () => states.find((state) => {
-            const value = state as MasterDataWithOptionalCode;
-            return value.code?.trim().toUpperCase() === "TN" || value.displayName.trim().toLowerCase() === "tamil nadu";
-        }),
-        [states],
-    );
+    // const tamilNadu = useMemo(
+    //     () => states.find((state) => {
+    //         const value = state as MasterDataWithOptionalCode;
+    //         return value.code?.trim().toUpperCase() === "TN" || value.displayName.trim().toLowerCase() === "tamil nadu";
+    //     }),
+    //     [states],
+    // );
 
     /*
      * Frozen classification values are derived during render instead of being
@@ -276,11 +317,7 @@ export default function AdminNewsEditPage() {
                 : countryId;
 
     const selectedStateId =
-        newsScope === "DISTRICT"
-            ? tamilNadu
-                ? String(tamilNadu.id)
-                : stateId
-            : stateId;
+        stateId;
 
     /*
      * -------------------------------------------------------------------------
@@ -366,6 +403,7 @@ export default function AdminNewsEditPage() {
 
                 setNews(article);
                 setTitle(article.title);
+                setShowOnHomepage(article.showOnHomepage);
                 setSlug(article.slug);
                 setSummary(
                     article.summary ?? "",
@@ -671,7 +709,7 @@ export default function AdminNewsEditPage() {
     ) => {
         setNewsScope(value);
         setCountryId(value === "WORLD" ? "" : india ? String(india.id) : "");
-        setStateId(value === "DISTRICT" && tamilNadu ? String(tamilNadu.id) : "");
+        setStateId("");
         setDistrictId("");
         setStates([]);
         setDistricts([]);
@@ -763,7 +801,7 @@ export default function AdminNewsEditPage() {
     ) => {
         event.preventDefault();
 
-        if (!news) {
+        if (!news || saving || savedWithoutChanges) {
             return;
         }
 
@@ -790,6 +828,7 @@ export default function AdminNewsEditPage() {
         }
 
         const payload: UpdateNewsInput = {
+            showOnHomepage,
             title:
                 title.trim(),
 
@@ -797,8 +836,7 @@ export default function AdminNewsEditPage() {
                 slug.trim(),
 
             summary:
-                summary.trim() ||
-                undefined,
+                summary.trim(),
 
             content:
                 content.trim(),
@@ -854,9 +892,30 @@ export default function AdminNewsEditPage() {
                         : current,
             );
 
+            // Media removal is intentionally deferred until Save Changes succeeds.
+            // A failed deletion remains pending and can be retried by saving again.
+            const failedRemovals: number[] = [];
+            for (const mediaId of pendingMediaRemoval) {
+                try {
+                    await deleteNewsMedia(news.id, mediaId);
+                } catch (mediaError) {
+                    console.error("Unable to remove saved news media:", mediaError);
+                    failedRemovals.push(mediaId);
+                }
+            }
+            setPendingMediaRemoval(failedRemovals);
+            if (failedRemovals.length === 0) {
+                await finalSaveNews(news.id, media.map(item => item.id));
+            }
+            if (failedRemovals.length > 0) {
+                setError(`${failedRemovals.length} image removal(s) failed. Save Changes again to retry cleanup.`);
+            } else {
+                setSavedSnapshot(currentSnapshot);
+            }
             setSuccess(
-                response.message ||
-                "News article updated successfully.",
+                failedRemovals.length > 0
+                    ? "News details saved. Some image removals require retry."
+                    : response.message || "News article updated successfully.",
             );
         } catch (err) {
             console.error(err);
@@ -889,6 +948,7 @@ export default function AdminNewsEditPage() {
 
         setNews(article);
         setTitle(article.title);
+        setShowOnHomepage(article.showOnHomepage);
         setSlug(article.slug);
         setSummary(
             article.summary ?? "",
@@ -997,7 +1057,7 @@ export default function AdminNewsEditPage() {
         return (
             <MainLayout>
                 <main className="min-h-screen bg-gray-50">
-                    <div className="mx-auto max-w-5xl px-4 py-10">
+                    <div className="mx-auto w-full max-w-7xl px-4 py-10">
                         <Typography
                             variant="body"
                             className="text-gray-500"
@@ -1014,7 +1074,7 @@ export default function AdminNewsEditPage() {
         return (
             <MainLayout>
                 <main className="min-h-screen bg-gray-50">
-                    <div className="mx-auto max-w-5xl px-4 py-10">
+                    <div className="mx-auto w-full max-w-7xl px-4 py-10">
                         <Surface
                             padding="lg"
                             border="all"
@@ -1029,10 +1089,10 @@ export default function AdminNewsEditPage() {
                             </Typography>
 
                             <Link
-                                to="/admin/news"
+                                to={newsListReturnUrl}
                                 className="mt-4 inline-flex text-sm font-medium text-green-700"
                             >
-                                Back to News Management
+                                Back to News List
                             </Link>
                         </Surface>
                     </div>
@@ -1058,15 +1118,15 @@ export default function AdminNewsEditPage() {
         return (
             <MainLayout>
                 <main className="min-h-screen bg-gray-50">
-                    <div className="mx-auto max-w-5xl px-4 py-8 lg:px-6">
+                    <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-6">
                         <Link
-                            to="/admin/news"
+                            to={newsListReturnUrl}
                             className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-green-700"
                         >
                             <ArrowLeft
                                 size={16}
                             />
-                            Back to News Management
+                            Back to News List
                         </Link>
 
                         <Surface
@@ -1091,13 +1151,13 @@ export default function AdminNewsEditPage() {
                                 </Typography>
 
                                 {error && (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                    <div ref={validationMessageRef} tabIndex={-1} role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                                         {error}
                                     </div>
                                 )}
 
                                 {success && (
-                                    <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                                    <div ref={successMessageRef} tabIndex={-1} role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                                         {success}
                                     </div>
                                 )}
@@ -1134,12 +1194,12 @@ export default function AdminNewsEditPage() {
                                         </Button>
                                     )}
 
-                                    <Link to="/admin/news">
+                                    <Link to={newsListReturnUrl}>
                                         <Button
                                             type="button"
                                             variant="outline"
                                         >
-                                            Back to News Management
+                                            Back to News List
                                         </Button>
                                     </Link>
                                 </div>
@@ -1154,18 +1214,18 @@ export default function AdminNewsEditPage() {
     return (
         <MainLayout>
             <main className="min-h-screen bg-gray-50">
-                <div className="mx-auto max-w-5xl px-4 py-8 lg:px-6">
+                <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-6">
                     <Link
-                        to="/admin/news"
+                        to={newsListReturnUrl}
                         className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-green-700"
                     >
                         <ArrowLeft
                             size={16}
                         />
-                        Back to News Management
+                        Back to News List
                     </Link>
 
-                    <div className="mb-6">
+                    <div className="admin-unified-header mb-6">
                         <Typography
                             as="h1"
                             variant="headline"
@@ -1184,13 +1244,13 @@ export default function AdminNewsEditPage() {
                     </div>
 
                     {error && (
-                        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <div ref={validationMessageRef} tabIndex={-1} role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                             {error}
                         </div>
                     )}
 
                     {success && (
-                        <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                        <div ref={successMessageRef} tabIndex={-1} role="status" className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                             {success}
                         </div>
                     )}
@@ -1209,6 +1269,12 @@ export default function AdminNewsEditPage() {
                         }
                         className="space-y-6"
                     >
+                        <label className="mb-4 flex items-center gap-3 text-sm">
+                            <input type="checkbox" checked={showOnHomepage}
+                                disabled={!canEditArticle || saving || workflowLoading}
+                                onChange={(event) => setShowOnHomepage(event.target.checked)} />
+                            <span>Show on Homepage (Hot News)</span>
+                        </label>
                         {/* -----------------------------------------------------------------
                          * NEWS CLASSIFICATION
                          * ----------------------------------------------------------------- */}
@@ -1226,55 +1292,6 @@ export default function AdminNewsEditPage() {
                             </Typography>
 
                             <div className="grid gap-5 md:grid-cols-2">
-                                {/* News Scope */}
-                                <Field
-                                    label="News Scope"
-                                    required
-                                >
-                                    <select
-                                        value={
-                                            newsScope
-                                        }
-                                        onChange={(
-                                            event,
-                                        ) =>
-                                            handleScopeChange(
-                                                event
-                                                    .target
-                                                    .value as NewsScopeValue,
-                                            )
-                                        }
-                                        disabled={
-                                            !canEditArticle ||
-                                            saving ||
-                                            workflowLoading
-                                        }
-                                        className={
-                                            inputClass
-                                        }
-                                    >
-                                        <option value="">
-                                            Select News Scope
-                                        </option>
-
-                                        <option value="WORLD">
-                                            World
-                                        </option>
-
-                                        <option value="INDIA">
-                                            India
-                                        </option>
-
-                                        <option value="STATE">
-                                            State
-                                        </option>
-
-                                        <option value="DISTRICT">
-                                            District
-                                        </option>
-                                    </select>
-                                </Field>
-
                                 {/* Category */}
                                 <Field
                                     label="Category"
@@ -1323,6 +1340,55 @@ export default function AdminNewsEditPage() {
                                                 </option>
                                             ),
                                         )}
+                                    </select>
+                                </Field>
+
+                                {/* News Scope */}
+                                <Field
+                                    label="News Scope"
+                                    required
+                                >
+                                    <select
+                                        value={
+                                            newsScope
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            handleScopeChange(
+                                                event
+                                                    .target
+                                                    .value as NewsScopeValue,
+                                            )
+                                        }
+                                        disabled={
+                                            !canEditArticle ||
+                                            saving ||
+                                            workflowLoading
+                                        }
+                                        className={
+                                            inputClass
+                                        }
+                                    >
+                                        <option value="">
+                                            Select News Scope
+                                        </option>
+
+                                        <option value="WORLD">
+                                            World
+                                        </option>
+
+                                        <option value="INDIA">
+                                            India
+                                        </option>
+
+                                        <option value="STATE">
+                                            State
+                                        </option>
+
+                                        <option value="DISTRICT">
+                                            District
+                                        </option>
                                     </select>
                                 </Field>
 
@@ -1410,8 +1476,7 @@ export default function AdminNewsEditPage() {
                                                     !selectedCountryId ||
                                                     states.length === 0 ||
                                                     saving ||
-                                                    workflowLoading ||
-                                                    newsScope === "DISTRICT"
+                                                    workflowLoading
                                                 }
                                                 className={
                                                     inputClass
@@ -1532,16 +1597,20 @@ export default function AdminNewsEditPage() {
                             <div className="space-y-5">
                                 <Field
                                     label="Slug"
-                                    hint="Automatically generated from the selected classification and title."
+                                    required
+                                    hint="Enter an English statement and select Format Slug. Existing published URLs change if you save a different slug."
                                 >
-                                    <input
-                                        value={slug}
-                                        onChange={(event) => {
-                                            setSlug(normalizeSlug(event.target.value));
-                                        }}
-                                        disabled={!canEditArticle || saving || workflowLoading}
-                                        className={inputClass}
-                                    />
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <input
+                                            value={slug}
+                                            onChange={(event) => {
+                                                setSlug(event.target.value);
+                                            }}
+                                            disabled={!canEditArticle || saving || workflowLoading}
+                                            className={inputClass}
+                                        />
+                                        <button type="button" disabled={!canEditArticle || saving || workflowLoading} onClick={() => setSlug(normalizeSlug(slug).replace(/^-+|-+$/g, ""))} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-green-700 px-3 text-sm font-medium text-green-800 hover:bg-green-50 disabled:opacity-50"><Check size={16} /> Format Slug</button>
+                                    </div>
                                 </Field>
 
                                 <Field
@@ -1574,6 +1643,12 @@ export default function AdminNewsEditPage() {
 
                                 <Field label="Summary">
                                     <textarea
+                                        ref={(element) => {
+                                            if (element) resizeSummaryTextarea(element);
+                                        }}
+                                        onInput={(event) =>
+                                            resizeSummaryTextarea(event.currentTarget)
+                                        }
                                         value={
                                             summary
                                         }
@@ -1586,9 +1661,9 @@ export default function AdminNewsEditPage() {
                                                     .value,
                                             )
                                         }
-                                        rows={4}
+                                        rows={1}
                                         className={
-                                            textareaClass
+                                            `${textareaClass} min-h-11 resize-none overflow-hidden py-2`
                                         }
                                         disabled={
                                             !canEditArticle ||
@@ -1626,6 +1701,27 @@ export default function AdminNewsEditPage() {
                                 </Field>
                             </div>
                         </Surface>
+
+                        <NewsMediaUploader
+                            newsId={
+                                news.id
+                            }
+                            media={
+                                media
+                            }
+                            onMediaChange={(nextMedia) => {
+                                const nextIds = new Set(nextMedia.map(item => item.id));
+                                const removed = media.filter(item => !nextIds.has(item.id)).map(item => item.id);
+                                setPendingMediaRemoval(previous => [...new Set([...previous, ...removed])].filter(id => !nextIds.has(id)));
+                                setMedia(nextMedia);
+                            }}
+                            deferDeletion
+                            disabled={
+                                !canEditArticle ||
+                                saving ||
+                                workflowLoading
+                            }
+                        />
 
                         {/* -----------------------------------------------------------------
                          * WORKFLOW
@@ -1780,35 +1876,60 @@ export default function AdminNewsEditPage() {
                                             </>
                                         )}
 
-                                    {news.status ===
-                                        "APPROVED" &&
-                                        canManageNews && (
+                                    {news.status === "APPROVED" && canManageNews && (
+                                        <div className="flex w-full flex-wrap items-end gap-3">
+                                            <label className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-gray-800">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={schedulePublication}
+                                                    disabled={workflowLoading}
+                                                    onChange={(event) => {
+                                                        setSchedulePublication(event.target.checked);
+                                                        setPublicationLocalTime("");
+                                                    }}
+                                                />
+                                                Schedule
+                                            </label>
+                                            {schedulePublication && (
+                                                <label className="flex min-w-[220px] flex-col gap-1 text-sm">
+                                                    Publication date and time (local) *
+                                                    <input
+                                                        type="datetime-local"
+                                                        required
+                                                        value={publicationLocalTime}
+                                                        min={getLocalPublicationInputValue()}
+                                                        onChange={(event) => setPublicationLocalTime(event.target.value)}
+                                                        className="min-h-10 rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+                                                    />
+                                                </label>
+                                            )}
                                             <Button
                                                 type="button"
-                                                disabled={
-                                                    workflowLoading
-                                                }
-                                                leftIcon={
-                                                    <Check
-                                                        size={
-                                                            16
-                                                        }
-                                                    />
-                                                }
-                                                onClick={() =>
+                                                disabled={workflowLoading}
+                                                leftIcon={<Check size={16} />}
+                                                onClick={() => {
                                                     void handleWorkflowAction(
-                                                        () =>
-                                                            publishNews(
-                                                                news.id,
-                                                                Number(user?.id ?? 0),
-                                                            ),
-                                                        "News published successfully.",
-                                                    )
-                                                }
+                                                        () => {
+                                                            if (!schedulePublication) {
+                                                                return publishNews(news.id, Number(user?.id ?? 0));
+                                                            }
+                                                            if (!publicationLocalTime) {
+                                                                throw new Error("Select the scheduled publication date and time.");
+                                                            }
+                                                            const date = new Date(publicationLocalTime);
+                                                            if (Number.isNaN(date.getTime()) || date.getTime() <= Date.now()) {
+                                                                throw new Error("Scheduled publication must be a future date and time.");
+                                                            }
+                                                            return publishNews(news.id, Number(user?.id ?? 0), date.toISOString());
+                                                        },
+                                                        schedulePublication ? "News scheduled successfully." : "News published successfully.",
+                                                    );
+                                                }}
                                             >
                                                 Publish
                                             </Button>
-                                        )}
+                                        </div>
+                                    )}
 
                                     {news.status ===
                                         "PUBLISHED" &&
@@ -1962,25 +2083,8 @@ export default function AdminNewsEditPage() {
                             </div>
                         </Surface>
 
-                        <NewsMediaUploader
-                            newsId={
-                                news.id
-                            }
-                            media={
-                                media
-                            }
-                            onMediaChange={
-                                setMedia
-                            }
-                            disabled={
-                                !canEditArticle ||
-                                saving ||
-                                workflowLoading
-                            }
-                        />
-
                         <div className="flex justify-end gap-3">
-                            <Link to="/admin/news">
+                            <Link to={newsListReturnUrl}>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -1996,6 +2100,8 @@ export default function AdminNewsEditPage() {
                                 }
                                 disabled={
                                     !canEditArticle ||
+                                    saving ||
+                                    savedWithoutChanges ||
                                     workflowLoading
                                 }
                                 leftIcon={
@@ -2014,6 +2120,12 @@ export default function AdminNewsEditPage() {
             </main>
         </MainLayout>
     );
+}
+
+function resizeSummaryTextarea(element: HTMLTextAreaElement): void {
+    // Reset first so the field also shrinks when text is deleted.
+    element.style.height = "44px";
+    element.style.height = `${Math.max(44, element.scrollHeight)}px`;
 }
 
 const inputClass =

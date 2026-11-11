@@ -1,3 +1,7 @@
+import { useNews } from "@/hooks/useNews";
+import SidebarNewsCard from "@/components/news/SidebarNewsCard";
+import Section from "@/components/home/Section";
+import PublicAdvertisementModal from "@/components/advertisements/Advertisement/PublicAdvertisementModal";
 import { CalendarDays, MapPin, BookOpen } from "lucide-react";
 
 import NewsMeta from "@/components/news/NewsMeta";
@@ -6,73 +10,75 @@ import Typography from "@/components/ui/Typography";
 import { formatDate } from "@/utils/format/formatDate";
 import { calculateReadingTime } from "@/utils/news";
 
-import Advertisement from "@/components/advertisement";
+import DynamicNewsDetailSidebar from "@/components/advertisements/Advertisement/DynamicNewsDetailSidebar";
+import LiveAdvertisementPlacement from "@/components/advertisements/Advertisement/LiveAdvertisementPlacement";
 import NewsArticleContent from "./NewsArticleContent";
 import NewsArticleHeroCarousel from "./NewsArticleHeroCarousel";
 import type { NewsArticleProps } from "./NewsArticle.types";
 
-const DYNAMIC_AD_SLOT_COUNT = 5;
+function PopularNews({ currentNewsId, currentNewsSlug }: { currentNewsId: number; currentNewsSlug: string }) {
+  const { news, loading, error } = useNews({
+    publishedOnly: true,
+    page: 1,
+    // Fetch an extra article so excluding the current story can still show four.
+    pageSize: 5,
+    popular: true,
+  });
 
-function AdvertisementColumn({
-  side,
-}: {
-  side: "left" | "right";
-}) {
+  const distinctNews = news
+    .filter((item) => item.id !== currentNewsId && item.slug !== currentNewsSlug)
+    .filter((item, index, items) =>
+      items.findIndex((candidate) => candidate.id === item.id) === index
+    )
+    .slice(0, 4);
+
   return (
-    <aside
-      aria-label={
-        side === "left"
-          ? "Left advertisement area"
-          : "Right advertisement area"
-      }
-      className="
-        hidden
-        lg:flex
-        lg:flex-col
-        lg:gap-6
-      "
-    >
-      {/* Static advertisement */}
-      <div className="h-[450px]">
-        <Advertisement />
-      </div>
-
-      {/* Dynamic advertisement slots */}
-      {Array.from({
-        length: DYNAMIC_AD_SLOT_COUNT,
-      }).map((_, index) => (
-        <div
-          key={`${side}-dynamic-${index + 1}`}
-          className="h-[450px]"
-        >
-          <Advertisement />
+    <Section title="பிரபலமானவை" className="mb-0 min-w-0 w-full">
+      {loading ? (
+        <p className="mt-3 text-sm text-gray-500">செய்திகள் பெறப்படுகின்றன...</p>
+      ) : error ? (
+        <p className="mt-3 text-sm text-red-600">பிரபலமான செய்திகளை பெற முடியவில்லை.</p>
+      ) : distinctNews.length ? (
+        <div className="space-y-4 min-w-0">
+          {distinctNews.map((item) => <SidebarNewsCard key={item.id} news={item} compact />)}
         </div>
-      ))}
-    </aside>
+      ) : (
+        <p className="mt-3 text-sm text-gray-500">செய்திகள் இல்லை.</p>
+      )}
+    </Section>
   );
 }
 
-function MobileStaticAdvertisement({
-  position,
-}: {
-  position: "top" | "bottom";
-}) {
+function ImportantNews({ currentNewsId, currentNewsSlug }: { currentNewsId: number; currentNewsSlug: string }) {
+  // Identical query and first-five selection to the homepage Hero Carousel.
+  const { news, loading, error } = useNews({
+    publishedOnly: true,
+    homepageOnly: true,
+    page: 1,
+    pageSize: 10,
+    sortBy: "published_at",
+    sortOrder: "DESC",
+  });
+
+  const featured = news
+    .filter((item) => item.showOnHomepage === true)
+    .slice(0, 5)
+    .filter((item) => item.id !== currentNewsId && item.slug !== currentNewsSlug);
+
   return (
-    <div
-      className="
-        my-5
-        lg:hidden
-      "
-      aria-label={
-        position === "top"
-          ? "Top advertisement"
-          : "Bottom advertisement"
-      }
-    >
-      <div className="h-[120px]">
-        <Advertisement />
-      </div>
-    </div>
+    <Section title="முக்கியச் செய்திகள்" className="mb-0 min-w-0 w-full">
+      {loading ? (
+        <p className="mt-3 text-sm text-gray-500">செய்திகள் பெறப்படுகின்றன...</p>
+      ) : error ? (
+        <p className="mt-3 text-sm text-red-600">முக்கியச் செய்திகளை பெற முடியவில்லை.</p>
+      ) : featured.length ? (
+        <div className="space-y-4 min-w-0">
+          {featured.map((item) => <SidebarNewsCard key={item.id} news={item} compact />)}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-gray-500">செய்திகள் இல்லை.</p>
+      )}
+    </Section>
   );
 }
 
@@ -111,26 +117,27 @@ export default function NewsArticle({
       b.displayOrder,
   );
 
-  const hasHeroCarousel =
-    orderedMedia.length > 3;
+  // A carousel is used only when more than four media items exist.
+  // The first three remain inline; the rest appear at the article end.
+  const carouselMedia = orderedMedia.length > 4
+    ? orderedMedia.slice(3)
+    : [];
 
   return (
     <>
-      <MobileStaticAdvertisement position="top" />
+      <PublicAdvertisementModal placementCode="NEWS_DETAIL_MODAL" newsId={news.id} />
       <div
         className="
         mx-auto
         w-full
         max-w-7xl
         lg:grid
-        lg:grid-cols-[220px_minmax(0,1fr)_220px]
-        lg:gap-6
-        xl:grid-cols-[240px_minmax(0,1fr)_240px]
-        xl:gap-8
+        lg:grid-cols-[minmax(0,1fr)_300px]
+        lg:gap-[18px]
+        xl:grid-cols-[minmax(0,1fr)_300px]
+        xl:gap-[18px]
       "
       >
-        <AdvertisementColumn side="left" />
-
         <article className="min-w-0 w-full">
           <header>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-green-700">
@@ -161,8 +168,9 @@ export default function NewsArticle({
               as="h1"
               variant="headline"
               className="
-              mt-4
-              max-w-4xl
+              mt-3
+              w-full
+              max-w-none
               text-[2rem]
               leading-[1.3]
               text-gray-950
@@ -179,7 +187,8 @@ export default function NewsArticle({
               <p
                 className="
                 mt-5
-                max-w-3xl
+                w-full
+                max-w-none
                 font-[Noto_Sans_Tamil,Inter,system-ui,sans-serif]
                 text-[0.95rem]
                 leading-[1.9]
@@ -235,56 +244,47 @@ export default function NewsArticle({
             </div>
           </header>
 
-          {hasHeroCarousel ? (
-            <div className="mt-8 sm:mt-10">
-              <NewsArticleHeroCarousel
-                media={orderedMedia}
-                title={news.title}
-              />
-            </div>
-          ) : (
-            <figure className="mt-8 overflow-hidden rounded-xl bg-gray-100 sm:mt-10">
-              <img
-                src={
-                  orderedMedia[0]?.fileUrl ??
-                  news.thumbnailUrl
-                }
-                alt={
-                  orderedMedia[0]?.altText ??
-                  news.title
-                }
-                className="
-                aspect-[16/9]
-                w-full
-                object-contain
-                bg-gray-100
-              "
-                onError={(event) => {
-                  event.currentTarget.src =
-                    "/assets/hero.png";
-                }}
-              />
-
-              {orderedMedia[0]?.caption && (
-                <figcaption className="px-3 py-2 text-xs text-gray-500 sm:px-4">
-                  {orderedMedia[0].caption}
-                </figcaption>
-              )}
-            </figure>
-          )}
-
           <div className="mx-auto mt-8 max-w-3xl sm:mt-10">
             <NewsArticleContent
               content={news.content ?? ""}
               media={orderedMedia}
+              showAdPlaceholder
+              newsId={news.id}
+              fallbackThumbnailUrl={news.thumbnailUrl}
+              fallbackTitle={news.title}
+            />
+          </div>
+
+          {carouselMedia.length > 0 && (
+            <div className="mx-auto mt-8 max-w-3xl sm:mt-10">
+              <NewsArticleHeroCarousel
+                media={carouselMedia}
+                title={news.title}
+              />
+            </div>
+          )}
+
+          <div className="mt-[18px] flex w-full min-w-0 justify-center">
+            <LiveAdvertisementPlacement
+              placementCode="NEWS_DETAIL_BOTTOM"
+              newsId={news.id}
             />
           </div>
         </article>
 
-        <AdvertisementColumn side="right" />
-
+        <DynamicNewsDetailSidebar
+          newsId={news.id}
+          popularNews={<PopularNews currentNewsId={news.id} currentNewsSlug={news.slug} />}
+          importantNews={<ImportantNews currentNewsId={news.id} currentNewsSlug={news.slug} />}
+          className="hidden min-w-0 lg:flex lg:flex-col lg:gap-[18px]"
+        />
       </div>
-      <MobileStaticAdvertisement position="bottom" />
+      <DynamicNewsDetailSidebar
+        newsId={news.id}
+        popularNews={<PopularNews currentNewsId={news.id} currentNewsSlug={news.slug} />}
+        importantNews={<ImportantNews currentNewsId={news.id} currentNewsSlug={news.slug} />}
+        className="mt-[18px] flex min-w-0 w-full flex-col gap-[18px] overflow-x-hidden lg:hidden"
+      />
     </>
   );
 }

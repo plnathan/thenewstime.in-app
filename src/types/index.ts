@@ -18,3 +18,8 @@ export type {
   NewsView,
 } from "./news.types";
 export type { CountryItem, StateItem, DistrictItem } from "./master-data.types";
+export * from "./advertisement.types";
+export * from "./creative.types";
+export * from "./schedule.types";
+export * from "./advertisementManagement.types";
+//export * from "./advertisementWorkspace.types";

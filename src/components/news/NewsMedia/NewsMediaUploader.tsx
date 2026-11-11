@@ -46,9 +46,18 @@ export default function NewsMediaUploader({
     media,
     onMediaChange,
     disabled = false,
+    deferDeletion = false,
+    deferReorder = false,
 }: NewsMediaManagerProps) {
     const inputRef =
         useRef<HTMLInputElement>(null);
+
+    const [compress, setCompress] = useState(true);
+    const [watermark, setWatermark] = useState(true);
+    const [watermarkText, setWatermarkText] = useState("www.thenewstime.in");
+    const [watermarkFontSize, setWatermarkFontSize] = useState("24");
+    const [watermarkColor, setWatermarkColor] = useState<"BLACK" | "WHITE">("WHITE");
+    const [watermarkPosition, setWatermarkPosition] = useState<"TOP" | "BOTTOM" | "LEFT" | "RIGHT" | "CENTER">("BOTTOM");
 
     const [uploading, setUploading] =
         useState(false);
@@ -76,6 +85,11 @@ export default function NewsMediaUploader({
         }
 
         setError(null);
+        const fontSize = Number(watermarkFontSize);
+        if (watermark && (!watermarkText.trim() || watermarkText.trim().length > 120 || !Number.isInteger(fontSize) || fontSize < 8 || fontSize > 120)) {
+            setError("Watermark text (1–120 characters) and font size (8–120) are required.");
+            return;
+        }
 
         const selectedFiles =
             Array.from(files);
@@ -132,6 +146,7 @@ export default function NewsMediaUploader({
                     newsId,
                     selectedFiles,
                     ADMIN_USER_ID,
+                    { compress, watermark, watermarkText: watermarkText.trim(), watermarkFontSize: fontSize, watermarkColor, watermarkPosition },
                 );
 
             const uploadedMedia =
@@ -209,6 +224,19 @@ export default function NewsMediaUploader({
                     </Button>
                 </div>
 
+                <div className="mt-5 space-y-4 border-t border-gray-200 pt-4 text-sm">
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={compress} onChange={(e) => setCompress(e.target.checked)} disabled={disabled || uploading} /> Image Compression</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={watermark} onChange={(e) => setWatermark(e.target.checked)} disabled={disabled || uploading} /> Permanent Watermarking</label>
+                    {watermark && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="space-y-1"> <span className="block">Watermark text *</span><input className="w-full rounded border p-2" maxLength={120} required value={watermarkText} onChange={(e) => setWatermarkText(e.target.value)} disabled={disabled || uploading} /></label>
+                            <label className="space-y-1"> <span className="block">Font size (px) *</span><input className="w-full rounded border p-2" type="number" min={8} max={120} required value={watermarkFontSize} onChange={(e) => setWatermarkFontSize(e.target.value)} disabled={disabled || uploading} /></label>
+                            <label className="space-y-1"> <span className="block">Text color *</span><select className="w-full rounded border p-2" value={watermarkColor} onChange={(e) => setWatermarkColor(e.target.value as "BLACK" | "WHITE")} disabled={disabled || uploading}><option value="BLACK">Black</option><option value="WHITE">White</option></select></label>
+                            <label className="space-y-1"> <span className="block">Position *</span><select className="w-full rounded border p-2" value={watermarkPosition} onChange={(e) => setWatermarkPosition(e.target.value as typeof watermarkPosition)} disabled={disabled || uploading}><option value="TOP">Top</option><option value="BOTTOM">Bottom</option><option value="LEFT">Left</option><option value="RIGHT">Right</option><option value="CENTER">Center</option></select></label>
+                        </div>
+                    )}
+                </div>
+
                 <input
                     ref={inputRef}
                     type="file"
@@ -234,6 +262,8 @@ export default function NewsMediaUploader({
             <NewsMediaPreview
                 newsId={newsId}
                 media={media}
+                deferDeletion={deferDeletion}
+                deferReorder={deferReorder}
                 onMediaChange={onMediaChange}
                 disabled={
                     disabled || uploading

@@ -2,7 +2,7 @@
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
  * Component   : HomeGrid
- * Description : Homepage content grid.
+ * Description : Homepage content and advertisement sidebar layout.
  * -----------------------------------------------------------------------------
  */
 
@@ -15,15 +15,19 @@ interface HomeGridProps extends PropsWithChildren {
 export default function HomeGrid({ children, sidebar }: HomeGridProps) {
   return (
     <div
-      className="
-        grid
-        gap-8
-        lg:grid-cols-8
-      "
+      className={
+        sidebar
+          ? "grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_300px]"
+          : "grid grid-cols-1"
+      }
     >
-      <div className="lg:col-span-5">{children}</div>
+      <div className="min-w-0">{children}</div>
 
-      {sidebar && <aside className="lg:col-span-3">{sidebar}</aside>}
+      {sidebar && (
+        <aside className="min-w-0 w-full lg:w-[300px] lg:justify-self-end">
+          {sidebar}
+        </aside>
+      )}
     </div>
   );
 }

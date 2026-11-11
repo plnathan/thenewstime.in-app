@@ -1,3 +1,4 @@
+import { rememberAdminReturnPath } from "@/auth/adminReturnPath";
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
@@ -54,6 +55,7 @@ export default function ProtectedRoute() {
     }
 
     if (!isAuthenticated) {
+        rememberAdminReturnPath(location.pathname + location.search + location.hash);
         return (
             <Navigate
                 to="/admin/login"

@@ -182,7 +182,7 @@ const SecurityRoleFormPage = () => {
     ) {
         return (
             <MainLayout>
-                <div className="mx-auto w-full max-w-4xl">
+                <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
                     <div className="rounded-lg border border-red-200 bg-red-50 p-6">
                         <h1 className="text-lg font-semibold text-red-800">
                             Access denied
@@ -212,7 +212,7 @@ const SecurityRoleFormPage = () => {
     if (loading) {
         return (
             <MainLayout>
-                <div className="mx-auto w-full max-w-4xl">
+                <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
                     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
                         <p className="text-sm text-gray-500">
                             Loading role...
@@ -225,9 +225,9 @@ const SecurityRoleFormPage = () => {
 
     return (
         <MainLayout>
-            <div className="mx-auto w-full max-w-4xl">
+            <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
                 {/* Page Header */}
-                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="admin-unified-header mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div className="flex items-center gap-2">
                             <ShieldCheck

@@ -24,6 +24,8 @@ export function toNewsView(news: News): NewsView {
   return {
     id: news.id,
 
+    showOnHomepage: news.showOnHomepage === true,
+
     newsNumber: news.newsNumber,
 
     slug: news.slug,

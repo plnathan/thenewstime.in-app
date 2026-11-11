@@ -25,6 +25,7 @@ export const featuredNews: NewsView[] = [
     featured: true,
 
     breaking: true,
+    showOnHomepage: true,
   },
   {
     id: 2,
@@ -51,6 +52,7 @@ export const featuredNews: NewsView[] = [
     featured: true,
 
     breaking: true,
+    showOnHomepage: true,
   },
   {
     id: 3,
@@ -76,6 +78,7 @@ export const featuredNews: NewsView[] = [
     featured: true,
 
     breaking: true,
+    showOnHomepage: true,
   },
   {
     id: 4,
@@ -102,6 +105,7 @@ export const featuredNews: NewsView[] = [
     featured: true,
 
     breaking: true,
+    showOnHomepage: true,
   },
   {
     id: 5,
@@ -128,6 +132,7 @@ export const featuredNews: NewsView[] = [
     featured: true,
 
     breaking: true,
+    showOnHomepage: true,
   },
   {
     id: 6,
@@ -152,6 +157,7 @@ export const featuredNews: NewsView[] = [
     featured: true,
 
     breaking: true,
+    showOnHomepage: true,
   },
 ];
 

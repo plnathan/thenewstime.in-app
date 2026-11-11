@@ -89,8 +89,10 @@ export interface News {
   district: NewsDistrict | null;
 
   views?: number;
-  
+
   status: NewsStatus;
+
+  showOnHomepage: boolean;
 
   /**
    * Admin display ordering / promotion.
@@ -108,6 +110,9 @@ export interface News {
   displayPriorityUntil: string | null;
 
   draftedBy: number;
+  draftedByName?: string | null;
+  approvedByName?: string | null;
+  publishedByName?: string | null;
   approvedBy: number | null;
   publishedBy: number | null;
   archivedBy: number | null;
@@ -134,6 +139,8 @@ export interface News {
  * depending directly on the complete API structure.
  */
 export interface NewsView {
+  showOnHomepage: boolean;
+
   id: number;
 
   newsNumber?: number;
@@ -238,6 +245,7 @@ export interface NewsView {
  * Create News payload.
  */
 export interface CreateNewsInput {
+  showOnHomepage?: boolean;
   title: string;
 
   slug: string;
@@ -265,6 +273,7 @@ export interface CreateNewsInput {
  * Update News payload.
  */
 export interface UpdateNewsInput {
+  showOnHomepage?: boolean;
   title?: string;
 
   slug?: string;

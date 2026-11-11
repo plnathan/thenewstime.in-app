@@ -1,3 +1,4 @@
+import { rememberAdminReturnPath } from "@/auth/adminReturnPath";
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 import {
@@ -160,6 +161,11 @@ apiClient.interceptors.response.use(
         window.location.pathname.startsWith("/admin") &&
         window.location.pathname !== "/admin/login"
       ) {
+        rememberAdminReturnPath(
+          window.location.pathname +
+            window.location.search +
+            window.location.hash,
+        );
         window.location.assign(`/admin/login?reason=session-expired`);
       }
 

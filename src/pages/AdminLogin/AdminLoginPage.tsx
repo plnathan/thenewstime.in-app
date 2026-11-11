@@ -1,3 +1,4 @@
+import { consumeAdminReturnPath } from "@/auth/adminReturnPath";
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
@@ -64,6 +65,10 @@ const getApiErrorMessage = (
 };
 
 export default function AdminLoginPage() {
+    useEffect(() => {
+        document.title = "Login | Administration | www.thenewstime.in";
+    }, []);
+
     const navigate =
         useNavigate();
 
@@ -91,11 +96,8 @@ export default function AdminLoginPage() {
 
     /**
      * If an already authenticated user opens
-     * /admin/login, always take them to
-     * News Management.
-     *
-     * We intentionally do not restore the
-     * previous requested Admin URL here.
+     * /admin/login, return to a saved admin route when available.
+     * Otherwise use the Administration Dashboard.
      */
     useEffect(() => {
         if (
@@ -104,7 +106,7 @@ export default function AdminLoginPage() {
             user
         ) {
             navigate(
-                "/admin/news",
+                consumeAdminReturnPath() ?? "/admin",
                 {
                     replace: true,
                 },
@@ -157,18 +159,11 @@ export default function AdminLoginPage() {
             });
 
             /**
-             * Every successful Admin login
-             * starts at News Management.
-             *
-             * Permission-based access to individual
-             * actions/pages will be handled separately.
+             * Resume the last admin URL when available.
+             * ProtectedRoute and PermissionRoute still enforce access.
              */
-            navigate(
-                "/admin/news",
-                {
-                    replace: true,
-                },
-            );
+            // Authentication state updates trigger the effect above,
+            // which consumes the saved return path exactly once.
         } catch (err) {
             console.error(
                 "Admin login failed:",

@@ -1,20 +1,65 @@
+import { useNewsDetailDeliveryId } from "@/contexts/NewsDetailDeliveryContext";
 import {
+    BriefcaseBusiness,
     ChevronDown,
+    Clapperboard,
+    Cpu,
+    Globe2,
+    Landmark,
+    MapPinned,
+    Newspaper,
+    Trophy,
+    Map,
     Home,
     KeyRound,
     Menu,
-    Search,
     ShieldCheck,
     Users,
     X,
 } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { navigationItems } from "../Navigation/navigation.data";
 
+// The hamburger includes all public categories, including Business and Technology.
+// The horizontal navigation intentionally retains its smaller primary selection.
+const headerMenuItems = navigationItems;
+
+const hamburgerIcons = {
+    1: Home,
+    10: Newspaper,
+    2: Map,
+    3: IndiaIcon,
+    4: Globe2,
+    11: MapPinned,
+    5: Landmark,
+    6: BriefcaseBusiness,
+    7: Trophy,
+    8: Cpu,
+    9: Clapperboard,
+} as const;
+
+import IndiaIcon from "./IndiaIcon";
 import Logo from "./Logo";
 import Navigation from "../Navigation";
+import LiveAdvertisementSlot from "@/components/advertisements/Advertisement/LiveAdvertisementSlot";
+import { hasConfiguredHeaderAdvertisementSlot } from "@/api/advertisements/public-delivery.api";
+import { useLocation } from "react-router-dom";
 
 import { useAuth } from "@/auth/AuthContext";
+
+function DigitalClock() {
+    const [now, setNow] = useState(() => new Date());
+    useEffect(() => {
+        const timer = window.setInterval(() => setNow(new Date()), 1000);
+        return () => window.clearInterval(timer);
+    }, []);
+    const pad = (value: number, length = 2) => String(value).padStart(length, "0");
+    const hour12 = now.getHours() % 12 || 12;
+    const period = now.getHours() >= 12 ? "PM" : "AM";
+    const display = `${pad(hour12)}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${period}`;
+    return <time dateTime={now.toISOString()} aria-label="Current time" className="inline-block whitespace-nowrap font-mono text-xs font-bold tabular-nums text-green-700">{display}</time>;
+}
 
 function getCurrentDate() {
     const date = new Date();
@@ -54,6 +99,11 @@ function getCurrentDate() {
 
 export default function Header() {
     const currentDate = getCurrentDate();
+    const { pathname } = useLocation();
+    const detailNewsId = useNewsDetailDeliveryId();
+    const topCode = pathname === "/" ? "HOME_TOP" :
+        pathname === "/news" || pathname === "/news/" ? "NEWS_LIST_TOP" :
+            /^\/news\/[^/]+\/?$/.test(pathname) ? "NEWS_DETAIL_TOP" : null;
 
     const {
         user,
@@ -64,8 +114,47 @@ export default function Header() {
     } = useAuth();
 
     const [menuOpen, setMenuOpen] = useState(false);
+    const [publicMenuOpen, setPublicMenuOpen] = useState(false);
     const [securityOpen, setSecurityOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
+
+    // Keep the live-ad sticky decision scoped to its own page/article.
+    // Never reuse the previous page's decision while a new page is loading.
+    const pageType = pathname === "/" ? "HOME" :
+        pathname === "/news" || pathname === "/news/" ? "NEWS_LIST" :
+            /^\/news\/[^/]+\/?$/.test(pathname) ? "NEWS_DETAIL" : null;
+    const headerContextKey = pageType === "NEWS_DETAIL"
+        ? `NEWS_DETAIL:${pathname}:${detailNewsId ?? "pending"}`
+        : `${pageType ?? "OTHER"}:${pathname}`;
+    const [stickyDecision, setStickyDecision] = useState<{
+        contextKey: string;
+        allowed: boolean;
+    } | null>(null);
+    const allowStickyHeader = stickyDecision?.contextKey === headerContextKey
+        ? stickyDecision.allowed
+        : false;
+
+    useEffect(() => {
+        if (!pageType) return;
+        if (pageType === "NEWS_DETAIL" && detailNewsId == null) return;
+        let cancelled = false;
+        void hasConfiguredHeaderAdvertisementSlot(
+            pageType,
+            pageType === "NEWS_DETAIL" ? detailNewsId ?? undefined : undefined,
+        ).then((configured) => {
+            if (!cancelled) setStickyDecision({
+                contextKey: headerContextKey,
+                allowed: !configured,
+            });
+        }).catch(() => {
+            if (!cancelled) setStickyDecision({
+                contextKey: headerContextKey,
+                allowed: false,
+            });
+        });
+        return () => { cancelled = true; };
+    }, [pageType, detailNewsId, headerContextKey]);
+
 
     const canReadUsers =
         isAuthenticated &&
@@ -121,13 +210,7 @@ export default function Header() {
 
     return (
         <header
-            className="
-    sticky
-    top-0
-    z-50
-    border-b
-    bg-white
-  "
+            className={`${(topCode === null || allowStickyHeader) ? "sticky top-0" : "relative"} z-50 border-b bg-white`}
         >
             {/* Top Header */}
             <div
@@ -137,13 +220,13 @@ export default function Header() {
       h-20
       max-w-7xl
       items-center
-      justify-between
+      justify-center
       px-4
       lg:px-6
     "
             >
                 {/* Menu */}
-                <div className="relative z-[100]">
+                <div className="relative z-[100] hidden">
                     <button
                         type="button"
                         className="
@@ -505,192 +588,52 @@ export default function Header() {
                     )}
                 </div>
 
-                {/* Logo */}
-                <Logo />
-
-                {/* Empty right side to keep logo centered */}
-                <div
-                    className="
-        h-10
-        w-10
-      "
-                    aria-hidden="true"
-                />
-            </div>
-
-            {/* Navigation / Utility Row */}
-            <div
-                className="
-      border-t
-      border-gray-100
-    "
-            >
-                {/* Mobile Date + E-Paper + Search */}
-                <div
-                    className="
-        flex
-        items-center
-        justify-between
-        border-b
-        border-gray-100
-        px-4
-        py-1.5
-        sm:hidden
-      "
-                >
-                    {/* Mobile Date */}
-                    <div
-                        className="
-          min-w-0
-          truncate
-          text-xs
-          font-medium
-          text-gray-500
-        "
-                    >
-                        {currentDate}
-                    </div>
-
-                    {/* Mobile E-Paper + Search */}
-                    <div
-                        className="
-          flex
-          shrink-0
-          items-center
-          gap-2
-          pl-3
-        "
-                    >
-                        <button
-                            type="button"
-                            className="
-            whitespace-nowrap
-            text-xs
-            font-medium
-            text-gray-600
-            transition-colors
-            hover:text-green-700
-            focus-visible:outline-none
-            focus-visible:ring-2
-            focus-visible:ring-green-600
-            focus-visible:ring-offset-2
-          "
-                        >
-                            தமிழ் E-Paper
-                        </button>
-
-                        <button
-                            type="button"
-                            className="
-            rounded-full
-            p-1.5
-            text-gray-700
-            transition-colors
-            hover:bg-gray-100
-            hover:text-green-700
-            focus-visible:outline-none
-            focus-visible:ring-2
-            focus-visible:ring-green-600
-            focus-visible:ring-offset-2
-          "
-                            aria-label="Search"
-                        >
-                            <Search
-                                size={18}
-                                aria-hidden="true"
-                            />
-                        </button>
-                    </div>
+                {/* Center the logo independently of utility controls. */}
+                <div className="flex min-w-0 flex-1 items-center justify-center">
+                    <Logo />
                 </div>
 
-                <div
-                    className="
-        mx-auto
-        flex
-        h-12
-        max-w-7xl
-        items-center
-        px-4
-        lg:px-6
-      "
-                >
-                    {/* Desktop Date */}
-                    <div
-                        className="
-          hidden
-          shrink-0
-          items-center
-          pr-4
-          text-xs
-          font-medium
-          text-gray-500
-          sm:flex
-          lg:pr-6
-        "
-                    >
+
+            </div>
+
+            {topCode && (topCode !== "NEWS_DETAIL_TOP" || detailNewsId != null) && (
+                <div className="mx-auto w-full max-w-7xl px-3 has-[aside]:py-[18px] sm:px-4">
+                    <LiveAdvertisementSlot placementCode={topCode} slotNumber={1} newsId={topCode === "NEWS_DETAIL_TOP" ? detailNewsId! : undefined} />
+                </div>
+            )}
+            {/* Navigation row: fixed utilities and horizontally swipeable mobile links. */}
+            <div className="border-t border-gray-100">
+                <div className="relative mx-auto flex h-12 w-full max-w-7xl items-center gap-2 pl-0 pr-2 sm:pr-4 lg:pr-6">
+                    <div className="relative z-20 shrink-0">
+                        <button type="button" aria-label="Open navigation menu" aria-expanded={publicMenuOpen}
+                            onClick={() => setPublicMenuOpen(open => !open)}
+                            className="flex h-9 w-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600">
+                            {publicMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                        </button>
+                        {publicMenuOpen && (
+                            <div role="menu" className="absolute left-0 top-full z-[120] mt-2 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+                                {headerMenuItems.map(item => {
+                                    const ItemIcon = hamburgerIcons[item.id as keyof typeof hamburgerIcons] ?? Newspaper;
+                                    return (
+                                        <NavLink key={item.id} role="menuitem" to={item.path}
+                                            onClick={() => setPublicMenuOpen(false)}
+                                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+                                            <ItemIcon size={item.label === "இந்தியா" ? 22 : 17} className="shrink-0 text-green-700" aria-hidden="true" />
+                                            <span>{item.label}</span>
+                                        </NavLink>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                    <div className="shrink-0 whitespace-nowrap font-mono text-[9px] font-semibold tabular-nums text-green-700 sm:text-xs">
                         {currentDate}
                     </div>
-
-                    {/* Navigation */}
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 overflow-hidden">
                         <Navigation />
                     </div>
-
-                    {/* Desktop E-Paper + Search */}
-                    <div
-                        className="
-          hidden
-          shrink-0
-          items-center
-          gap-2
-          pl-3
-          sm:flex
-          sm:gap-3
-          sm:pl-4
-          lg:gap-4
-          lg:pl-6
-        "
-                    >
-                        <button
-                            type="button"
-                            className="
-            whitespace-nowrap
-            text-xs
-            font-medium
-            text-gray-600
-            transition-colors
-            hover:text-green-700
-            focus-visible:outline-none
-            focus-visible:ring-2
-            focus-visible:ring-green-600
-            focus-visible:ring-offset-2
-            sm:text-sm
-          "
-                        >
-                            தமிழ் E-Paper
-                        </button>
-
-                        <button
-                            type="button"
-                            className="
-            rounded-full
-            p-2
-            text-gray-700
-            transition-colors
-            hover:bg-gray-100
-            hover:text-green-700
-            focus-visible:outline-none
-            focus-visible:ring-2
-            focus-visible:ring-green-600
-            focus-visible:ring-offset-2
-          "
-                            aria-label="Search"
-                        >
-                            <Search
-                                size={20}
-                                aria-hidden="true"
-                            />
-                        </button>
+                    <div className="shrink-0 whitespace-nowrap border-l border-gray-100 pl-2 sm:pl-3">
+                        <DigitalClock />
                     </div>
                 </div>
             </div>

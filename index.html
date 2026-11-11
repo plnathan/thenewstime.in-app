@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <link
       rel="icon"
       type="image/png"
@@ -20,8 +21,102 @@
       sizes="180x180"
       href="/tnt_apple_touch_icon_180_180.png"
     />
-    <title>thenewstime.in</title>
+
+    <title>
+      தமிழ் செய்திகள் | Tamil News | Latest Tamil News | Tamil Online News |
+    </title>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const siteName = "www.thenewstime.in";
+
+        const homeTitle =
+          "தமிழ் செய்திகள் | Tamil News | Latest Tamil News | Tamil Online News | ";
+
+        const path =
+          window.location.pathname.replace(/\/+$/, "").toLowerCase() || "/";
+
+        const routeTitles = [
+          // Login
+          {
+            pattern: /^\/(?:admin\/)?login$/,
+            title: `Login | Administration | ${siteName}`,
+          },
+
+          // News Management
+          {
+            pattern: /^\/admin\/news(?:\/.*)?$/,
+            title: `News Management | ${siteName}`,
+          },
+
+          // Advertisement Management
+          {
+            pattern: /^\/admin\/advertisements$/,
+            title: `Advertisement Management | ${siteName}`,
+          },
+
+          // Search Advertisement
+          {
+            pattern: /^\/admin\/advertisements\/(?:search|list)$/,
+            title: `Search Advertisement | ${siteName}`,
+          },
+
+          // Client Configuration
+          {
+            pattern: /^\/admin\/advertisements\/client-configuration$/,
+            title: `Client Configuration | ${siteName}`,
+          },
+
+          // Format Configuration
+          {
+            pattern: /^\/admin\/advertisements\/formats$/,
+            title: `Format Configuration | ${siteName}`,
+          },
+
+          // Placement Configuration
+          {
+            pattern: /^\/admin\/advertisements\/placements$/,
+            title: `Placement Configuration | ${siteName}`,
+          },
+
+          // Rate Card Configuration
+          {
+            pattern: /^\/admin\/advertisements\/rate-cards$/,
+            title: `Rate Card Configuration | ${siteName}`,
+          },
+
+          // Financial Approval Thresholds Configuration
+          {
+            pattern: /^\/admin\/advertisements\/financial-approval-thresholds$/,
+            title: `Financial Approval Thresholds Configuration | ${siteName}`,
+          },
+
+          // Create Advertisement
+          {
+            pattern: /^\/admin\/advertisements\/create$/,
+            title: `Create Advertisement | ${siteName}`,
+          },
+
+          // Advertisement Workspace
+          // Supports /admin/advertisements/2617
+          // and any other numeric advertisement ID.
+          {
+            pattern: /^\/admin\/advertisements\/\d+(?:\/.*)?$/,
+            title: `Advertisement Workspace | ${siteName}`,
+          },
+        ];
+
+        const matchedRoute = routeTitles.find(({ pattern }) =>
+          pattern.test(path),
+        );
+
+        document.title = matchedRoute ? matchedRoute.title : homeTitle;
+      })();
+    </script>
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

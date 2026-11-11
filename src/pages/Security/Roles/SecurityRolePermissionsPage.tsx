@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import AdminListPagination from "@/components/ui/AdminListPagination";
+import { SecurityListFilters } from "@/components/ui/SecurityListControls";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
     ArrowLeft,
@@ -57,6 +59,12 @@ const SecurityRolePermissionsPage = () => {
 
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+    const [moduleFilter, setModuleFilter] = useState("ALL");
+    const [assignmentFilter, setAssignmentFilter] = useState("ALL");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
 
     useEffect(() => {
         if (!canAssign) {
@@ -143,16 +151,25 @@ const SecurityRolePermissionsPage = () => {
             .map(([module, modulePermissions]) => ({
                 module,
                 permissions: [...modulePermissions].sort((a, b) => {
-                    if (a.displayOrder !== b.displayOrder) {
-                        return a.displayOrder - b.displayOrder;
-                    }
-
-                    return a.displayName.localeCompare(b.displayName);
+                    return Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE") || Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id;
                 }),
             }))
             .sort((a, b) => a.module.localeCompare(b.module));
     }, [permissions]);
 
+    const filteredPermissions = useMemo(() => permissions.filter(permission =>
+        (statusFilter === "ALL" || permission.status === statusFilter) &&
+        (moduleFilter === "ALL" || (permission.module?.trim() || "Other") === moduleFilter) &&
+        (assignmentFilter === "ALL" || (assignedPermissionIds.has(permission.id) ? "ASSIGNED" : "UNASSIGNED") === assignmentFilter) &&
+        (!search.trim() || [permission.displayName, permission.code, permission.description, permission.module, String(permission.id)]
+            .some(value => String(value ?? "").toLowerCase().includes(search.trim().toLowerCase())))
+    ).sort((a, b) => Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE") || Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id), [permissions, assignedPermissionIds, search, statusFilter, moduleFilter, assignmentFilter]);
+    const totalPages = Math.max(1, Math.ceil(filteredPermissions.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const visibleIds = new Set(filteredPermissions.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(p => p.id));
+    const visibleGroups = permissionGroups.map(group => ({
+        ...group, permissions: group.permissions.filter(p => visibleIds.has(p.id)),
+    })).filter(group => group.permissions.length > 0);
     const assignedCount = assignedPermissionIds.size;
 
     const activePermissionCount = useMemo(
@@ -310,7 +327,7 @@ const SecurityRolePermissionsPage = () => {
                         Back to Roles
                     </Link>
 
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="admin-unified-header flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <div className="flex items-center gap-3">
                                 <div className="rounded-lg bg-gray-100 p-2">
@@ -329,32 +346,7 @@ const SecurityRolePermissionsPage = () => {
                             </div>
                         </div>
 
-                        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                                Role
-                            </div>
 
-                            <div className="mt-1 flex items-center gap-2">
-                                <span className="font-semibold text-gray-900">
-                                    {role.displayName}
-                                </span>
-
-                                <span
-                                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${role.status === "ACTIVE"
-                                        ? "bg-green-100 text-green-700"
-                                        : role.status === "INACTIVE"
-                                            ? "bg-gray-100 text-gray-600"
-                                            : "bg-red-100 text-red-700"
-                                        }`}
-                                >
-                                    {role.status}
-                                </span>
-                            </div>
-
-                            <div className="mt-1 text-xs text-gray-500">
-                                {role.code}
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -406,6 +398,21 @@ const SecurityRolePermissionsPage = () => {
                     </div>
                 </div>
 
+                <SecurityListFilters search={search} onSearch={value => { setSearch(value); setPage(1); }}
+                    status={statusFilter} onStatus={value => { setStatusFilter(value); setPage(1); }} statuses={["ACTIVE", "INACTIVE"]}
+                    placeholder="Search permissions by name, code or ID"
+                    extra={<>
+                        <label className="min-w-[150px] text-xs font-semibold text-gray-600">Module
+                            <select value={moduleFilter} onChange={e => { setModuleFilter(e.target.value); setPage(1); }} className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900">
+                                <option value="ALL">All modules</option>{permissionGroups.map(group => <option key={group.module} value={group.module}>{group.module}</option>)}
+                            </select>
+                        </label>
+                        <label className="min-w-[150px] text-xs font-semibold text-gray-600">Assignment
+                            <select value={assignmentFilter} onChange={e => { setAssignmentFilter(e.target.value); setPage(1); }} className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900">
+                                <option value="ALL">All assignments</option><option value="ASSIGNED">Assigned</option><option value="UNASSIGNED">Not assigned</option>
+                            </select>
+                        </label>
+                    </>} />
                 {permissionGroups.length === 0 ? (
                     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
                         <KeyRound className="mx-auto h-10 w-10 text-gray-400" />
@@ -420,7 +427,7 @@ const SecurityRolePermissionsPage = () => {
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {permissionGroups.map((group) => (
+                        {visibleGroups.map((group) => (
                             <section
                                 key={group.module}
                                 className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
@@ -678,6 +685,7 @@ const SecurityRolePermissionsPage = () => {
                                 </div>
                             </section>
                         ))}
+                        <div className="mt-4"><AdminListPagination page={currentPage} pageSize={pageSize} total={filteredPermissions.length} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} /></div>
                     </div>
                 )}
             </div>

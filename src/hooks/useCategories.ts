@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { getCategories, type Category } from "@/api/category.api";
 
-export function useCategories() {
+export function useCategories(enabled = true) {
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -28,11 +28,12 @@ export function useCategories() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     const fetchCategories = async () => {
       await loadCategories();
     };
     void fetchCategories();
-  }, [loadCategories]);
+  }, [enabled, loadCategories]);
 
   return {
     categories,
