@@ -1,3 +1,5 @@
+import SystemMaintenancePage from "@/pages/Security/SystemMaintenancePage";
+import ServiceUnavailablePage from "@/pages/ServiceUnavailable/ServiceUnavailablePage";
 import {
   useEffect,
 } from "react";
@@ -72,6 +74,8 @@ const AppRouter = () => {
       <AdminPageTitleWatcher />
 
       <Routes>
+        <Route path="/service-unavailable" element={<ServiceUnavailablePage />} />
+
         {/* ------------------------------------------------
                  * Public website
                  * ------------------------------------------------ */}
@@ -142,6 +146,7 @@ const AppRouter = () => {
           />
 
           <Route path="/admin/security" element={<SecurityAdministrationHomePage />} />
+          <Route path="/admin/security/maintenance" element={<PermissionRoute permissionCode="permissions.read"><SystemMaintenancePage /></PermissionRoute>} />
 
           {/* ----------------------------------------------
                      * Security - users

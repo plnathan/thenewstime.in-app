@@ -601,9 +601,10 @@ export default function Header() {
                     <LiveAdvertisementSlot placementCode={topCode} slotNumber={1} newsId={topCode === "NEWS_DETAIL_TOP" ? detailNewsId! : undefined} />
                 </div>
             )}
-            {/* Navigation row: fixed utilities and horizontally swipeable mobile links. */}
+            {/* Mobile/tablet: utilities on the first row; navigation on its own row.
+                Desktop: preserve the original single-row header. */}
             <div className="border-t border-gray-100">
-                <div className="relative mx-auto flex h-12 w-full max-w-7xl items-center gap-2 pl-0 pr-2 sm:pr-4 lg:pr-6">
+                <div className="relative mx-auto flex h-12 w-full max-w-7xl items-center gap-2 px-2 sm:px-4 lg:px-6">
                     <div className="relative z-20 shrink-0">
                         <button type="button" aria-label="Open navigation menu" aria-expanded={publicMenuOpen}
                             onClick={() => setPublicMenuOpen(open => !open)}
@@ -626,14 +627,19 @@ export default function Header() {
                             </div>
                         )}
                     </div>
-                    <div className="shrink-0 whitespace-nowrap font-mono text-[9px] font-semibold tabular-nums text-green-700 sm:text-xs">
+                    <div className="min-w-0 flex-1 whitespace-nowrap font-mono text-[10px] font-semibold tabular-nums text-green-700 sm:text-xs lg:flex-none">
                         {currentDate}
                     </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="hidden min-w-0 flex-1 overflow-hidden lg:block">
                         <Navigation />
                     </div>
-                    <div className="shrink-0 whitespace-nowrap border-l border-gray-100 pl-2 sm:pl-3">
+                    <div className="shrink-0 whitespace-nowrap border-l border-gray-100 pl-2 sm:pl-3 lg:ml-0">
                         <DigitalClock />
+                    </div>
+                </div>
+                <div className="border-t border-gray-100 lg:hidden">
+                    <div className="mx-auto w-full max-w-7xl min-w-0 px-1 sm:px-3">
+                        <Navigation />
                     </div>
                 </div>
             </div>

@@ -1,44 +1,21 @@
 import React from "react";
 import ErrorFallback from "./ErrorFallback";
 
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-}
+interface ErrorBoundaryProps { children: React.ReactNode; resetKey?: string; }
+interface ErrorBoundaryState { hasError: boolean; }
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-}
-
-class ErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-
-    this.state = {
-      hasError: false,
-    };
+/** Catches React render/lifecycle errors; API and event-handler errors need separate handling. */
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+  static getDerivedStateFromError(): ErrorBoundaryState { return { hasError: true }; }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("React error boundary:", error, info.componentStack);
   }
-
-  static getDerivedStateFromError() {
-    return {
-      hasError: true,
-    };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(error);
-    console.error(errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return <ErrorFallback />;
+  componentDidUpdate(previousProps: ErrorBoundaryProps) {
+    if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
     }
-
-    return this.props.children;
   }
+  render() { return this.state.hasError ? <ErrorFallback /> : this.props.children; }
 }
-
 export default ErrorBoundary;

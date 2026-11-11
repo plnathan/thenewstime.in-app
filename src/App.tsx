@@ -5,6 +5,9 @@ import AppRouter from "./router/AppRouter";
 
 import NavigationLoader from "@/components/ui/NavigationLoader/NavigationLoader";
 
+import ErrorBoundary from "@/components/common/ErrorBoundary";
+import PublicMaintenanceGate from "@/components/common/PublicMaintenanceGate";
+
 import { AuthProvider } from "@/auth/AuthContext";
 
 const App = () => {
@@ -18,7 +21,11 @@ const App = () => {
   }, [location.key]);
   return (
     <AuthProvider>
-      <AppRouter />
+      <ErrorBoundary resetKey={location.pathname}>
+        <PublicMaintenanceGate>
+          <AppRouter />
+        </PublicMaintenanceGate>
+      </ErrorBoundary>
       <NavigationLoader />
     </AuthProvider>
   );

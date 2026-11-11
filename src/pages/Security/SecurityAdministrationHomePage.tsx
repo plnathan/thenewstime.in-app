@@ -1,5 +1,5 @@
 /** Security module landing page. Module visibility follows the same RBAC rules as the sidebar. */
-import { ArrowRight, Settings2, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, Settings2, ShieldCheck, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import MainLayout from "@/layouts/MainLayout";
@@ -8,6 +8,7 @@ const modules = [
     { title: "Users", description: "Manage user accounts and access.", to: "/admin/security/users", permission: "users.read", icon: Users },
     { title: "Roles", description: "Manage security roles and assignments.", to: "/admin/security/roles", permission: "roles.read", icon: ShieldCheck },
     { title: "Permissions", description: "Review and configure system permissions.", to: "/admin/security/permissions", permission: "permissions.read", icon: Settings2 },
+    { title: "System Maintenance", description: "Control planned website downtime.", to: "/admin/security/maintenance", permission: "permissions.read", icon: Wrench },
 ] as const;
 
 export default function SecurityAdministrationHomePage() {

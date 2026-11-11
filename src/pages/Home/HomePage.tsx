@@ -17,6 +17,8 @@ import { useNews } from "@/hooks/useNews";
 import type { NewsView } from "@/types";
 import { getPublishedNewsList } from "@/api/news.api";
 import { toNewsViewList } from "@/utils/news";
+// Error boundary testing.
+//import ErrorBoundaryTest from "@/components/testing/ErrorBoundaryTest";
 
 const HOME_PAGE_SIZE = 10;
 const HOME_CATEGORY_PAGE_SIZE = 10;
@@ -296,6 +298,10 @@ export default function HomePage() {
 
   return (
     <MainLayout>
+      {/* 
+      Error boundary testing.
+      <ErrorBoundaryTest /> 
+      */}
       <AppContainer>
         <div className="mt-[18px]">
           <HomeGrid

@@ -115,6 +115,17 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Only a confirmed HTTP 503 from the application triggers the downtime page.
+    // Never redirect admin sessions, auth requests, or the health probe.
+    if (
+      error.response?.status === 503 &&
+      !window.location.pathname.startsWith("/admin") &&
+      window.location.pathname !== "/service-unavailable" &&
+      !originalRequest.url?.includes("/health")
+    ) {
+      window.location.assign("/service-unavailable");
+    }
+
     const requestUrl = originalRequest.url ?? "";
 
     /**
