@@ -389,7 +389,7 @@ const SecurityPermissionsPage = () => {
                         <select value={moduleFilter} onChange={event => { setModuleFilter(event.target.value); setPage(1); }}
                             className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900">
                             <option value="ALL">All modules</option>
-                            {[...new Set(permissions.map(p => p.module?.trim() || "Other"))].sort().map(module => <option key={module} value={module}>{module}</option>)}
+                            {[...new Set(permissions.filter(p => p.status === "ACTIVE").map(p => p.module?.trim() || "Other"))].sort().map(module => <option key={module} value={module}>{module}</option>)}
                         </select>
                     </label>} />
                 {/* Loading */}

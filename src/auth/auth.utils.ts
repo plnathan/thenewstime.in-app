@@ -5,11 +5,7 @@
  * -----------------------------------------------------------------------------
  */
 
-import type {
-  AuthPermission,
-  AuthRole,
-  AuthUser,
-} from "@/types/auth.types";
+import type { AuthPermission, AuthRole, AuthUser } from "@/types/auth.types";
 
 /**
  * Normalize a security value for comparison.
@@ -17,30 +13,22 @@ import type {
  * The backend authorization layer treats
  * module/resource/action values case-insensitively.
  */
-const normalizeSecurityValue = (
-  value: string,
-): string => {
+const normalizeSecurityValue = (value: string): string => {
   return value.trim().toUpperCase();
 };
 
 /**
  * Check whether a user has a particular role.
  */
-export function hasRole(
-  user: AuthUser | null,
-  roleCode: string,
-): boolean {
+export function hasRole(user: AuthUser | null, roleCode: string): boolean {
   if (!user || !roleCode.trim()) {
     return false;
   }
 
-  const normalizedRole =
-    normalizeSecurityValue(roleCode);
+  const normalizedRole = normalizeSecurityValue(roleCode);
 
   return user.roles.some(
-    (role: AuthRole) =>
-      normalizeSecurityValue(role.code) ===
-      normalizedRole,
+    (role: AuthRole) => normalizeSecurityValue(role.code) === normalizedRole,
   );
 }
 
@@ -50,21 +38,14 @@ export function hasRole(
  * ADMIN and SUPER_ADMIN are both treated as
  * administrator roles.
  */
-export function isAdminUser(
-  user: AuthUser | null,
-): boolean {
-  return (
-    hasRole(user, "ADMIN") ||
-    hasRole(user, "SUPER_ADMIN")
-  );
+export function isAdminUser(user: AuthUser | null): boolean {
+  return hasRole(user, "ADMIN") || hasRole(user, "SUPER_ADMIN");
 }
 
 /**
  * Check whether the user is a Reporter.
  */
-export function isReporterUser(
-  user: AuthUser | null,
-): boolean {
+export function isReporterUser(user: AuthUser | null): boolean {
   return hasRole(user, "REPORTER");
 }
 
@@ -85,38 +66,28 @@ export function hasPermission(
   resource: string,
   action: string,
 ): boolean {
-  if (
-    !user ||
-    !module.trim() ||
-    !resource.trim() ||
-    !action.trim()
-  ) {
+  if (!user || !module.trim() || !resource.trim() || !action.trim()) {
     return false;
   }
 
-  const normalizedModule =
-    normalizeSecurityValue(module);
+  const normalizedModule = normalizeSecurityValue(module);
 
-  const normalizedResource =
-    normalizeSecurityValue(resource);
+  const normalizedResource = normalizeSecurityValue(resource);
 
-  const normalizedAction =
-    normalizeSecurityValue(action);
+  const normalizedAction = normalizeSecurityValue(action);
+
+  if (hasRole(user, "SUPER_ADMIN")) {
+    return true;
+  }
 
   return user.permissions.some(
     (permission: AuthPermission) =>
       permission.module !== null &&
       permission.resource !== null &&
       permission.action !== null &&
-      normalizeSecurityValue(
-        permission.module,
-      ) === normalizedModule &&
-      normalizeSecurityValue(
-        permission.resource,
-      ) === normalizedResource &&
-      normalizeSecurityValue(
-        permission.action,
-      ) === normalizedAction,
+      normalizeSecurityValue(permission.module) === normalizedModule &&
+      normalizeSecurityValue(permission.resource) === normalizedResource &&
+      normalizeSecurityValue(permission.action) === normalizedAction,
   );
 }
 
@@ -136,14 +107,13 @@ export function hasAnyPermission(
     return false;
   }
 
-  return permissions.some(
-    (permission) =>
-      hasPermission(
-        user,
-        permission.module,
-        permission.resource,
-        permission.action,
-      ),
+  return permissions.some((permission) =>
+    hasPermission(
+      user,
+      permission.module,
+      permission.resource,
+      permission.action,
+    ),
   );
 }
 
@@ -163,14 +133,13 @@ export function hasAllPermissions(
     return false;
   }
 
-  return permissions.every(
-    (permission) =>
-      hasPermission(
-        user,
-        permission.module,
-        permission.resource,
-        permission.action,
-      ),
+  return permissions.every((permission) =>
+    hasPermission(
+      user,
+      permission.module,
+      permission.resource,
+      permission.action,
+    ),
   );
 }
 
@@ -193,13 +162,14 @@ export function hasPermissionCode(
     return false;
   }
 
-  const normalizedCode =
-    normalizeSecurityValue(permissionCode);
+  const normalizedCode = normalizeSecurityValue(permissionCode);
+
+  if (hasRole(user, "SUPER_ADMIN")) {
+    return true;
+  }
 
   return user.permissions.some(
     (permission: AuthPermission) =>
-      normalizeSecurityValue(
-        permission.code,
-      ) === normalizedCode,
+      normalizeSecurityValue(permission.code) === normalizedCode,
   );
 }

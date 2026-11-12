@@ -409,6 +409,30 @@ function AdminPageTitleWatcher() {
 
     if (path === "/admin") {
       title = "Administration Dashboard";
+    } else if (path === "/admin/security") {
+      title = "Security Administration";
+    } else if (path === "/admin/security/maintenance") {
+      title = "System Maintenance";
+    } else if (path === "/admin/security/users") {
+      title = "User Management";
+    } else if (path === "/admin/security/users/create") {
+      title = "Create User";
+    } else if (/^\/admin\/security\/users\/\d+\/edit$/.test(path)) {
+      title = "Edit User";
+    } else if (path === "/admin/security/roles") {
+      title = "Role Management";
+    } else if (path === "/admin/security/roles/create") {
+      title = "Create Role";
+    } else if (/^\/admin\/security\/roles\/\d+\/edit$/.test(path)) {
+      title = "Edit Role";
+    } else if (/^\/admin\/security\/roles\/\d+\/permissions$/.test(path)) {
+      title = "Role Permissions";
+    } else if (path === "/admin/security/permissions") {
+      title = "Permission Management";
+    } else if (path === "/admin/security/permissions/create") {
+      title = "Create Permission";
+    } else if (/^\/admin\/security\/permissions\/\d+\/edit$/.test(path)) {
+      title = "Edit Permission";
     } else if (path === "/admin/news") {
       title = "News Administration";
     } else if (path.startsWith("/admin/news/")) {

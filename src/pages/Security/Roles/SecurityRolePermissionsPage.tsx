@@ -404,7 +404,7 @@ const SecurityRolePermissionsPage = () => {
                     extra={<>
                         <label className="min-w-[150px] text-xs font-semibold text-gray-600">Module
                             <select value={moduleFilter} onChange={e => { setModuleFilter(e.target.value); setPage(1); }} className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900">
-                                <option value="ALL">All modules</option>{permissionGroups.map(group => <option key={group.module} value={group.module}>{group.module}</option>)}
+                                <option value="ALL">All modules</option>{permissionGroups.filter(group => group.permissions.some(permission => permission.status === "ACTIVE")).map(group => <option key={group.module} value={group.module}>{group.module}</option>)}
                             </select>
                         </label>
                         <label className="min-w-[150px] text-xs font-semibold text-gray-600">Assignment

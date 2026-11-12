@@ -10,7 +10,7 @@ interface AdminListPaginationProps {
     onPageSizeChange: (size: number) => void;
 }
 
-const PAGE_SIZES = [5, 10, 20, 50] as const;
+const PAGE_SIZES = [5, 10, 20, 50, 100] as const;
 
 function getPageTokens(current: number, totalPages: number): PageToken[] {
     if (totalPages <= 6) {
