@@ -75,6 +75,8 @@ import Schedule from "@/components/advertisements/Schedule/Schedule";
 import {
     createInitialAdvertisementSchedule,
     validateAdvertisementSchedule,
+    scheduleLocalToIso,
+    scheduleIsoToLocal,
 } from "@/helpers/schedule.helpers";
 
 import type {
@@ -419,8 +421,8 @@ const AdvertisementCreatePage = () => {
                     format: placement.format,
                 } : createInitialAdvertisementPlacement());
                 setAdvertisementSchedule({
-                    startDateTime: advertisement.startAt ?? "",
-                    endDateTime: advertisement.endAt ?? "",
+                    startDateTime: scheduleIsoToLocal(advertisement.startAt),
+                    endDateTime: scheduleIsoToLocal(advertisement.endAt),
                     timezone: createInitialAdvertisementScheduleValue().timezone,
                 });
                 setPricingQuantity(String(advertisement.pricingQuantity ?? 1));
@@ -992,12 +994,12 @@ const AdvertisementCreatePage = () => {
 
             if (advertisementSchedule.startDateTime) {
                 payload.startAt =
-                    advertisementSchedule.startDateTime;
+                    scheduleLocalToIso(advertisementSchedule.startDateTime);
             }
 
             if (advertisementSchedule.endDateTime) {
                 payload.endAt =
-                    advertisementSchedule.endDateTime;
+                    scheduleLocalToIso(advertisementSchedule.endDateTime);
             }
 
             return payload;

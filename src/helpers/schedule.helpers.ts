@@ -115,3 +115,27 @@ export const getScheduleDurationLabel = (
 
   return parts.join(", ");
 };
+
+/**
+ * Convert a browser datetime-local wall-clock value to an unambiguous UTC
+ * timestamp for the API. The browser's local timezone is used by Date.
+ * Never append "Z" to a datetime-local value: that would reinterpret it as UTC.
+ */
+export const scheduleLocalToIso = (value: string): string => {
+  const date = new Date(value);
+  if (!value || !Number.isFinite(date.getTime())) {
+    throw new Error("Enter a valid schedule date and time.");
+  }
+  return date.toISOString();
+};
+
+/** Convert an API ISO timestamp to the browser's datetime-local value. */
+export const scheduleIsoToLocal = (
+  value: string | null | undefined,
+): string => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};

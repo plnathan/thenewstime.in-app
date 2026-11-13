@@ -50,6 +50,8 @@ import {
     getApiErrorMessage,
 } from "@/helpers/advertisementManagement.helpers";
 
+import { getLocalCalendarDate, localCalendarDateToUtcIso } from "@/helpers/localCalendarDate.helpers";
+
 import Surface from "@/components/ui/Surface";
 
 import Typography from "@/components/ui/Typography";
@@ -112,7 +114,7 @@ const PAYMENT_METHODS: AdvertisementPaymentMethod[] = [
 const createInitialPaymentForm = (): PaymentFormState => ({
     paymentType: "REGULAR",
     amount: "",
-    paymentDate: new Date().toISOString().slice(0, 10),
+    paymentDate: getLocalCalendarDate(),
     paymentMethod: "BANK_TRANSFER",
     transactionReference: "",
     notes: "",
@@ -121,7 +123,7 @@ const createInitialPaymentForm = (): PaymentFormState => ({
 const createInitialRefundForm = (): RefundFormState => ({
     financialApprovalId: "",
     amount: "",
-    refundDate: new Date().toISOString().slice(0, 10),
+    refundDate: getLocalCalendarDate(),
     refundReference: "",
     refundReason: "",
 });
@@ -681,9 +683,7 @@ const WorkspacePayments = ({
                 paymentType: paymentForm.paymentType,
                 amount,
                 paymentDate: paymentForm.paymentDate
-                    ? new Date(
-                        `${paymentForm.paymentDate}T00:00:00.000Z`,
-                    ).toISOString()
+                    ? localCalendarDateToUtcIso(paymentForm.paymentDate)
                     : new Date().toISOString(),
                 paymentMethod: paymentForm.paymentMethod,
                 ...(paymentForm.transactionReference.trim()
@@ -967,9 +967,7 @@ const WorkspacePayments = ({
                     financialApprovalId: selectedApproval.id,
                     amount,
                     refundDate: refundForm.refundDate
-                        ? new Date(
-                            `${refundForm.refundDate}T00:00:00.000Z`,
-                        ).toISOString()
+                        ? localCalendarDateToUtcIso(refundForm.refundDate)
                         : new Date().toISOString(),
                     ...(refundForm.refundReference.trim()
                         ? {
