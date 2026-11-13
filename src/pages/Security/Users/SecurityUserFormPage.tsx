@@ -1,3 +1,4 @@
+import { istInputToUtcIso, utcIsoToIstInput } from "@/helpers/businessTimeZone.helpers";
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
@@ -402,9 +403,7 @@ const SecurityUserFormPage = () => {
 
                     passwordExpiresAt:
                         form.passwordExpiresAt
-                            ? new Date(
-                                form.passwordExpiresAt,
-                            ).toISOString()
+                            ? istInputToUtcIso(form.passwordExpiresAt)
                             : undefined,
                 };
 
@@ -465,9 +464,7 @@ const SecurityUserFormPage = () => {
 
                     passwordExpiresAt:
                         form.passwordExpiresAt
-                            ? new Date(
-                                form.passwordExpiresAt,
-                            ).toISOString()
+                            ? istInputToUtcIso(form.passwordExpiresAt)
                             : undefined,
                 };
 
@@ -1353,31 +1350,8 @@ function FormField({
     );
 }
 
-function toDateTimeLocal(
-    value: string,
-): string {
-    const date = new Date(value);
-
-    if (
-        Number.isNaN(
-            date.getTime(),
-        )
-    ) {
-        return "";
-    }
-
-    const offset =
-        date.getTimezoneOffset();
-
-    const localDate =
-        new Date(
-            date.getTime() -
-            offset * 60 * 1000,
-        );
-
-    return localDate
-        .toISOString()
-        .slice(0, 16);
+function toDateTimeLocal(value: string): string {
+    return utcIsoToIstInput(value);
 }
 
 export default SecurityUserFormPage;

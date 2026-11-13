@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from "@/helpers/businessTimeZone.helpers";
 import { confirmDialog } from "@/components/ui/Dialog/confirmDialog";
 
 import {
@@ -111,6 +112,7 @@ const formatDate = (value: string | Date): string => {
     }
 
     return date.toLocaleString("en-IN", {
+        timeZone: BUSINESS_TIME_ZONE,
         dateStyle: "medium",
         timeStyle: "short",
     });

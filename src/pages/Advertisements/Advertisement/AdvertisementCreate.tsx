@@ -1,3 +1,4 @@
+import { formatIstInputDateTime, formatIstDate, getInclusiveIstCalendarDays, istCalendarDateEndUtcIso, istCalendarDateToUtcIso } from "@/helpers/businessTimeZone.helpers";
 import AdvertisementAdminPageHeader from "@/components/ui/AdvertisementAdminPageHeader";
 import {
     ArrowLeft,
@@ -183,7 +184,7 @@ const isRateCardEffective = (
     }
 
     const effectiveFrom =
-        getDateTimestamp(rateCard.effectiveFrom);
+        getDateTimestamp(typeof rateCard.effectiveFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rateCard.effectiveFrom) ? istCalendarDateToUtcIso(rateCard.effectiveFrom) : rateCard.effectiveFrom);
 
     if (
         !Number.isFinite(effectiveFrom) ||
@@ -206,9 +207,7 @@ const isRateCardEffective = (
         typeof effectiveToValue === "string" &&
         /^\d{4}-\d{2}-\d{2}$/.test(effectiveToValue)
     ) {
-        effectiveTo = new Date(
-            `${effectiveToValue}T23:59:59.999`,
-        ).getTime();
+        effectiveTo = Date.parse(istCalendarDateEndUtcIso(effectiveToValue));
     }
 
     return (
@@ -229,48 +228,12 @@ const getInclusiveScheduleDays = (
     startValue: string | Date | null | undefined,
     endValue: string | Date | null | undefined,
 ): number | null => {
-    if (!startValue || !endValue) {
+    if (!startValue || !endValue) return null;
+    try {
+        return getInclusiveIstCalendarDays(startValue, endValue);
+    } catch {
         return null;
     }
-
-    const startDate =
-        startValue instanceof Date
-            ? startValue
-            : new Date(startValue);
-
-    const endDate =
-        endValue instanceof Date
-            ? endValue
-            : new Date(endValue);
-
-    if (
-        !Number.isFinite(startDate.getTime()) ||
-        !Number.isFinite(endDate.getTime())
-    ) {
-        return null;
-    }
-
-    const startUtc = Date.UTC(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-    );
-
-    const endUtc = Date.UTC(
-        endDate.getFullYear(),
-        endDate.getMonth(),
-        endDate.getDate(),
-    );
-
-    if (endUtc < startUtc) {
-        return null;
-    }
-
-    return (
-        Math.floor(
-            (endUtc - startUtc) / 86_400_000,
-        ) + 1
-    );
 };
 
 /**
@@ -1805,9 +1768,7 @@ const AdvertisementCreatePage = () => {
 
                                 <p className="mt-1 text-sm font-semibold text-gray-900">
                                     {advertisementSchedule.startDateTime
-                                        ? new Date(
-                                            advertisementSchedule.startDateTime,
-                                        ).toLocaleString()
+                                        ? formatIstInputDateTime(advertisementSchedule.startDateTime)
                                         : "Not selected"}
                                 </p>
                             </div>
@@ -1819,9 +1780,7 @@ const AdvertisementCreatePage = () => {
 
                                 <p className="mt-1 text-sm font-semibold text-gray-900">
                                     {advertisementSchedule.endDateTime
-                                        ? new Date(
-                                            advertisementSchedule.endDateTime,
-                                        ).toLocaleString()
+                                        ? formatIstInputDateTime(advertisementSchedule.endDateTime)
                                         : "Not selected"}
                                 </p>
                             </div>
@@ -1991,13 +1950,9 @@ const AdvertisementCreatePage = () => {
                                         {selectedRateCard && (
                                             <p className="mt-2 text-xs text-gray-500">
                                                 Effective from{" "}
-                                                {new Date(
-                                                    selectedRateCard.effectiveFrom,
-                                                ).toLocaleDateString()}
+                                                {formatIstDate(selectedRateCard.effectiveFrom)}
                                                 {selectedRateCard.effectiveTo
-                                                    ? ` to ${new Date(
-                                                        selectedRateCard.effectiveTo,
-                                                    ).toLocaleDateString()}`
+                                                    ? ` to ${formatIstDate(selectedRateCard.effectiveTo)}`
                                                     : " (no end date)"}
                                             </p>
                                         )}

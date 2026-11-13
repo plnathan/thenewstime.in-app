@@ -1,3 +1,4 @@
+import { formatIstDate, formatIstDateTime } from "@/helpers/businessTimeZone.helpers";
 import AdvertisementAdminPageHeader from "@/components/ui/AdvertisementAdminPageHeader";
 import AdminListPagination from "../../../components/ui/AdminListPagination";
 import { useCallback, useEffect, useState } from "react";
@@ -250,7 +251,7 @@ export default function AdvertisementEnquiriesPage() {
                             <tbody>
                                 {rows.map((item) => (
                                     <tr key={item.id} className="border-t border-gray-200 hover:bg-gray-50/70">
-                                        <td className="whitespace-nowrap px-3 py-3 text-gray-600">{new Date(item.createdAt).toLocaleDateString("en-IN")}</td>
+                                        <td className="whitespace-nowrap px-3 py-3 text-gray-600">{formatIstDate(item.createdAt)}</td>
                                         <td className="px-3 py-3 font-medium text-gray-900">{item.fullName}</td>
                                         <td className="px-3 py-3">{item.companyName || "—"}</td>
                                         <td className="whitespace-nowrap px-3 py-3">{item.mobileNumber}</td>
@@ -292,7 +293,7 @@ export default function AdvertisementEnquiriesPage() {
                                     ["Name", viewing.fullName], ["Company", viewing.companyName || "—"],
                                     ["Mobile", viewing.mobileNumber], ["Email", viewing.email || "—"],
                                     ["Source", viewing.source], ["Status", statusLabels[viewing.status]],
-                                    ["Submitted", new Date(viewing.createdAt).toLocaleString("en-IN")],
+                                    ["Submitted", formatIstDateTime(viewing.createdAt)],
                                     ["Additional requirements", viewing.additionalRequirements || "—"],
                                     ["Remarks", viewing.remarks || "—"],
                                 ].map(([label, value]) => <div key={label} className="grid grid-cols-3 gap-3 border-b border-gray-100 pb-2"><dt className="font-medium text-gray-600">{label}</dt><dd className="col-span-2 break-words text-gray-900">{value}</dd></div>)}

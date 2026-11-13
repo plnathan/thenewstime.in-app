@@ -1,3 +1,4 @@
+import { istInputToUtcIso } from "@/helpers/businessTimeZone.helpers";
 /** Project: thenewstime.in — Planned maintenance administration. */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -67,7 +68,7 @@ export default function SystemMaintenancePage() {
             const result = await saveMaintenanceSettings({
                 enabled,
                 message: message.trim(),
-                expectedRestorationAt: restoration ? new Date(restoration).toISOString() : null,
+                expectedRestorationAt: restoration ? istInputToUtcIso(restoration) : null,
             });
             setData(result);
             setEnabled(result.maintenance);

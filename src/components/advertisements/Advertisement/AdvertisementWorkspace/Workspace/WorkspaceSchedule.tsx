@@ -1,3 +1,4 @@
+import { istInputToUtcIso, utcIsoToIstInput, formatIstDateTime } from "@/helpers/businessTimeZone.helpers";
 import {
     AlertCircle,
     CalendarClock,
@@ -42,61 +43,10 @@ interface ScheduleFormValues {
 
 /**
  * Convert an API date into the value expected by a
- * datetime-local input, using the browser's local timezone.
+ * datetime-local input, explicitly using Indian Standard Time.
  */
-const toDateTimeLocal = (
-    value: string | null | undefined,
-): string => {
-    if (!value) {
-        return "";
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return "";
-    }
-
-    const pad = (part: number): string =>
-        String(part).padStart(2, "0");
-
-    return [
-        date.getFullYear(),
-        "-",
-        pad(date.getMonth() + 1),
-        "-",
-        pad(date.getDate()),
-        "T",
-        pad(date.getHours()),
-        ":",
-        pad(date.getMinutes()),
-    ].join("");
-};
-
-/**
- * Format a persisted date for display in the user's locale.
- */
-const formatDateTime = (
-    value: string | null | undefined,
-): string => {
-    if (!value) {
-        return "Not configured";
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return "Invalid date";
-    }
-
-    return new Intl.DateTimeFormat(
-        undefined,
-        {
-            dateStyle: "medium",
-            timeStyle: "short",
-        },
-    ).format(date);
-};
+const toDateTimeLocal = utcIsoToIstInput;
+const formatDateTime = (value: string | null | undefined): string => value ? formatIstDateTime(value) : "Not configured";
 
 const WorkspaceSchedule = ({
     advertisement,
@@ -172,13 +122,15 @@ const WorkspaceSchedule = ({
             return;
         }
 
-        const startDate = new Date(
-            formValues.startAt,
-        );
-
-        const endDate = new Date(
-            formValues.endAt,
-        );
+        let startDate: Date;
+        let endDate: Date;
+        try {
+            startDate = new Date(istInputToUtcIso(formValues.startAt));
+            endDate = new Date(istInputToUtcIso(formValues.endAt));
+        } catch {
+            setError("Please enter valid campaign dates and times in IST.");
+            return;
+        }
 
         if (
             Number.isNaN(startDate.getTime()) ||

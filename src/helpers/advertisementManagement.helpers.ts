@@ -1,3 +1,7 @@
+import {
+  formatIstDate,
+  formatIstDateTime,
+} from "@/helpers/businessTimeZone.helpers";
 import type {
   AdvertisementListItem,
   AdvertisementWorkflowStatus,
@@ -18,43 +22,11 @@ export const EMPTY_PAGINATION = {
   totalRecords: 0,
 };
 
-export const formatDate = (value: string | null): string => {
-  if (!value) {
-    return "Not scheduled";
-  }
+export const formatDate = (value: string | null): string =>
+  value ? formatIstDate(value) : "Not scheduled";
 
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Not scheduled";
-  }
-
-  return date.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-export const formatDateTime = (value: string | null): string => {
-  if (!value) {
-    return "Not available";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Not available";
-  }
-
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
+export const formatDateTime = (value: string | null): string =>
+  value ? formatIstDateTime(value) : "Not available";
 
 export const getWorkflowStatus = (
   advertisement: AdvertisementListItem,

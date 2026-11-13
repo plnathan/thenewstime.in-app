@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from "@/helpers/businessTimeZone.helpers";
 import { isAdminUser } from "@/auth/auth.utils";
 import { useAuth } from "@/auth/AuthContext";
 import { Eye, MessageSquare } from "lucide-react";
@@ -21,6 +22,7 @@ export default function HeroMeta({
 
   const formattedDate = publishedAt
     ? new Date(publishedAt).toLocaleDateString("ta-IN", {
+      timeZone: BUSINESS_TIME_ZONE,
       day: "numeric",
       month: "short",
       year: "numeric",

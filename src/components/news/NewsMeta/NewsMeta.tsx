@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from "@/helpers/businessTimeZone.helpers";
 /**
  * -----------------------------------------------------------------------------
  * Project     : thenewstime.in
@@ -77,6 +78,7 @@ function formatRelativeTime(
   return publishedDate.toLocaleDateString(
     "ta-IN",
     {
+      timeZone: BUSINESS_TIME_ZONE,
       day: "2-digit",
       month: "short",
       year: "numeric",

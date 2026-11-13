@@ -280,7 +280,6 @@ export default function Schedule({
                                         Start:{" "}
                                         {formatScheduleDateTime(
                                             value.startDateTime,
-                                            value.timezone,
                                         )}
                                     </span>
 
@@ -288,7 +287,6 @@ export default function Schedule({
                                         End:{" "}
                                         {formatScheduleDateTime(
                                             value.endDateTime,
-                                            value.timezone,
                                         )}
                                     </span>
                                 </div>

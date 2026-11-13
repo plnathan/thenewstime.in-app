@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from "@/helpers/businessTimeZone.helpers";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -95,6 +96,7 @@ const formatDateTime = (
     }
 
     return date.toLocaleString("en-IN", {
+        timeZone: BUSINESS_TIME_ZONE,
         dateStyle: "medium",
         timeStyle: "short",
     });
@@ -117,6 +119,7 @@ const formatDate = (
     }
 
     return date.toLocaleDateString("en-IN", {
+        timeZone: BUSINESS_TIME_ZONE,
         dateStyle: "medium",
     });
 };

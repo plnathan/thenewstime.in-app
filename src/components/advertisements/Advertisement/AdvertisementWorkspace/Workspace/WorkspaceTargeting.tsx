@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from "@/helpers/businessTimeZone.helpers";
 import { confirmDialog } from "@/components/ui/Dialog/confirmDialog";
 import {
     useCallback,
@@ -234,6 +235,7 @@ function formatAuditDate(
     }
 
     return new Intl.DateTimeFormat("en-IN", {
+        timeZone: BUSINESS_TIME_ZONE,
         dateStyle: "medium",
         timeStyle: "short",
     }).format(date);

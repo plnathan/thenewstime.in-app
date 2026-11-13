@@ -1,3 +1,8 @@
+import {
+  BUSINESS_TIME_ZONE,
+  istInputToUtcIso,
+  utcIsoToIstInput,
+} from "@/helpers/businessTimeZone.helpers";
 import type {
   AdvertisementScheduleValidation,
   AdvertisementScheduleValue,
@@ -7,8 +12,7 @@ export const createInitialAdvertisementSchedule =
   (): AdvertisementScheduleValue => ({
     startDateTime: "",
     endDateTime: "",
-    timezone:
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata",
+    timezone: BUSINESS_TIME_ZONE,
   });
 
 export const validateAdvertisementSchedule = (
@@ -28,8 +32,8 @@ export const validateAdvertisementSchedule = (
     };
   }
 
-  const start = new Date(value.startDateTime);
-  const end = new Date(value.endDateTime);
+  const start = new Date(istInputToUtcIso(value.startDateTime));
+  const end = new Date(istInputToUtcIso(value.endDateTime));
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return {
@@ -58,10 +62,7 @@ export const validateAdvertisementSchedule = (
   };
 };
 
-export const formatScheduleDateTime = (
-  value: string,
-  timezone: string,
-): string => {
+export const formatScheduleDateTime = (value: string): string => {
   if (!value) {
     return "Not selected";
   }
@@ -75,7 +76,7 @@ export const formatScheduleDateTime = (
   return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: timezone || undefined,
+    timeZone: BUSINESS_TIME_ZONE,
   }).format(date);
 };
 
@@ -86,8 +87,8 @@ export const getScheduleDurationLabel = (
     return "Not available";
   }
 
-  const start = new Date(value.startDateTime).getTime();
-  const end = new Date(value.endDateTime).getTime();
+  const start = new Date(istInputToUtcIso(value.startDateTime)).getTime();
+  const end = new Date(istInputToUtcIso(value.endDateTime)).getTime();
 
   if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
     return "Not available";
@@ -121,21 +122,5 @@ export const getScheduleDurationLabel = (
  * timestamp for the API. The browser's local timezone is used by Date.
  * Never append "Z" to a datetime-local value: that would reinterpret it as UTC.
  */
-export const scheduleLocalToIso = (value: string): string => {
-  const date = new Date(value);
-  if (!value || !Number.isFinite(date.getTime())) {
-    throw new Error("Enter a valid schedule date and time.");
-  }
-  return date.toISOString();
-};
-
-/** Convert an API ISO timestamp to the browser's datetime-local value. */
-export const scheduleIsoToLocal = (
-  value: string | null | undefined,
-): string => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  const pad = (n: number): string => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
+export const scheduleLocalToIso = istInputToUtcIso;
+export const scheduleIsoToLocal = utcIsoToIstInput;

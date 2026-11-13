@@ -545,7 +545,6 @@ export default function Review({
                         label="Start"
                         value={formatScheduleDateTime(
                             schedule.startDateTime,
-                            schedule.timezone,
                         )}
                     />
 
@@ -553,7 +552,6 @@ export default function Review({
                         label="End"
                         value={formatScheduleDateTime(
                             schedule.endDateTime,
-                            schedule.timezone,
                         )}
                     />
 

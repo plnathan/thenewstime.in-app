@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE } from "@/helpers/businessTimeZone.helpers";
 import AdminListPagination from "@/components/ui/AdminListPagination";
 import AdvertisementAdminPageHeader from "@/components/ui/AdvertisementAdminPageHeader";
 import {
@@ -96,6 +97,7 @@ const formatDate = (
     }
 
     return date.toLocaleDateString("en-IN", {
+        timeZone: BUSINESS_TIME_ZONE,
         day: "2-digit",
         month: "short",
         year: "numeric",

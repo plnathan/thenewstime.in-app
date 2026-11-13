@@ -1,3 +1,4 @@
+import { formatIstDateTime } from "@/helpers/businessTimeZone.helpers";
 import AdvertisementAdminPageHeader from "@/components/ui/AdvertisementAdminPageHeader";
 import AdminListPagination from "../../../components/ui/AdminListPagination";
 
@@ -125,7 +126,7 @@ function formatTimestamp(value: string): string {
 
     return Number.isNaN(date.getTime())
         ? "—"
-        : date.toLocaleString();
+        : formatIstDateTime(date);
 }
 
 export default function AdvertisementFormatsPage() {

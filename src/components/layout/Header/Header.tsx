@@ -1,3 +1,4 @@
+import { formatIstClock, formatIstTamilCalendarDate } from "@/helpers/businessTimeZone.helpers";
 import { useNewsDetailDeliveryId } from "@/contexts/NewsDetailDeliveryContext";
 import {
     BriefcaseBusiness,
@@ -54,51 +55,17 @@ function DigitalClock() {
         const timer = window.setInterval(() => setNow(new Date()), 1000);
         return () => window.clearInterval(timer);
     }, []);
-    const pad = (value: number, length = 2) => String(value).padStart(length, "0");
-    const hour12 = now.getHours() % 12 || 12;
-    const period = now.getHours() >= 12 ? "PM" : "AM";
-    const display = `${pad(hour12)}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${period}`;
+    const display = formatIstClock(now);
     return <time dateTime={now.toISOString()} aria-label="Current time" className="inline-block whitespace-nowrap font-mono text-xs font-bold tabular-nums text-green-700">{display}</time>;
 }
 
-function getCurrentDate() {
-    const date = new Date();
-
-    const tamilDays = [
-        "ஞாயிறு",
-        "திங்கள்",
-        "செவ்வாய்",
-        "புதன்",
-        "வியாழன்",
-        "வெள்ளி",
-        "சனி",
-    ];
-
-    const tamilMonths = [
-        "ஜனவரி",
-        "பிப்ரவரி",
-        "மார்ச்",
-        "ஏப்ரல்",
-        "மே",
-        "ஜூன்",
-        "ஜூலை",
-        "ஆகஸ்ட்",
-        "செப்டம்பர்",
-        "அக்டோபர்",
-        "நவம்பர்",
-        "டிசம்பர்",
-    ];
-
-    const dayName = tamilDays[date.getDay()];
-    const day = date.getDate();
-    const monthName = tamilMonths[date.getMonth()];
-    const year = date.getFullYear();
-
-    return `${dayName}, ${day} ${monthName} ${year} `;
-}
-
 export default function Header() {
-    const currentDate = getCurrentDate();
+    const [calendarNow, setCalendarNow] = useState(() => new Date());
+    useEffect(() => {
+        const timer = window.setInterval(() => setCalendarNow(new Date()), 60_000);
+        return () => window.clearInterval(timer);
+    }, []);
+    const currentDate = formatIstTamilCalendarDate(calendarNow);
     const { pathname } = useLocation();
     const detailNewsId = useNewsDetailDeliveryId();
     const topCode = pathname === "/" ? "HOME_TOP" :

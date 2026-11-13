@@ -1,3 +1,4 @@
+import { istInputToUtcIso, utcIsoToIstInput, formatIstDateTime } from "@/helpers/businessTimeZone.helpers";
 import AdvertisementAdminPageHeader from "@/components/ui/AdvertisementAdminPageHeader";
 import AdminListPagination from "../../../components/ui/AdminListPagination";
 import { Link } from "react-router-dom";
@@ -110,52 +111,9 @@ const getErrorMessage = (
     );
 };
 
-const toDateTimeLocal = (
-    value: string | Date | null | undefined,
-): string => {
-    if (value === null || value === undefined || value === "") {
-        return "";
-    }
-
-    const date = value instanceof Date ? value : new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return "";
-    }
-
-    const pad = (part: number): string => String(part).padStart(2, "0");
-
-    return [
-        date.getFullYear(),
-        "-",
-        pad(date.getMonth() + 1),
-        "-",
-        pad(date.getDate()),
-        "T",
-        pad(date.getHours()),
-        ":",
-        pad(date.getMinutes()),
-    ].join("");
-};
-
-const formatDateTime = (
-    value: string | Date | null | undefined,
-): string => {
-    if (value === null || value === undefined || value === "") {
-        return "No end date";
-    }
-
-    const date = value instanceof Date ? value : new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return "—";
-    }
-
-    return new Intl.DateTimeFormat("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-    }).format(date);
-};
+const toDateTimeLocal = utcIsoToIstInput;
+const formatDateTime = (value: string | Date | null | undefined): string =>
+    value ? formatIstDateTime(value) : "No end date";
 
 const formatAmount = (
     amount: number,
@@ -453,14 +411,18 @@ const AdvertisementRateCardsPage = () => {
             return "Choose the effective-from date and time.";
         }
 
-        const effectiveFrom = new Date(form.effectiveFrom);
+        let effectiveFrom: Date;
+        try { effectiveFrom = new Date(istInputToUtcIso(form.effectiveFrom)); }
+        catch { return "The effective-from date is invalid (IST)."; }
 
         if (Number.isNaN(effectiveFrom.getTime())) {
             return "The effective-from date is invalid.";
         }
 
         if (form.effectiveTo) {
-            const effectiveTo = new Date(form.effectiveTo);
+            let effectiveTo: Date;
+            try { effectiveTo = new Date(istInputToUtcIso(form.effectiveTo)); }
+            catch { return "The effective-to date is invalid (IST)."; }
 
             if (Number.isNaN(effectiveTo.getTime())) {
                 return "The effective-to date is invalid.";
@@ -500,9 +462,9 @@ const AdvertisementRateCardsPage = () => {
             pricingUnit: form.pricingUnit,
             rateAmount: Number(form.rateAmount),
             currencyCode: form.currencyCode.trim().toUpperCase(),
-            effectiveFrom: new Date(form.effectiveFrom).toISOString(),
+            effectiveFrom: istInputToUtcIso(form.effectiveFrom),
             effectiveTo: form.effectiveTo
-                ? new Date(form.effectiveTo).toISOString()
+                ? istInputToUtcIso(form.effectiveTo)
                 : null,
             status: form.status,
         };

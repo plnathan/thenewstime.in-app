@@ -1,3 +1,4 @@
+import { getIstDateOfInstant } from "@/helpers/businessTimeZone.helpers";
 import AdminListPagination from "@/components/ui/AdminListPagination";
 import {
     History,
@@ -225,7 +226,7 @@ export default function AdminNewsPage() {
             if (!article.publishedAt) return false;
             const date = new Date(article.publishedAt);
             if (Number.isNaN(date.getTime())) return false;
-            const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+            const day = getIstDateOfInstant(date);
             if (publishedFrom && day < publishedFrom) return false;
             if (publishedTo && day > publishedTo) return false;
         }

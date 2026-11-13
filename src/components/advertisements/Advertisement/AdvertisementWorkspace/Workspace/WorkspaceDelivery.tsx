@@ -1,3 +1,4 @@
+import { istInputToUtcIso, utcIsoToIstInput, formatIstDateTime } from "@/helpers/businessTimeZone.helpers";
 import { confirmDialog } from "@/components/ui/Dialog/confirmDialog";
 import { useEffect, useState } from "react";
 import { AlertCircle, Archive, CheckCircle2, CirclePause, CirclePlay, LoaderCircle, ShieldAlert, Square, Workflow } from "lucide-react";
@@ -19,14 +20,8 @@ type Action = "pause" | "resume" | "hold" | "releaseHold" | "stop" | "archive";
 interface Props { advertisement: AdvertisementDetails; schedules: AdvertisementSchedule[]; scheduleVerificationStatus: "LOADING" | "VERIFIED" | "ERROR"; onChanged: () => Promise<void>; }
 type ApiError = { response?: { data?: { message?: string } }; message?: string };
 const getError = (error: unknown) => { const value = error as ApiError; return value.response?.data?.message ?? value.message ?? "The delivery action failed. Refresh the workspace and try again."; };
-const formatDate = (value: string | Date | null | undefined) => value ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(value instanceof Date ? value : new Date(value)) : "Not configured";
-const toDateTimeLocal = (value: string | null) => {
-    if (!value) return "";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const pad = (part: number) => String(part).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
+const formatDate = (value: string | Date | null | undefined) => value ? formatIstDateTime(value) : "Not configured";
+const toDateTimeLocal = utcIsoToIstInput;
 const statusClass = (status: string) => status === "ACTIVE" || status === "APPROVED" ? "bg-green-50 text-green-800" : status === "PAUSED" || status === "ON_HOLD" ? "bg-amber-50 text-amber-800" : status === "ARCHIVED" || status === "COMPLETED" ? "bg-gray-100 text-gray-700" : "bg-blue-50 text-blue-800";
 
 const WorkspaceDelivery = ({ advertisement, schedules, scheduleVerificationStatus, onChanged }: Props) => {
@@ -114,17 +109,26 @@ const WorkspaceDelivery = ({ advertisement, schedules, scheduleVerificationStatu
         event.preventDefault(); setScheduleError(""); setScheduleSuccess("");
         if (!advertisement.placement?.id) { setScheduleError("Assign a configured placement before creating a schedule."); return; }
         if (!scheduleRuleId || !placementRules.some((rule) => rule.id === Number(scheduleRuleId))) { setScheduleError("Choose an active placement rule for this advertisement."); return; }
-        if (!scheduleStart || !scheduleEnd || new Date(scheduleEnd) <= new Date(scheduleStart)) { setScheduleError("Schedule end must be later than schedule start."); return; }
-        if (advertisement.startAt && new Date(scheduleStart) < new Date(advertisement.startAt)) { setScheduleError("Schedule start cannot be earlier than the campaign start."); return; }
-        if (advertisement.endAt && new Date(scheduleEnd) > new Date(advertisement.endAt)) { setScheduleError("Schedule end cannot be later than the campaign end."); return; }
+        let startUtc: string;
+        let endUtc: string;
+        try {
+            startUtc = istInputToUtcIso(scheduleStart);
+            endUtc = istInputToUtcIso(scheduleEnd);
+        } catch {
+            setScheduleError("Enter valid schedule start and end dates in IST.");
+            return;
+        }
+        if (Date.parse(endUtc) <= Date.parse(startUtc)) { setScheduleError("Schedule end must be later than schedule start."); return; }
+        if (advertisement.startAt && Date.parse(startUtc) < Date.parse(advertisement.startAt)) { setScheduleError("Schedule start cannot be earlier than the campaign start."); return; }
+        if (advertisement.endAt && Date.parse(endUtc) > Date.parse(advertisement.endAt)) { setScheduleError("Schedule end cannot be later than the campaign end."); return; }
         setScheduleSaving(true);
         try {
             const response = await createAdvertisementSchedule({
                 advertisementId: advertisement.id,
                 placementId: advertisement.placement.id,
                 placementRuleId: Number(scheduleRuleId),
-                startAt: new Date(scheduleStart).toISOString(),
-                endAt: new Date(scheduleEnd).toISOString(),
+                startAt: startUtc,
+                endAt: endUtc,
                 status: "SCHEDULED",
                 priority: advertisement.priority,
                 notes: scheduleNotes.trim() || null,
@@ -156,7 +160,7 @@ const WorkspaceDelivery = ({ advertisement, schedules, scheduleVerificationStatu
             {scheduleError && <p role="alert" className="text-sm text-red-700">{scheduleError}</p>}
             {scheduleVerificationStatus === "VERIFIED" && !schedules.some((schedule) => schedule.status === "SCHEDULED" || schedule.status === "PAUSED" || schedule.status === "ACTIVE") && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">No persisted schedule exists. Create an active placement rule first, then add a schedule before activation.</p>}
             {schedules.length > 0 && <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-100 text-sm"><thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-3 py-2 text-left">Schedule</th><th className="px-3 py-2 text-left">Window</th><th className="px-3 py-2 text-left">Placement rule</th><th className="px-3 py-2 text-left">Status</th></tr></thead><tbody className="divide-y divide-gray-100">{schedules.map((schedule) => <tr key={schedule.id}><td className="px-3 py-3 font-semibold text-gray-900">#{schedule.id}<p className="text-xs font-normal text-gray-500">Priority {schedule.priority}</p></td><td className="px-3 py-3"><p>{formatDate(schedule.startAt)}</p><p className="mt-1 text-xs text-gray-500">to {formatDate(schedule.endAt)}</p></td><td className="px-3 py-3">{schedule.placementRuleId ? `Rule #${schedule.placementRuleId}` : "Not assigned"}</td><td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(schedule.status)}`}>{schedule.status}</span></td></tr>)}</tbody></table></div>}
-            {showScheduleForm && <form onSubmit={(e) => void createSchedule(e)} className="space-y-4 rounded-lg border border-green-200 bg-green-50/40 p-4"><h4 className="text-sm font-semibold text-gray-900">Create persisted schedule</h4>{placementRules.length === 0 && <p className="text-sm text-amber-800">No active placement rule was found for this advertisement. Open Placement and create or activate a placement rule first.</p>}<div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="block text-sm font-medium text-gray-700">Active placement rule <span className="text-red-600">*</span><select required value={scheduleRuleId} onChange={(e) => setScheduleRuleId(e.target.value)} disabled={scheduleSaving || placementRules.length === 0} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"><option value="">Choose rule</option>{placementRules.map((rule) => <option key={rule.id} value={String(rule.id)}>Rule #{rule.id} · order {rule.displayOrder} · {rule.insertionType ?? "FIXED"}</option>)}</select></label><label className="block text-sm font-medium text-gray-700">Notes<input value={scheduleNotes} onChange={(e) => setScheduleNotes(e.target.value)} disabled={scheduleSaving} maxLength={1000} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Optional scheduling note" /></label><label className="block text-sm font-medium text-gray-700">Schedule starts <span className="text-red-600">*</span><input type="datetime-local" required value={scheduleStart} min={toDateTimeLocal(advertisement.startAt)} max={toDateTimeLocal(advertisement.endAt)} onChange={(e) => setScheduleStart(e.target.value)} disabled={scheduleSaving} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" /></label><label className="block text-sm font-medium text-gray-700">Schedule ends <span className="text-red-600">*</span><input type="datetime-local" required value={scheduleEnd} min={scheduleStart || undefined} max={toDateTimeLocal(advertisement.endAt)} onChange={(e) => setScheduleEnd(e.target.value)} disabled={scheduleSaving} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" /></label></div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowScheduleForm(false)} disabled={scheduleSaving} className="min-h-9 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700">Cancel</button><button type="submit" disabled={scheduleSaving || placementRules.length === 0} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{scheduleSaving && <LoaderCircle size={15} className="animate-spin" />}{scheduleSaving ? "Creating…" : "Create schedule"}</button></div></form>}
+            {showScheduleForm && <form onSubmit={(e) => void createSchedule(e)} className="space-y-4 rounded-lg border border-green-200 bg-green-50/40 p-4"><h4 className="text-sm font-semibold text-gray-900">Create persisted schedule</h4>{placementRules.length === 0 && <p className="text-sm text-amber-800">No active placement rule was found for this advertisement. Open Placement and create or activate a placement rule first.</p>}<div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="block text-sm font-medium text-gray-700">Active placement rule <span className="text-red-600">*</span><select required value={scheduleRuleId} onChange={(e) => setScheduleRuleId(e.target.value)} disabled={scheduleSaving || placementRules.length === 0} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"><option value="">Choose rule</option>{placementRules.map((rule) => <option key={rule.id} value={String(rule.id)}>Rule #{rule.id} · order {rule.displayOrder} · {rule.insertionType ?? "FIXED"}</option>)}</select></label><label className="block text-sm font-medium text-gray-700">Notes<input value={scheduleNotes} onChange={(e) => setScheduleNotes(e.target.value)} disabled={scheduleSaving} maxLength={1000} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="Optional scheduling note" /></label><label className="block text-sm font-medium text-gray-700">Schedule starts (IST) <span className="text-red-600">*</span><input type="datetime-local" required value={scheduleStart} min={toDateTimeLocal(advertisement.startAt)} max={toDateTimeLocal(advertisement.endAt)} onChange={(e) => setScheduleStart(e.target.value)} disabled={scheduleSaving} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" /></label><label className="block text-sm font-medium text-gray-700">Schedule ends (IST) <span className="text-red-600">*</span><input type="datetime-local" required value={scheduleEnd} min={scheduleStart || undefined} max={toDateTimeLocal(advertisement.endAt)} onChange={(e) => setScheduleEnd(e.target.value)} disabled={scheduleSaving} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" /></label></div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowScheduleForm(false)} disabled={scheduleSaving} className="min-h-9 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700">Cancel</button><button type="submit" disabled={scheduleSaving || placementRules.length === 0} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{scheduleSaving && <LoaderCircle size={15} className="animate-spin" />}{scheduleSaving ? "Creating…" : "Create schedule"}</button></div></form>}
         </section>
         {!terminal && <div className="space-y-3"><h3 className="text-sm font-semibold text-gray-900">Available actions</h3><div className="flex flex-wrap gap-2">
             {active && <ActionButton icon={<CirclePause size={16} />} label="Pause delivery" onClick={() => openAction("pause")} />}

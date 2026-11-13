@@ -1,3 +1,8 @@
+import {
+    istInputToUtcIso,
+    utcIsoToIstInput,
+    formatIstDateTime,
+} from "@/helpers/businessTimeZone.helpers";
 import { useRef as useValidationMessageRef, useEffect as useValidationMessageEffect } from "react";
 import { scrollToValidationMessage } from "@/utils/scrollToValidationMessage";
 import {
@@ -81,11 +86,7 @@ const getNewsListReturnUrl = (search: string): string => {
         : "/admin/news/list";
 };
 
-const getLocalPublicationInputValue = (): string => {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
-};
+const getLocalPublicationInputValue = (): string => utcIsoToIstInput(new Date());
 
 type NewsScopeValue =
     | ""
@@ -177,10 +178,7 @@ const formatPromotionUntil = (
         return null;
     }
 
-    return date.toLocaleString("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-    });
+    return formatIstDateTime(date);
 };
 
 export default function AdminNewsEditPage() {
@@ -1916,7 +1914,7 @@ export default function AdminNewsEditPage() {
                                                             if (!publicationLocalTime) {
                                                                 throw new Error("Select the scheduled publication date and time.");
                                                             }
-                                                            const date = new Date(publicationLocalTime);
+                                                            const date = new Date(istInputToUtcIso(publicationLocalTime));
                                                             if (Number.isNaN(date.getTime()) || date.getTime() <= Date.now()) {
                                                                 throw new Error("Scheduled publication must be a future date and time.");
                                                             }
