@@ -1,3 +1,4 @@
+import DistrictNewsPage from "./DistrictNewsPage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import PublicAdvertisementModal from "@/components/advertisements/Advertisement/PublicAdvertisementModal";
 import LiveAdvertisementSlot from "@/components/advertisements/Advertisement/LiveAdvertisementSlot";
@@ -42,7 +43,7 @@ const getScopeTitle = (scope: NewsScope | null) => {
     }
 };
 
-export default function NewsPage() {
+function StandardNewsPage() {
     usePageTitle();
     const [searchParams] = useSearchParams();
 
@@ -365,4 +366,14 @@ export default function NewsPage() {
             <PublicAdvertisementModal placementCode="NEWS_LIST_MODAL" />
         </MainLayout>
     );
+}
+
+/** Dedicated district page avoids the generic News List's multiple initial reads. */
+export default function NewsPage() {
+    const [params] = useSearchParams();
+    if (params.get('scope') === 'DISTRICT' && !params.has('districtId') &&
+        !params.has('category') && !params.has('categoryId')) {
+        return <DistrictNewsPage />;
+    }
+    return <StandardNewsPage />;
 }

@@ -36,7 +36,7 @@ export default function HomeNewsSection({
                     {visibleNews.length === 0 ? (
                         <div className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-7 text-center">
                             <p className="text-sm text-gray-500">
-                                இந்தப் பிரிவில் தற்போது செய்திகள் இல்லை.
+                                செய்திகள் விரைவில்...
                             </p>
                         </div>
                     ) : (

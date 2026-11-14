@@ -15,7 +15,7 @@ function SidebarNewsSection({
     news,
     loading,
     error,
-    emptyMessage = "செய்திகள் இல்லை.",
+    emptyMessage = "விரைவில்...",
 }: {
     title: string;
     news: NewsView[];

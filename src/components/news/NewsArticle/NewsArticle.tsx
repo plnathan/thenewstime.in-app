@@ -43,7 +43,7 @@ function PopularNews({ currentNewsId, currentNewsSlug }: { currentNewsId: number
           {distinctNews.map((item) => <SidebarNewsCard key={item.id} news={item} compact />)}
         </div>
       ) : (
-        <p className="mt-3 text-sm text-gray-500">செய்திகள் இல்லை.</p>
+              <p className="mt-3 text-sm text-gray-500">விரைவில்...</p>
       )}
     </Section>
   );
@@ -76,7 +76,7 @@ function ImportantNews({ currentNewsId, currentNewsSlug }: { currentNewsId: numb
           {featured.map((item) => <SidebarNewsCard key={item.id} news={item} compact />)}
         </div>
       ) : (
-        <p className="mt-3 text-sm text-gray-500">செய்திகள் இல்லை.</p>
+              <p className="mt-3 text-sm text-gray-500">விரைவில்...</p>
       )}
     </Section>
   );

@@ -348,3 +348,57 @@ export const finalSaveNews = async (
   );
   return response.data;
 };
+
+export interface DistrictNewsSection {
+  key: string;
+  title: string;
+  news: News[];
+  hasMoreNews: boolean;
+  nextNewsOffset: number | null;
+  nextNewsCursor?: string | null;
+}
+export interface DistrictSectionBatch {
+  sections: DistrictNewsSection[];
+  hasMoreSections: boolean;
+  nextSectionOffset: number | null;
+}
+export interface DistrictSectionNewsBatch {
+  news: News[];
+  hasMoreNews: boolean;
+  nextNewsOffset: number | null;
+  nextNewsCursor?: string | null;
+}
+export async function getDistrictSections(
+  offset = 0,
+): Promise<DistrictSectionBatch> {
+  return sharedPublicRead(
+    `district-sections:${offset}`,
+    async () =>
+      (
+        await apiClient.get<DistrictSectionBatch>(
+          "/news/public/district-sections",
+          {
+            params: { offset, limit: 8 },
+          },
+        )
+      ).data,
+  );
+}
+export async function getDistrictSectionNews(
+  key: string,
+  offset: number,
+  cursor?: string | null,
+): Promise<DistrictSectionNewsBatch> {
+  return sharedPublicRead(
+    `district-news:${key}:${cursor ?? offset}`,
+    async () =>
+      (
+        await apiClient.get<DistrictSectionNewsBatch>(
+          `/news/public/district-sections/${encodeURIComponent(key)}`,
+          {
+            params: cursor ? { cursor } : { offset },
+          },
+        )
+      ).data,
+  );
+}
