@@ -8,6 +8,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useSearchParams,
 } from "react-router-dom";
 
 import AdminDashboardPage from "@/pages/Dashboard/AdminDashboardPage";
@@ -25,6 +26,7 @@ import AdminNewsEditPage from "@/pages/AdminNewsEdit";
 import AccessDeniedPage from "@/pages/AccessDenied/AccessDeniedPage";
 
 import NewsPage from "@/pages/News/NewsPage";
+import DistrictNewsPage from "@/pages/News/DistrictNewsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
@@ -87,7 +89,7 @@ const AppRouter = () => {
 
         <Route
           path="/news"
-          element={<NewsPage />}
+          element={<PublicNewsRoute />}
         />
 
         <Route
@@ -483,3 +485,10 @@ function NavigationRouteWatcher() {
 }
 
 export default AppRouter;
+function PublicNewsRoute() {
+  const [searchParams] = useSearchParams();
+  const isDistrictIndex = searchParams.get("scope")?.toUpperCase() === "DISTRICT"
+    && !searchParams.has("districtId")
+    && !searchParams.has("district");
+  return isDistrictIndex ? <DistrictNewsPage /> : <NewsPage />;
+}

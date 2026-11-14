@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { getDistrictSections, getDistrictSectionNews } from "@/api/news.api";
+import { getDistrictSections, getDistrictSectionNews, getPublishedNewsStream } from "@/api/news.api";
 import type { DistrictNewsSection } from "@/api/news.api";
+import type { NewsView } from "@/types";
 import { toNewsViewList } from "@/utils/news";
 import NewsCard from "@/components/news/NewsCard";
 import LiveAdvertisementSlot from "@/components/advertisements/Advertisement/LiveAdvertisementSlot";
@@ -25,6 +26,22 @@ export default function DistrictNewsPage() {
     const [loadingSections, setLoadingSections] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [version, setVersion] = useState(0);
+    const [sidebarCandidates, setSidebarCandidates] = useState<NewsView[]>([]);
+
+    useEffect(() => {
+        let active = true;
+        // A separate, filtered stream is used only for sidebar candidates.
+        // The rendered district sections always take precedence: no article is repeated.
+        void getPublishedNewsStream({ limit: 20, scope: "DISTRICT" })
+            .then((result) => {
+                if (active) setSidebarCandidates(toNewsViewList(result.data));
+            })
+            .catch((error: unknown) => {
+                console.error("Unable to load district sidebar news", error);
+                if (active) setSidebarCandidates([]);
+            });
+        return () => { active = false; };
+    }, [version]);
 
     useEffect(() => {
         let active = true;
@@ -50,7 +67,7 @@ export default function DistrictNewsPage() {
             });
             setNextOffset(result.nextSectionOffset);
             setError(null);
-        } catch { setError("மேலும் மாவட்டங்களை ஏற்ற முடியவில்லை."); }
+        } catch { setError("மேலும் மாவட்டங்களை பெற முடியவில்லை."); }
         finally { setLoadingSections(false); }
     }, [loadingSections, nextOffset]);
 
@@ -72,7 +89,7 @@ export default function DistrictNewsPage() {
             }));
         } catch {
             setSections((current) => current.map((item) => item.key === section.key ?
-                { ...item, loadingMore: false, error: "மேலும் செய்திகளை ஏற்ற முடியவில்லை." } : item));
+                { ...item, loadingMore: false, error: "மேலும் செய்திகளை பெற முடியவில்லை." } : item));
         }
     }, []);
 
@@ -83,8 +100,37 @@ export default function DistrictNewsPage() {
     </AppContainer></MainLayout>;
 
     // Pure render-time prefix counts: one pass over sections, no mutations inside JSX.
-    const sectionStartPositions = sections.map((_, index) =>
-        sections.slice(0, index).reduce((total, previous) => total + previous.news.length, 0),
+    // Reserve important sidebar articles from the already-loaded district sections.
+    // Keep at least one article visible in each populated district section so
+    // district headings and their news do not disappear when inventory is small.
+    // The selection follows the published stream order when possible, but only
+    // articles present in the loaded district sections can be reserved safely.
+    const sectionNewsIds = new Set(
+        sections.flatMap((section) => section.news.map((news) => String(news.id))),
+    );
+    const reservableIds = new Set<string>();
+    for (const section of sections) {
+        // The first article remains in its district section.
+        for (const news of section.news.slice(1)) {
+            reservableIds.add(String(news.id));
+        }
+    }
+
+    const reservedImportant = sidebarCandidates
+        .filter((news) => reservableIds.has(String(news.id)))
+        .slice(0, 5);
+    const reservedIds = new Set(reservedImportant.map((news) => String(news.id)));
+    const visibleSections = sections.map((section) => ({
+        ...section,
+        news: section.news.filter((news) => !reservedIds.has(String(news.id))),
+    }));
+    const additionalNews = sidebarCandidates
+        .filter((news) => !sectionNewsIds.has(String(news.id)) && !reservedIds.has(String(news.id)))
+        .slice(0, 5);
+    const importantNews = reservedImportant;
+
+    const sectionStartPositions = visibleSections.map((_, index) =>
+        visibleSections.slice(0, index).reduce((total, previous) => total + previous.news.length, 0),
     );
 
     // Slot numbering follows the existing page-level five-slot inventory.
@@ -94,7 +140,7 @@ export default function DistrictNewsPage() {
             <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_300px]">
                 <MainContent>
                     <h1 className="mb-5 text-xl font-bold text-gray-900">மாவட்ட செய்திகள்</h1>
-                    {sections.map((section, sectionIndex) => <section key={section.key} className="mb-8">
+                    {visibleSections.map((section, sectionIndex) => <section key={section.key} className="mb-8">
                         <h2 className="mb-4 border-b border-gray-200 pb-2 text-lg font-bold text-green-800">{section.title}</h2>
                         <div className="space-y-[18px]">
                             {toNewsViewList(section.news).map((item, newsIndex) => {
@@ -125,7 +171,7 @@ export default function DistrictNewsPage() {
                     {error && <p role="alert" className="text-center text-sm text-red-600">{error}</p>}
                     <div className="mt-[18px] flex justify-center"><LiveAdvertisementSlot placementCode="NEWS_LIST_BOTTOM" slotNumber={1} /></div>
                 </MainContent>
-                <aside aria-label="News list sidebar"><DynamicNewsListSidebar importantNews={[]} additionalNews={[]} /></aside>
+                <aside aria-label="News list sidebar"><DynamicNewsListSidebar importantNews={importantNews} additionalNews={additionalNews} /></aside>
             </div>
         </div>
         <PublicAdvertisementModal placementCode="NEWS_LIST_MODAL" />

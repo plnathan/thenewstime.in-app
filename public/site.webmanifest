@@ -1,0 +1,23 @@
+{
+  "name": "The News Time",
+  "short_name": "NewsTime",
+  "description": "Tamil News | Latest Tamil News | The News Time",
+  "lang": "ta",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#008236",
+  "icons": [
+    {
+      "src": "/tnt_favicon_32_32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/tnt_apple_touch_icon_180_180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
