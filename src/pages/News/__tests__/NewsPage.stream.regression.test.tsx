@@ -85,40 +85,41 @@ describe("NewsPage shared cursor and cached pagination regression", () => {
 
     it.each(routes)("$label: initial request uses 20 and preserves URL filters", async ({ url, expected }) => {
         mount(url);
-        await waitFor(() => expect(articleIds()).toHaveLength(15));
+        await waitFor(() => expect(articleIds()).toHaveLength(url === "/news" ? 15 : 10));
         expect(mocks.stream).toHaveBeenCalledTimes(1);
         expect(mocks.stream).toHaveBeenCalledWith(expect.objectContaining({ limit: 20, ...expected }));
+        expect(screen.getByTestId("sidebar").getAttribute("data-important")).toBe("5");
         expect(screen.getByTestId("sidebar").getAttribute("data-additional")).toBe("5");
-        expect(adCodes()).toEqual([
+        expect(adCodes()).toEqual(url === "/news" ? [
             "NEWS_LIST_BETWEEN_SLOT_1", "NEWS_LIST_BETWEEN_SLOT_2", "NEWS_LIST_BETWEEN_SLOT_3", "NEWS_LIST_BOTTOM",
-        ]);
+        ] : ["NEWS_LIST_BETWEEN_SLOT_1", "NEWS_LIST_BETWEEN_SLOT_2", "NEWS_LIST_BOTTOM"]);
     });
 
     it("மேலும் requests five with cursor, avoids duplicates and preserves slot sequence", async () => {
         mount("/news?categoryId=991");
-        await waitFor(() => expect(articleIds()).toHaveLength(15));
+        await waitFor(() => expect(articleIds()).toHaveLength(10));
         fireEvent.click(screen.getByRole("button", { name: "மேலும்" }));
-        await waitFor(() => expect(articleIds()).toHaveLength(20));
+        await waitFor(() => expect(articleIds()).toHaveLength(15));
         expect(mocks.stream).toHaveBeenNthCalledWith(2, expect.objectContaining({ limit: 5, cursor: "cursor-20", categoryId: 991 }));
-        expect(new Set(articleIds()).size).toBe(20);
-        expect(adCodes()).toContain("NEWS_LIST_BETWEEN_SLOT_4");
+        expect(new Set(articleIds()).size).toBe(15);
+        expect(adCodes()).toContain("NEWS_LIST_BETWEEN_SLOT_3");
         expect(screen.getByTestId("sidebar").getAttribute("data-additional")).toBe("5");
     });
 
     it("restores cached pagination on remount without another API call", async () => {
         const first = mount("/news?categoryId=992");
-        await waitFor(() => expect(articleIds()).toHaveLength(15));
+        await waitFor(() => expect(articleIds()).toHaveLength(10));
         fireEvent.click(screen.getByRole("button", { name: "மேலும்" }));
-        await waitFor(() => expect(articleIds()).toHaveLength(20));
+        await waitFor(() => expect(articleIds()).toHaveLength(15));
         first.unmount();
         mount("/news?categoryId=992");
-        expect(articleIds()).toHaveLength(20);
+        expect(articleIds()).toHaveLength(15);
         expect(mocks.stream).toHaveBeenCalledTimes(2);
     });
 
     it("keeps different category cache entries isolated", async () => {
         const first = mount("/news?categoryId=993");
-        await waitFor(() => expect(articleIds()).toHaveLength(15));
+        await waitFor(() => expect(articleIds()).toHaveLength(10));
         first.unmount();
         mount("/news?categoryId=994");
         await waitFor(() => expect(mocks.stream).toHaveBeenCalledTimes(2));
@@ -130,7 +131,7 @@ describe("NewsPage shared cursor and cached pagination regression", () => {
         mount("/news?categoryId=995");
         await screen.findByRole("button", { name: "Retry" });
         fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-        await waitFor(() => expect(articleIds()).toHaveLength(15));
+        await waitFor(() => expect(articleIds()).toHaveLength(10));
         expect(mocks.invalidate).toHaveBeenCalledTimes(1);
         expect(mocks.stream).toHaveBeenCalledTimes(2);
     });
@@ -142,8 +143,8 @@ describe("NewsPage shared cursor and cached pagination regression", () => {
             return { data: articles(start, 5), hero: [], meta: { hasNext: start < 31, nextCursor: start < 31 ? `cursor-${start + 4}` : null } };
         });
         mount("/news?categoryId=996");
-        await waitFor(() => expect(articleIds()).toHaveLength(15));
-        for (const count of [20, 25, 30]) {
+        await waitFor(() => expect(articleIds()).toHaveLength(10));
+        for (const count of [15, 20, 25]) {
             fireEvent.click(screen.getByRole("button", { name: "மேலும்" }));
             await waitFor(() => expect(articleIds()).toHaveLength(count));
         }
@@ -152,4 +153,24 @@ describe("NewsPage shared cursor and cached pagination regression", () => {
             "NEWS_LIST_BETWEEN_SLOT_4", "NEWS_LIST_BETWEEN_SLOT_5",
         ]);
     });
+
+    it("filtered pages distribute a sparse batch without repeating articles", async () => {
+        mocks.stream.mockResolvedValueOnce({
+            data: articles(501, 5), hero: [],
+            meta: { hasNext: false, nextCursor: null },
+        });
+        mount("/news?categoryId=997");
+        await waitFor(() => expect(articleIds()).toHaveLength(3));
+        expect(screen.getByTestId("sidebar").getAttribute("data-important")).toBe("1");
+        expect(screen.getByTestId("sidebar").getAttribute("data-additional")).toBe("1");
+        expect(screen.queryByRole("button", { name: "மேலும்" })).toBeNull();
+    });
+
+    it("All News retains 15 main articles and separate homepage hero", async () => {
+        mount("/news");
+        await waitFor(() => expect(articleIds()).toHaveLength(15));
+        expect(screen.getByTestId("sidebar").getAttribute("data-important")).toBe("5");
+        expect(screen.getByTestId("sidebar").getAttribute("data-additional")).toBe("5");
+    });
+
 });

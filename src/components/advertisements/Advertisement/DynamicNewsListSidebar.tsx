@@ -92,7 +92,7 @@ export default function DynamicNewsListSidebar({ importantNews, additionalNews }
             />
             {renderAd(1)}
             <SidebarNewsSection
-                title="மேலும் செய்திகள்"
+                title="தொடர்ந்து படிக்கவும்"
                 emptyMessage="விரைவில்..."
                 news={additionalNews}
                 loading={false}

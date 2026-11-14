@@ -34,7 +34,7 @@ export default function DistrictNewsPage() {
             setNextOffset(result.nextSectionOffset);
             setError(null);
         }).catch(() => {
-            if (active) setError("மாவட்டச் செய்திகளை ஏற்ற முடியவில்லை.");
+            if (active) setError("மாவட்டச் செய்திகளை பெற முடியவில்லை.");
         }).finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
     }, [version]);

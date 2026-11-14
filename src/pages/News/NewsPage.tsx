@@ -27,6 +27,39 @@ const newsListCache = new Map<string, NewsListCacheEntry>();
 const pendingMore = new Set<string>();
 const NEXT_PAGE_SIZE = 5;
 
+/**
+ * Keep filtered News List sidebars populated without repeating an article.
+ * For a full batch: 5 important, 10 main, 5 additional.
+ * Smaller batches give the main list priority and divide the remainder
+ * between the two sidebar sections.
+ * The unfiltered All News page retains its separate homepage hero feed.
+ */
+function partitionInitialNews(
+    items: NewsView[],
+    homepageHero: NewsView[],
+    excludeHero: boolean,
+): Pick<NewsListCacheEntry, "main" | "sidebar" | "hero"> {
+    if (excludeHero) {
+        return {
+            main: items.slice(0, PAGE_SIZE),
+            sidebar: items.slice(PAGE_SIZE, INITIAL_BATCH),
+            hero: homepageHero,
+        };
+    }
+
+    const count = items.length;
+    const mainCount = count >= 15 ? 10 : Math.max(0, Math.ceil(count * 0.6));
+    const remaining = count - mainCount;
+    const importantCount = Math.min(5, Math.ceil(remaining / 2));
+
+    return {
+        hero: items.slice(0, importantCount),
+        main: items.slice(importantCount, importantCount + mainCount),
+        sidebar: items.slice(importantCount + mainCount),
+    };
+}
+
+
 const getScopeTitle = (scope: NewsScope | null) => {
     switch (scope) {
         case "STATE":
@@ -200,10 +233,13 @@ function NewsListContent({
         }).then((response) => {
             if (!active) return;
             const items = toNewsViewList(response.data);
+            const sections = partitionInitialNews(
+                items,
+                toNewsViewList(response.hero ?? []),
+                excludeHero,
+            );
             const entry: NewsListCacheEntry = {
-                main: items.slice(0, PAGE_SIZE),
-                sidebar: items.slice(PAGE_SIZE, INITIAL_BATCH),
-                hero: toNewsViewList(response.hero ?? []),
+                ...sections,
                 cursor: response.meta.nextCursor,
                 hasNext: response.meta.hasNext,
                 savedAt: Date.now(),
@@ -234,7 +270,7 @@ function NewsListContent({
                 countryId, stateId, state: stateSlug, districtId,
                 excludeHomepageHero: excludeHero,
             });
-            const seen = new Set([...news, ...sidebarNews].map((item) => item.id));
+            const seen = new Set([...news, ...sidebarNews, ...heroNews].map((item) => item.id));
             const added = toNewsViewList(response.data).filter((item) => !seen.has(item.id));
             const entry: NewsListCacheEntry = {
                 main: [...news, ...added], sidebar: sidebarNews, hero: heroNews,
