@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, useRef, type FormEvent } from "react";
-import { X, Clock3, Send } from "lucide-react";
+import { X, Clock3, Phone, Send } from "lucide-react";
 import { submitAdvertisementEnquiry, type EnquiryPage, type AdvertisementEnquiryInput } from "@/api/advertisements/advertisement-enquiries.api";
 import type { EnquiryOrigin } from "@/contexts/AdvertisementEnquiryContext";
 
@@ -16,6 +16,12 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
     const [name, setName] = useState("");
     const [company, setCompany] = useState("");
     const [mobile, setMobile] = useState("");
+    const [mobileError, setMobileError] = useState("");
+    const handleMobileChange = (value: string) => {
+        const digits = value.replace(/\D/g, "").slice(0, 10);
+        setMobile(digits);
+        if (mobileError) setMobileError("");
+    };
     const [email, setEmail] = useState("");
     const [adType, setAdType] = useState("");
     const [pages, setPages] = useState<EnquiryPage[]>([]);
@@ -74,11 +80,15 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (sending) return;
+        if (!/^[6-9]\d{9}$/.test(mobile)) {
+            setMobileError("Enter a valid 10-digit Indian mobile number.");
+            return;
+        }
         if (import.meta.env.PROD && !captchaToken) { setError("Please complete the security check."); return; }
         if (start && end && end < start) { setError("End date cannot be before start date."); return; }
         setSending(true); setError("");
         const payload: AdvertisementEnquiryInput = {
-            fullName: name.trim(), mobileNumber: mobile.trim(), source: origin.source,
+            fullName: name.trim(), mobileNumber: mobile, source: origin.source,
             ...(company.trim() ? { companyName: company.trim() } : {}),
             ...(email.trim() ? { email: email.trim() } : {}),
             ...(adType ? { advertisementType: adType as AdvertisementEnquiryInput["advertisementType"] } : {}),
@@ -105,12 +115,50 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
                 </div>
                 {success ? <div className="space-y-4 px-6 py-12 text-center"><h3 className="text-xl font-semibold text-green-800">Enquiry sent successfully</h3><p>Thank you. Our advertising team will contact you after reviewing your request.</p><button onClick={onClose} className="rounded-lg bg-green-700 px-5 py-2 text-white">Close</button></div> :
                     <form onSubmit={event => void submit(event)} className="space-y-5 px-5 py-5 sm:px-7">
-                        <div className="rounded-xl bg-green-50 p-4 text-sm text-green-950"><p className="flex items-center gap-2 font-semibold"><Clock3 size={17} /> Contact Hours: 9:00 AM – 6:00 PM</p><p className="mt-2">You may submit an advertisement enquiry at any time, 24/7. Our team will contact you after reviewing your request.</p></div>
+                        <div className="rounded-xl bg-green-50 p-4 text-sm text-green-950">
+                            <p className="flex items-center gap-2 font-semibold">
+                                <Clock3 size={17} />
+                                Contact Hours: 9:00 AM – 6:00 PM
+                            </p>
+                            <a
+                                href="tel:+918608934064"
+                                className="mt-3 flex items-center gap-2 font-semibold text-green-800 hover:underline"
+                                aria-label="Call Advertisement Enquiries at 86089 34064"
+                            >
+                                <Phone size={17} />
+                                Advertisement Enquiries: +91 86089 34064
+                            </a>
+                            <p className="mt-3">
+                                You may submit an advertisement enquiry at any time, 24/7.
+                                Our team will contact you after reviewing your request.
+                            </p>
+                        </div>
                         <h3 className="border-b pb-2 font-semibold">Contact Information</h3>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div><label htmlFor="enquiry-name" className={label}>Full Name *</label><input id="enquiry-name" required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} className={field} /></div>
                             <div><label htmlFor="enquiry-company" className={label}>Company / Organization</label><input id="enquiry-company" maxLength={160} value={company} onChange={e => setCompany(e.target.value)} className={field} /></div>
-                            <div><label htmlFor="enquiry-mobile" className={label}>Mobile Number *</label><input id="enquiry-mobile" required minLength={8} maxLength={20} value={mobile} onChange={e => setMobile(e.target.value)} className={field} placeholder="+91 9876543210" /></div>
+                            <div>
+                                <label htmlFor="enquiry-mobile" className={label}>Mobile Number *</label>
+                                <input
+                                    id="enquiry-mobile"
+                                    name="mobileNumber"
+                                    type="tel"
+                                    inputMode="numeric"
+                                    autoComplete="tel-national"
+                                    pattern="[6-9][0-9]{9}"
+                                    title="Enter a valid 10-digit Indian mobile number."
+                                    required
+                                    minLength={10}
+                                    maxLength={10}
+                                    value={mobile}
+                                    onChange={e => handleMobileChange(e.target.value)}
+                                    aria-invalid={Boolean(mobileError)}
+                                    aria-describedby={mobileError ? "enquiry-mobile-error" : undefined}
+                                    className={field}
+                                    placeholder="9876543210"
+                                />
+                                {mobileError && <p id="enquiry-mobile-error" role="alert" className="mt-1 text-xs text-red-700">{mobileError}</p>}
+                            </div>
                             <div><label htmlFor="enquiry-email" className={label}>Email Address</label><input id="enquiry-email" type="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} className={field} /></div>
                         </div>
                         <h3 className="border-b pb-2 font-semibold">Advertisement Preferences <span className="text-sm font-normal text-gray-500">(All optional)</span></h3>

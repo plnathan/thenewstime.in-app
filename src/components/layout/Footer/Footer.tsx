@@ -83,6 +83,15 @@ export default function Footer() {
                                 இந்தியா மற்றும் உலகச் செய்திகளை உடனுக்குடன்
                                 அறிந்து கொள்ளுங்கள்.
                             </p>
+                            <button
+                                type="button"
+                                onClick={openPublicInstallBanner}
+                                className="mt-4 inline-flex items-center gap-2 text-sm text-green-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-700"
+                            >
+                                <Download className="h-4 w-4" aria-hidden="true" />
+                                செயலியை நிறுவவும் (Install App)
+                            </button>
+
                         </div>
 
                         <div>
@@ -141,14 +150,6 @@ export default function Footer() {
                             © {new Date().getFullYear()} thenewstime.in.
                             அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.
                         </p>
-                        <button
-                            type="button"
-                            onClick={openPublicInstallBanner}
-                            className="inline-flex items-center gap-2 text-sm text-green-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-700"
-                        >
-                            <Download className="h-4 w-4" aria-hidden="true" />
-                            செயலியை நிறுவவும் (Install App)
-                        </button>
                         <p>time for news</p>
                     </div>
                 </div>
