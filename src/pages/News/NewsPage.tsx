@@ -1,4 +1,3 @@
-import DistrictNewsPage from "./DistrictNewsPage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import PublicAdvertisementModal from "@/components/advertisements/Advertisement/PublicAdvertisementModal";
 import LiveAdvertisementSlot from "@/components/advertisements/Advertisement/LiveAdvertisementSlot";
@@ -6,7 +5,7 @@ import DynamicNewsListSidebar from "@/components/advertisements/Advertisement/Dy
 import { useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import NewsCard from "@/components/news/NewsCard";
-import { getPublishedNewsList } from "@/api/news.api";
+import { getPublishedNewsStream, invalidatePublicNewsStreamCache } from "@/api/news.api";
 import { toNewsViewList } from "@/utils/news";
 import type { NewsView } from "@/types";
 
@@ -17,11 +16,15 @@ import PageLoader from "@/components/ui/PageLoader/PageLoader";
 import MainLayout from "@/layouts/MainLayout";
 
 import { useCategories } from "@/hooks/useCategories";
-import { useNews } from "@/hooks/useNews";
 
 import type { NewsScope } from "@/types/news.types";
 
 const PAGE_SIZE = 15;
+const INITIAL_BATCH = 20;
+const CACHE_TTL_MS = 120_000;
+type NewsListCacheEntry = { main: NewsView[]; sidebar: NewsView[]; hero: NewsView[]; cursor: string | null; hasNext: boolean; savedAt: number };
+const newsListCache = new Map<string, NewsListCacheEntry>();
+const pendingMore = new Set<string>();
 const NEXT_PAGE_SIZE = 5;
 
 const getScopeTitle = (scope: NewsScope | null) => {
@@ -43,7 +46,7 @@ const getScopeTitle = (scope: NewsScope | null) => {
     }
 };
 
-function StandardNewsPage() {
+export default function NewsPage() {
     usePageTitle();
     const [searchParams] = useSearchParams();
 
@@ -122,113 +125,140 @@ function StandardNewsPage() {
     // Match the homepage Hero Carousel selection exactly.
     const excludeHero = !scope && !categoryParam && !categoryIdFromQuery &&
         !countryId && !stateId && !districtId;
-    const heroQuery = useNews({
-        enabled: excludeHero,
-        publishedOnly: true,
-        homepageOnly: true,
-        page: 1,
-        pageSize: 10,
-        sortBy: "published_at",
-        sortOrder: "DESC",
+    // A cache key is specific to every URL filter. No cross-category reuse.
+    const stateSlug = searchParams.get("state") ?? undefined;
+    const queryIdentity = [scope, categoryId, countryId, stateId, stateSlug, districtId,
+        excludeHero].join(":");
+
+    // A keyed child gets a fresh state initializer whenever filters change.
+    // Cache restoration happens during initialization, never inside an effect.
+    return (
+        <NewsListContent
+            key={queryIdentity}
+            queryIdentity={queryIdentity}
+            isReady={shouldLoadNews}
+            categoriesLoading={categoriesLoading}
+            categoriesError={categoriesError}
+            categoryParam={categoryParam}
+            category={category}
+            scope={scope}
+            categoryId={categoryId}
+            countryId={countryId}
+            stateId={stateId}
+            stateSlug={stateSlug}
+            districtId={districtId}
+            excludeHero={excludeHero}
+        />
+    );
+}
+
+type NewsListContentProps = {
+    queryIdentity: string;
+    isReady: boolean;
+    categoriesLoading: boolean;
+    categoriesError: string | null | undefined;
+    categoryParam: string | null;
+    category: { id: number; displayName: string } | undefined;
+    scope: NewsScope | undefined;
+    categoryId: number | undefined;
+    countryId: number | undefined;
+    stateId: number | undefined;
+    stateSlug: string | undefined;
+    districtId: number | undefined;
+    excludeHero: boolean;
+};
+
+function NewsListContent({
+    queryIdentity, isReady, categoriesLoading, categoriesError, categoryParam,
+    category, scope, categoryId, countryId, stateId, stateSlug, districtId, excludeHero,
+}: NewsListContentProps) {
+    const [snapshot, setSnapshot] = useState<NewsListCacheEntry | null>(() => {
+        const entry = newsListCache.get(queryIdentity);
+        return entry && Date.now() - entry.savedAt < CACHE_TTL_MS ? entry : null;
     });
-    const heroNews = heroQuery.news.filter((item) => item.showOnHomepage).slice(0, 5);
-    const heroIdentity = heroNews.map((item) => item.id).join(",");
-    const queryIdentity = [scope, categoryId, countryId, stateId, districtId,
-        excludeHero, heroIdentity].join(":");
-    const [loadedIdentity, setLoadedIdentity] = useState<string | null>(null);
-    const [news, setNews] = useState<NewsView[]>([]);
-    const [sidebarNews, setSidebarNews] = useState<NewsView[]>([]);
-    const [nextPage, setNextPage] = useState(1);
-    const [moreAvailable, setMoreAvailable] = useState(false);
-    const [newsLoading, setNewsLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
+    const [newsLoading, setNewsLoading] = useState(() => snapshot === null);
     const [newsError, setNewsError] = useState<string | null>(null);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [moreError, setMoreError] = useState<string | null>(null);
     const [refreshToken, setRefreshToken] = useState(0);
-    const isReady = shouldLoadNews && (!excludeHero || !heroQuery.loading);
+    const [loadedIdentity, setLoadedIdentity] = useState<string | null>(() =>
+        snapshot ? queryIdentity : null
+    );
+
+    const news = snapshot?.main ?? [];
+    const sidebarNews = snapshot?.sidebar ?? [];
+    const heroNews = snapshot?.hero ?? [];
+    const nextCursor = snapshot?.cursor ?? null;
+    const moreAvailable = snapshot?.hasNext ?? false;
 
     useEffect(() => {
-        if (!isReady) return;
+        if (!isReady || loadedIdentity === queryIdentity) return;
         let active = true;
-        const excludedIds = new Set(excludeHero ? heroNews.map((item) => item.id) : []);
-        const excludedSlugs = new Set(excludeHero ? heroNews.map((item) => item.slug) : []);
-        const fetchInitial = async () => {
-            const collected: NewsView[] = [];
-            let page = 1;
-            let hasMore: boolean = true;
-            // Main list (15) + reserved sidebar (5), in a single ordered stream.
-            while (hasMore && collected.length < PAGE_SIZE + NEXT_PAGE_SIZE) {
-                const response = await getPublishedNewsList({
-                    page, pageSize: NEXT_PAGE_SIZE, scope, categoryId,
-                    countryId, stateId, districtId,
-                    sortBy: "published_at", sortOrder: "DESC",
-                });
-                const received = toNewsViewList(response.data);
-                for (const item of received) {
-                    if (excludedIds.has(item.id) || excludedSlugs.has(item.slug)) continue;
-                    excludedIds.add(item.id);
-                    excludedSlugs.add(item.slug);
-                    collected.push(item);
-                }
-                page += 1;
-                hasMore = response.meta?.hasNext ?? received.length === NEXT_PAGE_SIZE;
-            }
-            return { collected, page, hasMore };
-        };
-        void fetchInitial().then(({ collected, page, hasMore }) => {
+        void getPublishedNewsStream({
+            limit: INITIAL_BATCH, scope, categoryId, countryId, stateId,
+            state: stateSlug, districtId, excludeHomepageHero: excludeHero,
+        }).then((response) => {
             if (!active) return;
-            setNews(collected.slice(0, PAGE_SIZE));
-            setSidebarNews(collected.slice(PAGE_SIZE, PAGE_SIZE + NEXT_PAGE_SIZE));
-            setNextPage(page);
-            setMoreAvailable(hasMore);
+            const items = toNewsViewList(response.data);
+            const entry: NewsListCacheEntry = {
+                main: items.slice(0, PAGE_SIZE),
+                sidebar: items.slice(PAGE_SIZE, INITIAL_BATCH),
+                hero: toNewsViewList(response.hero ?? []),
+                cursor: response.meta.nextCursor,
+                hasNext: response.meta.hasNext,
+                savedAt: Date.now(),
+            };
+            newsListCache.set(queryIdentity, entry);
+            setSnapshot(entry);
             setNewsError(null);
             setLoadedIdentity(queryIdentity);
         }).catch(() => {
             if (!active) return;
             setNewsError("செய்திகளை ஏற்ற முடியவில்லை.");
             setLoadedIdentity(queryIdentity);
-        }).finally(() => { if (active) setNewsLoading(false); });
+        }).finally(() => {
+            if (active) setNewsLoading(false);
+        });
         return () => { active = false; };
-        // Query identity captures filters and the exact current Hero Carousel IDs.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queryIdentity, isReady, refreshToken]);
+    }, [queryIdentity, isReady, refreshToken, scope, categoryId, countryId,
+        stateId, stateSlug, districtId, excludeHero, loadedIdentity]);
 
     const loadNextFive = async () => {
-        if (loadingMore || !moreAvailable) return;
+        if (loadingMore || !moreAvailable || !nextCursor || pendingMore.has(queryIdentity)) return;
+        pendingMore.add(queryIdentity);
         setLoadingMore(true);
         setMoreError(null);
         try {
-            const seen = new Set([...heroNews, ...news, ...sidebarNews].map((item) => item.id));
-            const collected: NewsView[] = [];
-            let page = nextPage;
-            let hasMore: boolean = moreAvailable;
-            while (hasMore && collected.length < NEXT_PAGE_SIZE) {
-                const response = await getPublishedNewsList({
-                    page, pageSize: NEXT_PAGE_SIZE, scope, categoryId,
-                    countryId, stateId, districtId,
-                    sortBy: "published_at", sortOrder: "DESC",
-                });
-                const received = toNewsViewList(response.data);
-                for (const item of received) {
-                    if (seen.has(item.id)) continue;
-                    seen.add(item.id);
-                    collected.push(item);
-                }
-                page += 1;
-                hasMore = response.meta?.hasNext ?? received.length === NEXT_PAGE_SIZE;
-            }
-            setNews((current) => [...current, ...collected]);
-            setNextPage(page);
-            setMoreAvailable(hasMore);
+            const response = await getPublishedNewsStream({
+                limit: NEXT_PAGE_SIZE, cursor: nextCursor, scope, categoryId,
+                countryId, stateId, state: stateSlug, districtId,
+                excludeHomepageHero: excludeHero,
+            });
+            const seen = new Set([...news, ...sidebarNews].map((item) => item.id));
+            const added = toNewsViewList(response.data).filter((item) => !seen.has(item.id));
+            const entry: NewsListCacheEntry = {
+                main: [...news, ...added], sidebar: sidebarNews, hero: heroNews,
+                cursor: response.meta.nextCursor,
+                hasNext: response.meta.hasNext,
+                savedAt: Date.now(),
+            };
+            newsListCache.set(queryIdentity, entry);
+            setSnapshot(entry);
         } catch {
             setMoreError("அடுத்த செய்திகளை ஏற்ற முடியவில்லை.");
         } finally {
+            pendingMore.delete(queryIdentity);
             setLoadingMore(false);
         }
     };
+
     const refresh = () => {
+        newsListCache.delete(queryIdentity);
+        invalidatePublicNewsStreamCache();
+        setSnapshot(null);
         setNewsLoading(true);
         setNewsError(null);
+        setMoreError(null);
         setLoadedIdentity(null);
         setRefreshToken((current) => current + 1);
     };
@@ -366,14 +396,4 @@ function StandardNewsPage() {
             <PublicAdvertisementModal placementCode="NEWS_LIST_MODAL" />
         </MainLayout>
     );
-}
-
-/** Dedicated district page avoids the generic News List's multiple initial reads. */
-export default function NewsPage() {
-    const [params] = useSearchParams();
-    if (params.get('scope') === 'DISTRICT' && !params.has('districtId') &&
-        !params.has('category') && !params.has('categoryId')) {
-        return <DistrictNewsPage />;
-    }
-    return <StandardNewsPage />;
 }

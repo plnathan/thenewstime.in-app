@@ -402,3 +402,38 @@ export async function getDistrictSectionNews(
       ).data,
   );
 }
+
+/** Lightweight cursor endpoint for non-grouped News List pages. */
+export interface PublicNewsStreamQuery {
+  limit: number;
+  cursor?: string;
+  scope?: string;
+  categoryId?: number;
+  countryId?: number;
+  stateId?: number;
+  state?: string;
+  districtId?: number;
+  excludeHomepageHero?: boolean;
+}
+export interface PublicNewsStreamResponse {
+  data: News[];
+  hero?: News[];
+  meta: { hasNext: boolean; nextCursor: string | null };
+}
+export const getPublishedNewsStream = (
+  params: PublicNewsStreamQuery,
+): Promise<PublicNewsStreamResponse> =>
+  sharedPublicRead(`stream:${JSON.stringify(params)}`, async () => {
+    const response = await apiClient.get<PublicNewsStreamResponse>(
+      "/news/public/stream",
+      { params },
+    );
+    return response.data;
+  });
+
+/** Invalidate cached stream reads on an explicit user refresh. */
+export function invalidatePublicNewsStreamCache(): void {
+  for (const key of publicReadRequests.keys()) {
+    if (key.startsWith("stream:")) publicReadRequests.delete(key);
+  }
+}
