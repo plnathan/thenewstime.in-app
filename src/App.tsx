@@ -3,6 +3,8 @@ import { useLocation } from "react-router-dom";
 import { resetPublicPageDeliveryCache } from "@/api/advertisements/public-delivery.api";
 import AppRouter from "./router/AppRouter";
 
+import InstallAppBanner from "@/components/pwa/InstallAppBanner";
+
 import NavigationLoader from "@/components/ui/NavigationLoader/NavigationLoader";
 
 import ErrorBoundary from "@/components/common/ErrorBoundary";
@@ -27,6 +29,7 @@ const App = () => {
         </PublicMaintenanceGate>
       </ErrorBoundary>
       <NavigationLoader />
+      <InstallAppBanner />
     </AuthProvider>
   );
 };

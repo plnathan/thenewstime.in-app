@@ -1,7 +1,7 @@
 {
   "name": "The News Time",
-  "short_name": "NewsTime",
-  "description": "Tamil News | Latest Tamil News | The News Time",
+  "short_name": "News Time",
+  "description": "The News Time - தமிழ் செய்திகள் | Tamil News | Latest Tamil News | Tamil Online News",
   "lang": "ta",
   "start_url": "/",
   "scope": "/",
@@ -9,11 +9,7 @@
   "background_color": "#ffffff",
   "theme_color": "#008236",
   "icons": [
-    {
-      "src": "/tnt_favicon_32_32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
+    { "src": "/tnt_favicon_32_32.png", "sizes": "32x32", "type": "image/png" },
     {
       "src": "/tnt_apple_touch_icon_180_180.png",
       "sizes": "180x180",
