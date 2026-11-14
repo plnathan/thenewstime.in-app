@@ -1,4 +1,5 @@
 import { rememberAdminReturnPath } from "@/auth/adminReturnPath";
+import { openAdminInstallBanner } from "@/components/pwa/installBannerEvents";
 
 /**
  * -----------------------------------------------------------------------------
@@ -10,6 +11,7 @@ import { rememberAdminReturnPath } from "@/auth/adminReturnPath";
 
 import {
     ArrowUpRight,
+    Download,
     FileText,
     LayoutDashboard,
     ShieldCheck,
@@ -370,6 +372,16 @@ export default function AdminLayout({
                                 aria-hidden="true"
                             />
                         </a>
+
+                        {/* Manually reopen the Admin installation invitation at any time. */}
+                        <button
+                            type="button"
+                            onClick={openAdminInstallBanner}
+                            className={`${headerActionClass} border-green-200 bg-white text-green-700 hover:bg-green-50`}
+                        >
+                            <Download className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span>Install Admin App</span>
+                        </button>
 
                         {/* Logout */}
                         {isAuthenticated && (

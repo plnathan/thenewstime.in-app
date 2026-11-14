@@ -21,10 +21,20 @@
       sizes="180x180"
       href="/tnt_apple_touch_icon_180_180.png"
     />
-    <link rel="manifest" href="/site.webmanifest" />
+    <!-- <link rel="manifest" href="/site.webmanifest" /> -->
+    <script>
+      (function () {
+        var admin = /^\/admin(?:\/|$)/i.test(window.location.pathname);
+        var link = document.createElement("link");
+        link.rel = "manifest";
+        link.href = admin ? "/admin.webmanifest" : "/site.webmanifest";
+        document.head.appendChild(link);
+      })();
+    </script>
     <meta name="theme-color" content="#008236" />
     <title>
-      The News Time - தமிழ் செய்திகள் | Tamil News | Latest Tamil News | Tamil Online News
+      The News Time - தமிழ் செய்திகள் | Tamil News | Latest Tamil News | Tamil
+      Online News
     </title>
 
     <script>

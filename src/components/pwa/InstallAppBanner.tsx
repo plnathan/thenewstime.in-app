@@ -1,3 +1,4 @@
+import { PUBLIC_INSTALL_EVENT } from "./installBannerEvents";
 import { useEffect, useState } from "react";
 import { Download, Share2, X } from "lucide-react";
 
@@ -42,12 +43,21 @@ export default function InstallAppBanner() {
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
+        const openManually = () => {
+            setInstructions(false);
+            setVisible(true);
+        };
+        window.addEventListener(PUBLIC_INSTALL_EVENT, openManually);
+        return () => window.removeEventListener(PUBLIC_INSTALL_EVENT, openManually);
+    }, []);
+
+    useEffect(() => {
         const detected = getPlatform();
-        if (!detected || isInstalled() || isSuppressed()) return;
+        if (isInstalled()) return;
         const onBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             setPromptEvent(event as InstallPromptEvent);
-            if (!isSuppressed() && !isInstalled()) setVisible(true);
+            if (detected && !isSuppressed() && !isInstalled()) setVisible(true);
         };
         const onInstalled = () => {
             setVisible(false);
@@ -60,7 +70,7 @@ export default function InstallAppBanner() {
         // the OK action shows manual installation instructions.
         const timer = window.setTimeout(() => {
             setPlatform(detected);
-            if (!isSuppressed() && !isInstalled()) setVisible(true);
+            if (detected && !isSuppressed() && !isInstalled()) setVisible(true);
         }, 1800);
         return () => {
             window.clearTimeout(timer);
