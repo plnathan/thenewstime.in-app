@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { useAuth } from "@/auth/AuthContext";
 
-import { createNews, finalSaveNews } from "@/api/news.api";
+import { createNews } from "@/api/news.api";
 import {
     getCategories,
     getCountries,
@@ -154,7 +154,6 @@ export default function AdminNewsCreatePage() {
     const [success, setSuccess] =
         useState<string | null>(null);
 
-    const [finalSaved, setFinalSaved] = useState(false);
 
     const successMessageRef = useValidationMessageRef<HTMLDivElement>(null);
     useValidationMessageEffect(() => {
@@ -696,7 +695,7 @@ export default function AdminNewsCreatePage() {
             );
 
             setSuccess(
-                "Draft saved successfully. You can now upload images or click Save Changes without images.",
+                "News saved successfully. You can add images here. To edit the article or submit it for review, return to News Management and open Edit News.",
             );
         } catch (err) {
             console.error(err);
@@ -1219,14 +1218,10 @@ export default function AdminNewsCreatePage() {
                                     onMediaChange={
                                         setMedia
                                     }
-                                    disabled={saving || finalSaved}
+                                    disabled={saving}
                                     deferReorder
                                 />
                             )}
-
-                        {createdNewsId !== null && !finalSaved && (
-                            <p className="text-sm text-gray-600">Step 3: Click Save Changes to finish. Images are optional.</p>
-                        )}
                         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <Link to="/admin/news/list">
                                 <Button
@@ -1240,33 +1235,14 @@ export default function AdminNewsCreatePage() {
                             </Link>
 
                             <Button
-                                type={createdNewsId === null ? "submit" : "button"}
-                                onClick={createdNewsId === null ? undefined : () => {
-                                    if (finalSaved || saving || createdNewsId === null) return;
-                                    setSaving(true);
-                                    setError(null);
-                                    setSuccess(null);
-                                    void finalSaveNews(createdNewsId, media.map(item => item.id))
-                                        .then(() => {
-                                            setFinalSaved(true);
-                                            setSuccess("Changes saved successfully. Further changes can be made from Edit News.");
-                                        })
-                                        .catch((error: unknown) => {
-                                            setError(getApiErrorMessage(error) ?? "Unable to finalize news. Please retry.");
-                                        })
-                                        .finally(() => setSaving(false));
-                                }}
+                                type="submit"
                                 loading={saving}
-                                disabled={saving || finalSaved}
-                                leftIcon={
-                                    <Save
-                                        size={17}
-                                    />
-                                }
+                                disabled={saving || createdNewsId !== null}
+                                leftIcon={<Save size={17} />}
                                 fullWidth
                                 className="sm:w-auto"
                             >
-                                {createdNewsId !== null ? "Save Changes" : "Save Draft"}
+                                Save Draft
                             </Button>
                         </div>
                     </form>

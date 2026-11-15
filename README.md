@@ -1,3 +1,11 @@
+## SEO 
+
+https://www.thenewstime.in/robots.txt
+
+https://www.thenewstime.in/sitemap.xml
+
+https://www.thenewstime.in/news-sitemap.xml
+
 ## Test Run:
 
 npx vitest run src/pages/ServiceUnavailable/ServiceUnavailablePage.test.tsx src/components/common/PublicMaintenanceGate.test.tsx --environment jsdom
