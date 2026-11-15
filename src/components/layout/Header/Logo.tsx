@@ -18,7 +18,7 @@ export default function Logo() {
         <img
           src={logo}
           alt="The News Time"
-          className="h-[80px] w-auto object-contain"
+          className="max-h-[80px] h-auto max-w-full object-contain"
         />
       </div>
     </Link>

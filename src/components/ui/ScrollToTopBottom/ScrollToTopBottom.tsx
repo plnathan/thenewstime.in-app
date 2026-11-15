@@ -1,61 +1,72 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+type ScrollDirection = "up" | "down";
+
+const SCROLL_THRESHOLD = 200;
+const DIRECTION_THRESHOLD = 4;
+const BOTTOM_TOLERANCE = 2;
 
 export default function ScrollToTopBottom() {
-  const [isNearBottom, setIsNearBottom] = useState(false);
+  const [direction, setDirection] = useState<ScrollDirection>("down");
   const [isVisible, setIsVisible] = useState(false);
+  const previousScrollY = useRef(0);
 
   useEffect(() => {
+    previousScrollY.current = Math.max(0, window.scrollY);
+
     const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
+      const scrollTop = Math.max(0, window.scrollY);
+      const maxScrollTop = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
 
-      // Show button after moving down from the top
-      setIsVisible(scrollTop > 200);
+      setIsVisible(scrollTop > SCROLL_THRESHOLD && maxScrollTop > SCROLL_THRESHOLD);
 
-      // Determine whether the user is near the bottom
-      const distanceFromBottom =
-        documentHeight - (scrollTop + windowHeight);
+      if (scrollTop >= maxScrollTop - BOTTOM_TOLERANCE) {
+        setDirection("up");
+      } else if (scrollTop <= BOTTOM_TOLERANCE) {
+        setDirection("down");
+      } else {
+        const delta = scrollTop - previousScrollY.current;
+        if (delta > DIRECTION_THRESHOLD) {
+          setDirection("down");
+        } else if (delta < -DIRECTION_THRESHOLD) {
+          setDirection("up");
+        }
+      }
 
-      setIsNearBottom(distanceFromBottom < 200);
+      previousScrollY.current = scrollTop;
     };
 
     handleScroll();
-
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
     };
   }, []);
 
   const handleClick = () => {
-    if (isNearBottom) {
-      // Move to top
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    } else {
-      // Move to bottom
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: "smooth",
-      });
-    }
+    window.scrollTo({
+      top: direction === "up" ? 0 : document.documentElement.scrollHeight,
+      behavior: "smooth",
+    });
   };
 
-  if (!isVisible) {
-    return null;
-  }
+  if (!isVisible) return null;
+
+  const isUp = direction === "up";
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      aria-label={isNearBottom ? "Scroll to top" : "Scroll to bottom"}
-      title={isNearBottom ? "Scroll to top" : "Scroll to bottom"}
+      aria-label={isUp ? "Scroll to top" : "Scroll to bottom"}
+      title={isUp ? "Scroll to top" : "Scroll to bottom"}
       className={[
         "fixed",
         "right-1",
@@ -83,16 +94,10 @@ export default function ScrollToTopBottom() {
         "sm:bottom-[79px]",
       ].join(" ")}
     >
-      {isNearBottom ? (
-        <ArrowUp
-          className="h-5 w-5"
-          aria-hidden="true"
-        />
+      {isUp ? (
+        <ArrowUp className="h-5 w-5" aria-hidden="true" />
       ) : (
-        <ArrowDown
-          className="h-5 w-5"
-          aria-hidden="true"
-        />
+        <ArrowDown className="h-5 w-5" aria-hidden="true" />
       )}
     </button>
   );

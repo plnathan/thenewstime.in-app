@@ -126,7 +126,7 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
                                 aria-label="Call Advertisement Enquiries at 86089 34064"
                             >
                                 <Phone size={17} />
-                                Advertisement Enquiries: +91 86089 34064
+                                Contact Number: +91 86089 34064
                             </a>
                             <p className="mt-3">
                                 You may submit an advertisement enquiry at any time, 24/7.

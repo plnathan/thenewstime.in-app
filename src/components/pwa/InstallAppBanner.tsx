@@ -9,8 +9,6 @@ type InstallPromptEvent = Event & {
 
 type Platform = "android" | "ios" | null;
 const DISMISS_KEY = "tnt-install-banner-dismissed-v1";
-const SNOOZE_KEY = "tnt-install-banner-snooze-until-v1";
-const SNOOZE_DAYS = 7;
 
 function getPlatform(): Platform {
     const ua = navigator.userAgent;
@@ -28,8 +26,7 @@ function isInstalled(): boolean {
 function isSuppressed(): boolean {
     try {
         if (localStorage.getItem(DISMISS_KEY) === "true") return true;
-        const until = Number(localStorage.getItem(SNOOZE_KEY) || 0);
-        return Number.isFinite(until) && Date.now() < until;
+        return false;
     } catch {
         return false;
     }
@@ -41,10 +38,12 @@ export default function InstallAppBanner() {
     const [visible, setVisible] = useState(false);
     const [instructions, setInstructions] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [alreadyInstalled, setAlreadyInstalled] = useState(false);
 
     useEffect(() => {
         const openManually = () => {
             setInstructions(false);
+            setAlreadyInstalled(isInstalled());
             setVisible(true);
         };
         window.addEventListener(PUBLIC_INSTALL_EVENT, openManually);
@@ -62,6 +61,7 @@ export default function InstallAppBanner() {
         const onInstalled = () => {
             setVisible(false);
             setPromptEvent(null);
+            setAlreadyInstalled(true);
         };
         window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
         window.addEventListener("appinstalled", onInstalled);
@@ -85,11 +85,11 @@ export default function InstallAppBanner() {
         try { localStorage.setItem(DISMISS_KEY, "true"); } catch { /* storage may be disabled */ }
         setVisible(false);
     };
-    const later = () => {
-        try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DAYS * 86400000)); } catch { /* storage may be disabled */ }
-        setVisible(false);
-    };
     const accept = async () => {
+        if (alreadyInstalled || isInstalled()) {
+            setAlreadyInstalled(true);
+            return;
+        }
         if (platform === "ios" || !promptEvent) {
             setInstructions(true);
             return;
@@ -97,13 +97,9 @@ export default function InstallAppBanner() {
         setBusy(true);
         try {
             await promptEvent.prompt();
-            const result = await promptEvent.userChoice;
+            await promptEvent.userChoice;
             setPromptEvent(null);
-            if (result.outcome === "accepted") {
-                setVisible(false);
-            } else {
-                later();
-            }
+            setVisible(false);
         } catch {
             setInstructions(true);
         } finally {
@@ -119,9 +115,12 @@ export default function InstallAppBanner() {
                     <p className="text-sm font-semibold text-gray-900">The News Time</p>
                     <p className="mt-1 text-sm leading-6 text-gray-700">உங்கள் மொபைலில் The News Time செய்திகளை எளிதாகப் படிக்க வேண்டுமா?</p>
                 </div>
-                <button type="button" aria-label="மூடுக" onClick={later} className="rounded-md p-1 text-gray-500 hover:bg-gray-100"><X size={18} /></button>
+                <button type="button" aria-label="மூடுக" onClick={() => setVisible(false)} className="rounded-md p-1 text-gray-500 hover:bg-gray-100"><X size={18} /></button>
             </div>
-            {instructions && (
+            {alreadyInstalled && (
+                <p className="mt-3 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-800" role="status">இந்தச் செயலி ஏற்கனவே நிறுவப்பட்டுள்ளது. நீங்கள் தற்போது நிறுவப்பட்ட செயலியில் உள்ளீர்கள்.</p>
+            )}
+            {instructions && !alreadyInstalled && (
                 <div className="mt-3 rounded-lg bg-green-50 p-3 text-sm leading-6 text-gray-800">
                     {platform === "ios" ? (
                         <p><Share2 size={16} className="mr-1 inline" aria-hidden="true" />Safari-யில் பகிர் (Share) பொத்தானைத் தேர்ந்தெடுத்து, <strong>Add to Home Screen</strong> என்பதை அழுத்தி, பின்னர் <strong>Add</strong> என்பதைத் தேர்ந்தெடுக்கவும்.</p>
@@ -132,8 +131,7 @@ export default function InstallAppBanner() {
             )}
             <div className="mt-4 flex flex-wrap justify-end gap-2">
                 <button type="button" onClick={dismiss} className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">வேண்டாம்</button>
-                <button type="button" onClick={later} className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">பிறகு</button>
-                <button type="button" onClick={() => { void accept(); }} disabled={busy} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60">சரி</button>
+                {!alreadyInstalled && <button type="button" onClick={() => { void accept(); }} disabled={busy} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60">சரி</button>}
             </div>
         </div>
     );

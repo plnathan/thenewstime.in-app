@@ -3,6 +3,7 @@ import { useNewsDetailDeliveryId } from "@/contexts/NewsDetailDeliveryContext";
 import {
     BriefcaseBusiness,
     ChevronDown,
+    Download,
     Clapperboard,
     Cpu,
     Globe2,
@@ -42,6 +43,7 @@ const hamburgerIcons = {
 
 import IndiaIcon from "./IndiaIcon";
 import Logo from "./Logo";
+import { openPublicInstallBanner } from "@/components/pwa/installBannerEvents";
 import Navigation from "../Navigation";
 import LiveAdvertisementSlot from "@/components/advertisements/Advertisement/LiveAdvertisementSlot";
 import { hasConfiguredHeaderAdvertisementSlot } from "@/api/advertisements/public-delivery.api";
@@ -188,6 +190,7 @@ export default function Header() {
       max-w-7xl
       items-center
       justify-center
+      relative
       px-4
       lg:px-6
     "
@@ -555,8 +558,19 @@ export default function Header() {
                     )}
                 </div>
 
+                {/* Always-available install action, separate from the footer link. */}
+                <button
+                    type="button"
+                    onClick={openPublicInstallBanner}
+                    aria-label="Install The News Time app"
+                    className="absolute right-3 top-1/2 z-10 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-none border-0 bg-transparent px-1 py-2 text-xs font-medium text-green-700 no-underline shadow-none hover:text-green-700 hover:no-underline focus:text-green-700 focus:no-underline active:text-green-700 active:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 sm:right-4 sm:gap-2 sm:px-2 sm:text-sm lg:right-6"
+                >
+                    <Download size={17} aria-hidden="true" />
+                    <span>Install App</span>
+                </button>
+
                 {/* Center the logo independently of utility controls. */}
-                <div className="flex min-w-0 flex-1 items-center justify-center">
+                <div className="flex min-w-0 flex-1 items-center justify-center px-24 sm:px-28">
                     <Logo />
                 </div>
 
