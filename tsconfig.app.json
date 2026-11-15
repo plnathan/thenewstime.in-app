@@ -36,5 +36,5 @@
       "@/types/*": ["./src/types/*"]
     }
   },
-  "include": ["src", "api/news/[slug].ts"]
+  "include": ["src", "api/news/[slug].ts", "api/news-sitemap.ts", "api/sitemap.ts"]
 }
