@@ -138,7 +138,7 @@ export const getNewsBySlug = async (
 ): Promise<ApiResponse<News>> => {
   return sharedPublicRead(`slug:${slug}`, async () => {
     const response = await apiClient.get<ApiResponse<News>>(
-      `/news/slug/${encodeURIComponent(slug)}`,
+      `/news/public/slug/${encodeURIComponent(slug)}`,
     );
     return response.data;
   });
