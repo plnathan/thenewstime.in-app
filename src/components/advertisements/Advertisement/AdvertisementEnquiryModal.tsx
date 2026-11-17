@@ -31,22 +31,53 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
     const [details, setDetails] = useState("");
     const [website, setWebsite] = useState("");
     const [captchaToken, setCaptchaToken] = useState("");
+    const [captchaError, setCaptchaError] = useState("");
+    const [captchaAttempt, setCaptchaAttempt] = useState(0);
     const captchaElement = useRef<HTMLDivElement>(null);
-    const captchaSiteKey = import.meta.env.TURNSTILE_SITE_KEY as string | undefined;
+    const captchaSiteKey = import.meta.env.TURNSTILE_SITE_KEY?.trim();
+    const captchaRequired = import.meta.env.PROD || Boolean(captchaSiteKey);
+    const retryCaptcha = () => {
+        setCaptchaToken("");
+        setCaptchaError("");
+        setCaptchaAttempt(attempt => attempt + 1);
+    };
     useEffect(() => {
         if (!captchaSiteKey || !captchaElement.current) return;
         let active = true;
         let widgetId: string | undefined;
         type Turnstile = { render: (element: HTMLElement, options: Record<string, unknown>) => string; remove: (id: string) => void };
         const turnstileWindow = window as Window & { turnstile?: Turnstile };
+        const fail = (message: string, code?: unknown) => {
+            if (!active) return;
+            console.error("[Advertisement enquiry] Turnstile:", message, code ?? "");
+            setCaptchaToken("");
+            setCaptchaError(message);
+        };
         const render = () => {
-            if (!active || !captchaElement.current || !turnstileWindow.turnstile || widgetId) return;
-            widgetId = turnstileWindow.turnstile.render(captchaElement.current, {
-                sitekey: captchaSiteKey, action: "advertisement_enquiry",
-                callback: (token: string) => setCaptchaToken(token),
-                "expired-callback": () => setCaptchaToken(""),
-                "error-callback": () => setCaptchaToken("")
-            });
+            if (!active || !captchaElement.current || !turnstileWindow.turnstile || widgetId !== undefined) return;
+            try {
+                widgetId = turnstileWindow.turnstile.render(captchaElement.current, {
+                    sitekey: captchaSiteKey,
+                    action: "advertisement_enquiry",
+                    appearance: "always",
+                    execution: "render",
+                    theme: "light",
+                    size: "flexible",
+                    callback: (token: string) => {
+                        if (!active) return;
+                        setCaptchaToken(token);
+                        setCaptchaError("");
+                    },
+                    "expired-callback": () => {
+                        if (!active) return;
+                        setCaptchaToken("");
+                        setCaptchaError("Security verification expired. Please verify again.");
+                    },
+                    "error-callback": (code: string) => fail("Security verification failed. Please retry.", code),
+                });
+            } catch (cause) {
+                fail("Unable to initialize security verification. Please retry.", cause);
+            }
         };
         let script = document.querySelector<HTMLScriptElement>('script[data-enquiry-turnstile]');
         if (!script) {
@@ -54,12 +85,33 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
             script.dataset.enquiryTurnstile = "true";
             script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
             script.async = true;
-            document.head.appendChild(script);
         }
-        script.addEventListener("load", render);
+        const onLoad = () => {
+            if (!turnstileWindow.turnstile) fail("Security verification service is unavailable. Please retry.");
+            else render();
+        };
+        const onError = () => {
+            script.remove();
+            fail("Unable to load security verification. Please retry.");
+        };
+        script.addEventListener("load", onLoad);
+        script.addEventListener("error", onError);
+        if (!script.isConnected) document.head.appendChild(script);
         render();
-        return () => { active = false; script?.removeEventListener("load", render); if (widgetId) turnstileWindow.turnstile?.remove(widgetId); };
-    }, [captchaSiteKey]);
+        const timeout = window.setTimeout(() => {
+            if (widgetId === undefined) {
+                if (!turnstileWindow.turnstile) script.remove();
+                fail("Security verification could not start. Please retry.");
+            }
+        }, 15000);
+        return () => {
+            active = false;
+            window.clearTimeout(timeout);
+            script.removeEventListener("load", onLoad);
+            script.removeEventListener("error", onError);
+            if (widgetId !== undefined) turnstileWindow.turnstile?.remove(widgetId);
+        };
+    }, [captchaSiteKey, captchaAttempt]);
     const [sending, setSending] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
@@ -84,7 +136,7 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
             setMobileError("Enter a valid 10-digit Indian mobile number.");
             return;
         }
-        if (import.meta.env.PROD && !captchaToken) { setError("Please complete the security check."); return; }
+        if (captchaRequired && !captchaToken) { setError("Please complete the security check."); return; }
         if (start && end && end < start) { setError("End date cannot be before start date."); return; }
         setSending(true); setError("");
         const payload: AdvertisementEnquiryInput = {
@@ -103,7 +155,10 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
             ...(captchaToken ? { captchaToken } : {}),
         };
         try { await submitAdvertisementEnquiry(payload); setSuccess(true); }
-        catch { setError("Unable to send your enquiry. Please try again."); }
+        catch {
+            setError("Unable to send your enquiry. Please try again.");
+            if (captchaSiteKey) retryCaptcha();
+        }
         finally { setSending(false); }
     };
     return (
@@ -168,9 +223,11 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
                         <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="enquiry-start" className={label}>Preferred Start Date</label><input id="enquiry-start" type="date" className={field} value={start} onChange={e => setStart(e.target.value)} /></div><div><label htmlFor="enquiry-end" className={label}>Preferred End Date</label><input id="enquiry-end" type="date" className={field} value={end} onChange={e => setEnd(e.target.value)} /></div></div>
                         <div><label htmlFor="enquiry-details" className={label}>Additional Requirements (Optional)</label><textarea id="enquiry-details" rows={3} maxLength={2000} className={field} value={details} onChange={e => setDetails(e.target.value)} /></div>
                         <div className="hidden" aria-hidden="true"><label htmlFor="enquiry-website">Website</label><input id="enquiry-website" tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} /></div>
+                        {captchaRequired && !captchaSiteKey && <p role="alert" className="text-sm text-red-700">Security verification is not configured. Please contact our advertising team.</p>}
                         {captchaSiteKey && <div ref={captchaElement} aria-label="Security verification" />}
+                        {captchaError && <div className="space-y-2"><p role="alert" className="text-sm text-red-700">{captchaError}</p><button type="button" onClick={retryCaptcha} disabled={sending} className="rounded-lg border px-3 py-2 text-sm">Retry verification</button></div>}
                         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                        <div className="flex justify-end gap-3 border-t pt-4"><button type="button" onClick={onClose} disabled={sending} className="rounded-lg border px-5 py-2 text-sm">Cancel</button><button type="submit" disabled={sending} className="flex items-center gap-2 rounded-lg bg-green-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"><Send size={16} />{sending ? "Sending..." : "Send Enquiry"}</button></div>
+                        <div className="flex justify-end gap-3 border-t pt-4"><button type="button" onClick={onClose} disabled={sending} className="rounded-lg border px-5 py-2 text-sm">Cancel</button><button type="submit" disabled={sending || (captchaRequired && !captchaToken)} className="flex items-center gap-2 rounded-lg bg-green-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"><Send size={16} />{sending ? "Sending..." : "Send Enquiry"}</button></div>
                     </form>}
             </div>
         </div>
