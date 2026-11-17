@@ -32,7 +32,7 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
     const [website, setWebsite] = useState("");
     const [captchaToken, setCaptchaToken] = useState("");
     const captchaElement = useRef<HTMLDivElement>(null);
-    const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+    const captchaSiteKey = import.meta.env.TURNSTILE_SITE_KEY as string | undefined;
     useEffect(() => {
         if (!captchaSiteKey || !captchaElement.current) return;
         let active = true;
