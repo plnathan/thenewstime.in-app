@@ -10,7 +10,17 @@ function getEnquiryError(cause: unknown): string {
     const body: unknown = cause.response?.data;
     const message = body && typeof body === "object" && "message" in body ? body.message : undefined;
     // Only expose known public API messages, never raw server or database errors.
-    if (status === 429) return "Too many enquiries have been submitted. Please try again later or contact our advertising team.";
+    if (status === 409 && body && typeof body === "object" && "code" in body && body.code === "DUPLICATE_ENQUIRY") {
+        return "You have already submitted an enquiry with the same details. Our advertising team will contact you shortly.";
+    }
+    if (status === 429) {
+        const retry = body && typeof body === "object" && "retryAfter" in body ? body.retryAfter : undefined;
+        if (typeof retry === "number" && Number.isFinite(retry) && retry > 0) {
+            const minutes = Math.ceil(retry / 60);
+            return `Too many enquiries have been submitted. Please try again after ${minutes} minute(s) or contact our advertising team.`;
+        }
+        return "Too many enquiries have been submitted. Please try again later or contact our advertising team.";
+    }
     if (status === 400 && (message === "Security check failed. Please try again." || message === "Please complete the security check.")) {
         return "Security verification was not accepted by our server. Please verify again and resend your enquiry.";
     }
