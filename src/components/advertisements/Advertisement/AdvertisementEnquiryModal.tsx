@@ -1,7 +1,26 @@
+import { isAxiosError } from "axios";
 import { useEffect, useId, useState, useRef, type FormEvent } from "react";
 import { X, Clock3, Phone, Send } from "lucide-react";
 import { submitAdvertisementEnquiry, type EnquiryPage, type AdvertisementEnquiryInput } from "@/api/advertisements/advertisement-enquiries.api";
 import type { EnquiryOrigin } from "@/contexts/AdvertisementEnquiryContext";
+
+function getEnquiryError(cause: unknown): string {
+    if (!isAxiosError(cause)) return "We could not submit your enquiry. Please try again or contact our advertising team.";
+    const status = cause.response?.status;
+    const body: unknown = cause.response?.data;
+    const message = body && typeof body === "object" && "message" in body ? body.message : undefined;
+    // Only expose known public API messages, never raw server or database errors.
+    if (status === 429) return "Too many enquiries have been submitted. Please try again later or contact our advertising team.";
+    if (status === 400 && (message === "Security check failed. Please try again." || message === "Please complete the security check.")) {
+        return "Security verification was not accepted by our server. Please verify again and resend your enquiry.";
+    }
+    if (status === 400 || status === 422) return "Some enquiry details are invalid. Please check your contact information and preferred dates, then try again.";
+    if (status === 413) return "Your enquiry is too large. Please shorten the additional requirements and try again.";
+    if (status === 503) return "The enquiry service is temporarily unavailable. Please try again later or call our advertising team.";
+    if (status === 401 || status === 403) return "Your enquiry was not authorized by our server. Please refresh the page and try again.";
+    if (cause.code === "ECONNABORTED" || cause.code === "ETIMEDOUT" || !cause.response) return "We could not confirm submission due to a connection problem. Please contact our advertising team if the problem continues.";
+    return "We could not confirm submission of your enquiry. Please try again later or contact our advertising team.";
+}
 
 const slots: Record<EnquiryPage, { value: string; label: string }[]> = {
     HOME: ["HOME_TOP", "HOME_BANNER", "HOME_BETWEEN_SECTIONS", "HOME_SIDEBAR", "HOME_BOTTOM", "HOME_MODAL"].map(value => ({ value, label: value.replaceAll("_", " ") })),
@@ -155,8 +174,8 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
             ...(captchaToken ? { captchaToken } : {}),
         };
         try { await submitAdvertisementEnquiry(payload); setSuccess(true); }
-        catch {
-            setError("Unable to send your enquiry. Please try again.");
+        catch (cause: unknown) {
+            setError(getEnquiryError(cause));
             if (captchaSiteKey) retryCaptcha();
         }
         finally { setSending(false); }
