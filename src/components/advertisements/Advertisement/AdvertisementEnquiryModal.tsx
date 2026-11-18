@@ -4,6 +4,66 @@ import { X, Clock3, Phone, Send } from "lucide-react";
 import { submitAdvertisementEnquiry, type EnquiryPage, type AdvertisementEnquiryInput } from "@/api/advertisements/advertisement-enquiries.api";
 import type { EnquiryOrigin } from "@/contexts/AdvertisementEnquiryContext";
 
+const DUPLICATE_MESSAGE = "You have already submitted an enquiry with the same details. Our advertising team will contact you shortly.";
+const CACHE_PREFIX = "tnt:enquiry:v1:";
+const SUCCESS_CACHE_MS = 24 * 60 * 60 * 1000;
+// A 409 does not include the original creation time. Do not restart a 24-hour window.
+const SERVER_DUPLICATE_CACHE_MS = 60 * 1000;
+const memoryCache = new Map<string, number>();
+
+function isDuplicateEnquiryError(cause: unknown): boolean {
+    if (!isAxiosError(cause) || cause.response?.status !== 409) return false;
+    const body: unknown = cause.response.data;
+    return Boolean(body && typeof body === "object" && "code" in body && body.code === "DUPLICATE_ENQUIRY");
+}
+
+async function enquiryFingerprint(input: AdvertisementEnquiryInput): Promise<string | null> {
+    try {
+        const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
+        const canonical = JSON.stringify([
+            normalize(input.fullName), input.mobileNumber.replace(/\D/g, ""),
+            normalize(input.companyName), normalize(input.email),
+            input.advertisementType ?? null,
+            [...new Set(input.pageTypes ?? [])].sort(),
+            [...new Set(input.placementTypes ?? [])].sort(),
+            input.preferredStartDate ?? null, input.preferredEndDate ?? null,
+            normalize(input.additionalRequirements),
+        ]);
+        const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+        return CACHE_PREFIX + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+    } catch {
+        // Unsupported crypto must never prevent a genuine enquiry.
+        return null;
+    }
+}
+
+function hasRecentEnquiry(key: string): boolean {
+    const now = Date.now();
+    for (const [cachedKey, expiry] of memoryCache) {
+        if (expiry <= now) memoryCache.delete(cachedKey);
+    }
+    if ((memoryCache.get(key) ?? 0) > now) return true;
+    try {
+        const storage = window.localStorage;
+        for (let index = storage.length - 1; index >= 0; index--) {
+            const cachedKey = storage.key(index);
+            if (!cachedKey?.startsWith(CACHE_PREFIX)) continue;
+            const expiry = Number(storage.getItem(cachedKey));
+            if (!Number.isFinite(expiry) || expiry <= now) storage.removeItem(cachedKey);
+        }
+        const expiry = Number(storage.getItem(key));
+        return Number.isFinite(expiry) && expiry > now && expiry <= now + SUCCESS_CACHE_MS;
+    } catch {
+        return false;
+    }
+}
+
+function rememberEnquiry(key: string, expiry: number): void {
+    if (expiry <= Date.now()) return;
+    memoryCache.set(key, expiry);
+    try { window.localStorage.setItem(key, String(expiry)); } catch { /* memory fallback */ }
+}
+
 function getEnquiryError(cause: unknown): string {
     if (!isAxiosError(cause)) return "We could not submit your enquiry. Please try again or contact our advertising team.";
     const status = cause.response?.status;
@@ -11,7 +71,7 @@ function getEnquiryError(cause: unknown): string {
     const message = body && typeof body === "object" && "message" in body ? body.message : undefined;
     // Only expose known public API messages, never raw server or database errors.
     if (status === 409 && body && typeof body === "object" && "code" in body && body.code === "DUPLICATE_ENQUIRY") {
-        return "You have already submitted an enquiry with the same details. Our advertising team will contact you shortly.";
+        return DUPLICATE_MESSAGE;
     }
     if (status === 429) {
         const retry = body && typeof body === "object" && "retryAfter" in body ? body.retryAfter : undefined;
@@ -141,6 +201,7 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
             if (widgetId !== undefined) turnstileWindow.turnstile?.remove(widgetId);
         };
     }, [captchaSiteKey, captchaAttempt]);
+    const submittingRef = useRef(false);
     const [sending, setSending] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
@@ -160,13 +221,13 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
     };
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (sending) return;
+        if (submittingRef.current) return;
         if (!/^[6-9]\d{9}$/.test(mobile)) {
             setMobileError("Enter a valid 10-digit Indian mobile number.");
             return;
         }
-        if (captchaRequired && !captchaToken) { setError("Please complete the security check."); return; }
         if (start && end && end < start) { setError("End date cannot be before start date."); return; }
+        submittingRef.current = true;
         setSending(true); setError("");
         const payload: AdvertisementEnquiryInput = {
             fullName: name.trim(), mobileNumber: mobile, source: origin.source,
@@ -183,12 +244,32 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
             website,
             ...(captchaToken ? { captchaToken } : {}),
         };
-        try { await submitAdvertisementEnquiry(payload); setSuccess(true); }
-        catch (cause: unknown) {
+        let fingerprint: string | null = null;
+        try {
+            // Do not cache honeypot submissions; the server may acknowledge without saving.
+            fingerprint = website ? null : await enquiryFingerprint(payload);
+            if (fingerprint && hasRecentEnquiry(fingerprint)) {
+                setError(DUPLICATE_MESSAGE);
+                return;
+            }
+            if (captchaRequired && !captchaToken) {
+                setError("Please complete the security check.");
+                return;
+            }
+            const requestedAt = Date.now();
+            await submitAdvertisementEnquiry(payload);
+            if (fingerprint) rememberEnquiry(fingerprint, requestedAt + SUCCESS_CACHE_MS);
+            setSuccess(true);
+        } catch (cause: unknown) {
+            if (fingerprint && isDuplicateEnquiryError(cause)) {
+                rememberEnquiry(fingerprint, Date.now() + SERVER_DUPLICATE_CACHE_MS);
+            }
             setError(getEnquiryError(cause));
             if (captchaSiteKey) retryCaptcha();
+        } finally {
+            submittingRef.current = false;
+            setSending(false);
         }
-        finally { setSending(false); }
     };
     return (
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 p-3 sm:p-6" onMouseDown={event => { if (event.target === event.currentTarget && !sending) onClose(); }}>
@@ -256,7 +337,7 @@ export default function AdvertisementEnquiryModal({ origin, onClose }: Props) {
                         {captchaSiteKey && <div ref={captchaElement} aria-label="Security verification" />}
                         {captchaError && <div className="space-y-2"><p role="alert" className="text-sm text-red-700">{captchaError}</p><button type="button" onClick={retryCaptcha} disabled={sending} className="rounded-lg border px-3 py-2 text-sm">Retry verification</button></div>}
                         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                        <div className="flex justify-end gap-3 border-t pt-4"><button type="button" onClick={onClose} disabled={sending} className="rounded-lg border px-5 py-2 text-sm">Cancel</button><button type="submit" disabled={sending || (captchaRequired && !captchaToken)} className="flex items-center gap-2 rounded-lg bg-green-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"><Send size={16} />{sending ? "Sending..." : "Send Enquiry"}</button></div>
+                        <div className="flex justify-end gap-3 border-t pt-4"><button type="button" onClick={onClose} disabled={sending} className="rounded-lg border px-5 py-2 text-sm">Cancel</button><button type="submit" disabled={sending} className="flex items-center gap-2 rounded-lg bg-green-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"><Send size={16} />{sending ? "Sending..." : "Send Enquiry"}</button></div>
                     </form>}
             </div>
         </div>
